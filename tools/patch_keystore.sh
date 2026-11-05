@@ -84,8 +84,21 @@ if command -v keytool >/dev/null 2>&1; then
         echo "::error::KEYSTORE_PASSWORD does not open the decoded keystore. Check it with: keytool -list -keystore release.keystore -storepass '<password>'  — then update the KEYSTORE_PASSWORD secret." >&2
         exit 1
     fi
+    # List WITHOUT -alias on purpose: the aliases are not secret, and printing
+    # them makes a mismatch self-correcting — the log alone then says exactly
+    # what KEYSTORE_USER must be set to. (KEYSTORE_USER itself is masked by
+    # Actions, so the two together are what a reader needs.)
+    KEYSTORE_LIST=$(keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" 2>/dev/null || true)
+    # Alias lines look like "name, 05-Nov-2026, PrivateKeyEntry," (PKCS#12) or
+    # "name, Nov 5, 2026, PrivateKeyEntry," (JKS) — take the first field of any
+    # line carrying an entry type, so both date orders parse.
+    ALIASES=$(printf '%s\n' "$KEYSTORE_LIST" \
+        | sed -nE 's/^([^,]+),.*(PrivateKeyEntry|TrustedCertEntry|SecretKeyEntry).*$/\1/p' \
+        | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+        | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+    echo "Keystore aliases found: [${ALIASES:-<none parsed>}]   KEYSTORE_USER='$KEYSTORE_USER'"
     if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" -alias "$KEYSTORE_USER" >/dev/null 2>&1; then
-        echo "::error::KEYSTORE_USER='$KEYSTORE_USER' is not an alias in this keystore (the password was accepted). List aliases with: keytool -list -keystore release.keystore -storepass '<password>'  — then update the KEYSTORE_USER secret." >&2
+        echo "::error::KEYSTORE_USER is not an alias in this keystore (password was accepted). Aliases in this keystore: [${ALIASES:-<none parsed>}]. Update the KEYSTORE_USER secret to exactly one of those — case-sensitive, no surrounding spaces." >&2
         exit 1
     fi
 fi
