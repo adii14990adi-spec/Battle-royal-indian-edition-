@@ -22,12 +22,24 @@ CLEAN="${CLEAN%\"}"
 CLEAN="${CLEAN#\'}"
 CLEAN="${CLEAN%\'}"
 
+# Restore stripped '=' padding. `base64 -d` requires a multiple of 4, but
+# trailing '=' is routinely lost when a secret is copied by hand (many
+# editors and copy flows trim it as if it were whitespace). Re-adding it is
+# lossless: a correct value is already a multiple of 4, so this branch can
+# only ever fire on a value that could not decode otherwise. len % 4 == 1 is
+# genuinely malformed and is deliberately left to fail below.
+case $(( ${#CLEAN} % 4 )) in
+    2) CLEAN="${CLEAN}==" ;;
+    3) CLEAN="${CLEAN}=" ;;
+esac
+
 if ! printf '%s' "$CLEAN" | base64 -d > "$KEYSTORE_PATH" 2>/dev/null; then
     # Diagnose without ever echoing the secret itself: length alone usually
     # identifies the mistake (a pasted file path is ~20 chars, a real keystore
-    # base64 is several thousand).
+    # base64 is several thousand), and the remainder tells us whether padding
+    # was the issue.
     BAD=$(printf '%s' "$CLEAN" | tr -d 'A-Za-z0-9+/=' | wc -c)
-    echo "::error::KEYSTORE_BASE64 is not valid base64 (length=${#KEYSTORE_BASE64}, non-base64 chars=$BAD). Re-create it with: base64 -w0 release.keystore  (single line, no quotes)" >&2
+    echo "::error::KEYSTORE_BASE64 is not valid base64 (length=${#KEYSTORE_BASE64}, length mod 4=$(( ${#KEYSTORE_BASE64} % 4 )), non-base64 chars=$BAD). Re-create it with: base64 -w0 release.keystore  (single line, no quotes)" >&2
     rm -f "$KEYSTORE_PATH"
     exit 1
 fi
