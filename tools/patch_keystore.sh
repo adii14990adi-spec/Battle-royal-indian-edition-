@@ -63,6 +63,17 @@ if [[ ! -s "$KEYSTORE_PATH" ]]; then
     exit 1
 fi
 
+# Cheap sanity fingerprint. Not fatal — formats vary — but a decoded blob that
+# matches no known keystore header almost always means the secret was corrupted
+# in transit, and Godot's signing error would be much less direct.
+HEAD4=$(head -c 4 "$KEYSTORE_PATH" | od -An -tx1 | tr -d ' \n')
+case "$HEAD4" in
+    feedfeed|2d2d2d2d|3082*|3083*|3081*) : ;;  # JKS | PEM "----" | ASN.1/PKCS#12
+    *)
+        echo "::warning::decoded KEYSTORE_BASE64 does not look like a keystore (first bytes: $HEAD4). Expected JKS (fe ed fe ed), PKCS#12 (30 82…), or PEM (----). If the export fails to sign, re-create the secret with: base64 -w0 release.keystore" >&2
+        ;;
+esac
+
 USER_ESC=$(printf '%s' "$KEYSTORE_USER" | sed -e 's/[\/&]/\\&/g')
 PASS_ESC=$(printf '%s' "$KEYSTORE_PASSWORD" | sed -e 's/[\/&]/\\&/g')
 PATH_ESC=$(printf '%s' "$KEYSTORE_PATH" | sed -e 's/[\/&]/\\&/g')

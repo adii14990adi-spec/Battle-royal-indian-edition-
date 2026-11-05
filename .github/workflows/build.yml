@@ -144,7 +144,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build
-          godot --headless --export-debug "$EXPORT_PRESET" build/desi-royale-debug.apk --path "$PWD"
+          # Surface Godot's own output as annotations: raw run logs are not
+          # always retrievable, and "exit code 1" alone is undiagnosable.
+          if ! godot --headless --export-debug "$EXPORT_PRESET" build/desi-royale-debug.apk --path "$PWD" 2>&1 | tee /tmp/export.log; then
+            echo "::error::Godot export-debug failed. Last output:"
+            tail -12 /tmp/export.log | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          fi
 
       - name: Verify APK
         run: bash tools/verify_apk.sh build/desi-royale-debug.apk
@@ -278,7 +284,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build
-          godot --headless --export-release "$EXPORT_PRESET" build/desi-royale-release.apk --path "$PWD"
+          if ! godot --headless --export-release "$EXPORT_PRESET" build/desi-royale-release.apk --path "$PWD" 2>&1 | tee /tmp/export.log; then
+            echo "::error::Godot export-release failed. Last output:"
+            tail -12 /tmp/export.log | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          fi
 
       - name: Verify APK
         run: bash tools/verify_apk.sh build/desi-royale-release.apk
