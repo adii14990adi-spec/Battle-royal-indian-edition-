@@ -1,5 +1,7 @@
 # Desi Royale
 
+[![Build APK](https://github.com/adii14990adi-spec/Battle-royal-indian-edition-/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/adii14990adi-spec/Battle-royal-indian-edition-/actions/workflows/build.yml)
+
 Fully offline 3D battle royale, Indian theme (Free Fire India-inspired).
 Target: Unisoc T606 / 4 GB RAM Android, 30 FPS floor.
 
@@ -18,7 +20,47 @@ Target: Unisoc T606 / 4 GB RAM Android, 30 FPS floor.
 
 ## Build
 
-GitHub Actions: `.github/workflows/build.yml` (Phase 2).
+CI lives in a single workflow, [`.github/workflows/build.yml`](.github/workflows/build.yml).
+
+| Trigger | Job | Output |
+| --- | --- | --- |
+| push to `develop`, PR to `develop`/`main` | `build-debug` | `desi-royale-debug-<sha>` (14 days) |
+| tag `v*` | `build-release` | `desi-royale-release-<tag>` (90 days) + GitHub Release |
+
+Both jobs: JDK 17 → Android SDK (`build-tools;34.0.0`) → Godot 4.4.1 + export
+templates (cached) → `--import` pre-heat → keystore injection → export →
+verify → upload. No retries on import/export; every failure is a hard stop with
+a `::error::` annotation.
+
+### Every APK must pass four gates
+
+`tools/verify_apk.sh <apk>` enforces them, so a green build is evidence rather
+than a hope:
+
+| Gate | Rule | Why |
+| --- | --- | --- |
+| A | **no** `android.permission.INTERNET` | the game is fully offline |
+| B | `android.permission.WAKE_LOCK` **present** | an empty permission list means manifest generation silently failed |
+| C | size ≤ **120 MB** | install budget on the target device |
+| D | `arm64-v8a` present (`armeabi-v7a` warn-only) | Unisoc T606 is 64-bit |
+
+Run them locally against a built APK:
+
+```bash
+APK_SIZE_LIMIT_MB=120 bash tools/verify_apk.sh build/desi-royale-debug.apk
+```
+
+### Signing
+
+Release builds need three GitHub secrets — see
+[`docs/KEYSTORE_SETUP.md`](docs/KEYSTORE_SETUP.md). `tools/patch_keystore.sh`
+injects them at build time and fails loudly if any is missing or decodes to an
+empty file; the committed `export_presets.cfg` always keeps the keystore fields
+blank. Nothing signing-related is ever committed (`.gitignore` blocks
+`*.keystore` / `*.jks`).
+
+Acceptance evidence, the mandatory negative tests, and known entry-criterion
+failures are recorded in [`docs/PHASE2_ACCEPTANCE.md`](docs/PHASE2_ACCEPTANCE.md).
 
 ## Versioning
 

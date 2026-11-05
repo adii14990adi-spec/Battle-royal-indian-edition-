@@ -1,0 +1,300 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ develop, main ]
+
+env:
+  GODOT_VERSION: "4.4.1"
+  GODOT_BIN: "Godot_v4.4.1-stable_linux.x86_64"
+  EXPORT_PRESET: "Android_APK_Unisoc"
+  APK_SIZE_LIMIT_MB: 120
+
+jobs:
+  # Runs on: PR to develop/main, push to develop (no tag).
+  build-debug:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Cache A — Godot binary + export templates (expensive, version-pinned).
+      - name: Cache Godot binary + export templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/godot/export_templates
+            ~/godot-bin
+          key: godot-${{ env.GODOT_VERSION }}-templates-v1
+
+      # Cache B — .godot/ import cache. Exact key per commit, prefix restore
+      # falls back to the newest previous commit with identical project files.
+      - name: Cache .godot import cache
+        uses: actions/cache@v4
+        with:
+          path: .godot/
+          key: godot-import-${{ hashFiles('project.godot', 'export_presets.cfg') }}-${{ github.sha }}
+          restore-keys: |
+            godot-import-${{ hashFiles('project.godot', 'export_presets.cfg') }}-
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # install-android is mandatory: Godot resolves the SDK from ANDROID_HOME
+      # (export.cpp EDITOR_DEF), and apksigner/aapt2 come from build-tools.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;34.0.0 platforms;android-34'
+
+      - name: Add Android build-tools to PATH
+        run: echo "$ANDROID_HOME/build-tools/34.0.0" >> "$GITHUB_PATH"
+
+      - name: Download Godot (cache miss only)
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/godot-bin"
+          if [ ! -x "$HOME/godot-bin/$GODOT_BIN" ]; then
+            curl -fL -o /tmp/godot.zip \
+              "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/${GODOT_BIN}.zip"
+            unzip -q -o /tmp/godot.zip -d "$HOME/godot-bin"
+            chmod +x "$HOME/godot-bin/$GODOT_BIN"
+          fi
+          ln -sf "$HOME/godot-bin/$GODOT_BIN" "$HOME/godot-bin/godot"
+          echo "$HOME/godot-bin" >> "$GITHUB_PATH"
+
+      - name: Download export templates (cache miss only)
+        run: |
+          set -euo pipefail
+          TPL_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          if [ ! -f "$TPL_DIR/android_debug.apk" ]; then
+            curl -fL -o /tmp/templates.tpz \
+              "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+            rm -rf /tmp/tpz && mkdir -p /tmp/tpz
+            unzip -q /tmp/templates.tpz -d /tmp/tpz
+            VER_FILE="$(find /tmp/tpz -name version.txt -print -quit)"
+            if [ -z "$VER_FILE" ]; then
+              echo "::error::version.txt not found inside export templates tpz"
+              exit 1
+            fi
+            VER="$(tr -d '[:space:]' < "$VER_FILE")"
+            if [ "$VER" != "${GODOT_VERSION}.stable" ]; then
+              echo "::error::template version '$VER' != expected '${GODOT_VERSION}.stable'"
+              exit 1
+            fi
+            mkdir -p "$TPL_DIR"
+            cp -a "$(dirname "$VER_FILE")"/. "$TPL_DIR"/
+          fi
+          for f in android_debug.apk android_release.apk; do
+            if [ ! -f "$TPL_DIR/$f" ]; then
+              echo "::error::export template missing after install: $f"
+              exit 1
+            fi
+          done
+
+      # Godot 4.4.1 does NOT read ~/.android/debug.keystore. It falls back to
+      # EDITOR_GET("export/android/debug_keystore") only when the resolved path
+      # is empty, and hard-fails with ERR_FILE_CANT_OPEN if that file is absent.
+      # We create the keystore where the spec asks AND export the
+      # GODOT_ANDROID_KEYSTORE_DEBUG_* vars, which get_or_env() prefers over
+      # both the preset and the editor setting.
+      - name: Create debug keystore
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair -v \
+              -keystore "$HOME/.android/debug.keystore" \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          {
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$HOME/.android/debug.keystore"
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey"
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android"
+          } >> "$GITHUB_ENV"
+
+      - name: Pre-heat import
+        run: |
+          set -euo pipefail
+          godot --headless --import --path "$PWD" 2>&1 | tee import.log
+          if grep -q "ERROR\|SCRIPT ERROR" import.log; then
+            echo "::error::Godot import reported ERROR (see import.log)"
+            grep -n "ERROR\|SCRIPT ERROR" import.log | head -50
+            exit 1
+          fi
+
+      - name: Inject release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_USER: ${{ secrets.KEYSTORE_USER }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: bash tools/patch_keystore.sh
+
+      - name: Export debug APK
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          godot --headless --export-debug "$EXPORT_PRESET" build/desi-royale-debug.apk --path "$PWD"
+
+      - name: Verify APK
+        run: bash tools/verify_apk.sh build/desi-royale-debug.apk
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: desi-royale-debug-${{ github.sha }}
+          path: build/*.apk
+          retention-days: 14
+          if-no-files-found: error
+
+  # Runs on: tag push v* only.
+  build-release:
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Godot binary + export templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/godot/export_templates
+            ~/godot-bin
+          key: godot-${{ env.GODOT_VERSION }}-templates-v1
+
+      - name: Cache .godot import cache
+        uses: actions/cache@v4
+        with:
+          path: .godot/
+          key: godot-import-${{ hashFiles('project.godot', 'export_presets.cfg') }}-${{ github.sha }}
+          restore-keys: |
+            godot-import-${{ hashFiles('project.godot', 'export_presets.cfg') }}-
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;34.0.0 platforms;android-34'
+
+      - name: Add Android build-tools to PATH
+        run: echo "$ANDROID_HOME/build-tools/34.0.0" >> "$GITHUB_PATH"
+
+      - name: Download Godot (cache miss only)
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/godot-bin"
+          if [ ! -x "$HOME/godot-bin/$GODOT_BIN" ]; then
+            curl -fL -o /tmp/godot.zip \
+              "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/${GODOT_BIN}.zip"
+            unzip -q -o /tmp/godot.zip -d "$HOME/godot-bin"
+            chmod +x "$HOME/godot-bin/$GODOT_BIN"
+          fi
+          ln -sf "$HOME/godot-bin/$GODOT_BIN" "$HOME/godot-bin/godot"
+          echo "$HOME/godot-bin" >> "$GITHUB_PATH"
+
+      - name: Download export templates (cache miss only)
+        run: |
+          set -euo pipefail
+          TPL_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          if [ ! -f "$TPL_DIR/android_release.apk" ]; then
+            curl -fL -o /tmp/templates.tpz \
+              "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+            rm -rf /tmp/tpz && mkdir -p /tmp/tpz
+            unzip -q /tmp/templates.tpz -d /tmp/tpz
+            VER_FILE="$(find /tmp/tpz -name version.txt -print -quit)"
+            if [ -z "$VER_FILE" ]; then
+              echo "::error::version.txt not found inside export templates tpz"
+              exit 1
+            fi
+            VER="$(tr -d '[:space:]' < "$VER_FILE")"
+            if [ "$VER" != "${GODOT_VERSION}.stable" ]; then
+              echo "::error::template version '$VER' != expected '${GODOT_VERSION}.stable'"
+              exit 1
+            fi
+            mkdir -p "$TPL_DIR"
+            cp -a "$(dirname "$VER_FILE")"/. "$TPL_DIR"/
+          fi
+          for f in android_debug.apk android_release.apk; do
+            if [ ! -f "$TPL_DIR/$f" ]; then
+              echo "::error::export template missing after install: $f"
+              exit 1
+            fi
+          done
+
+      - name: Create debug keystore
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair -v \
+              -keystore "$HOME/.android/debug.keystore" \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          {
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$HOME/.android/debug.keystore"
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey"
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android"
+          } >> "$GITHUB_ENV"
+
+      - name: Pre-heat import
+        run: |
+          set -euo pipefail
+          godot --headless --import --path "$PWD" 2>&1 | tee import.log
+          if grep -q "ERROR\|SCRIPT ERROR" import.log; then
+            echo "::error::Godot import reported ERROR (see import.log)"
+            grep -n "ERROR\|SCRIPT ERROR" import.log | head -50
+            exit 1
+          fi
+
+      - name: Inject release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_USER: ${{ secrets.KEYSTORE_USER }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: bash tools/patch_keystore.sh
+
+      - name: Export release APK
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          godot --headless --export-release "$EXPORT_PRESET" build/desi-royale-release.apk --path "$PWD"
+
+      - name: Verify APK
+        run: bash tools/verify_apk.sh build/desi-royale-release.apk
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: desi-royale-release-${{ github.ref_name }}
+          path: build/*.apk
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/*.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') }}
