@@ -40,7 +40,16 @@ if ! printf '%s' "$CLEAN" | base64 -d > "$KEYSTORE_PATH" 2> "$B64_ERRFILE"; then
     # actually reached the decoder, so that is what we report.
     BAD=$(printf '%s' "$CLEAN" | tr -d 'A-Za-z0-9+/=' | wc -c)
     B64_ERR=$(tr '\n' ' ' < "$B64_ERRFILE")
-    echo "::error::KEYSTORE_BASE64 is not valid base64 (raw length=${#KEYSTORE_BASE64}, cleaned length=$CLEAN_LEN, cleaned mod 4=$(( CLEAN_LEN % 4 )), non-base64 chars=$BAD; base64 said: ${B64_ERR:-unknown}). Re-create it with: base64 -w0 release.keystore  (single line, no quotes)" >&2
+    # A well-formed base64 string is always a multiple of 4 after padding.
+    # If the alphabet is clean yet the length still is not, characters were
+    # lost from (or added to) the data itself — not merely from the '='
+    # padding — so no amount of re-padding can recover it.
+    if [ "$BAD" -eq 0 ]; then
+        HINT="the alphabet is clean but the length is not a multiple of 4, so characters are missing from or extra in the DATA — the value is truncated/corrupt, not just missing '=' padding. Re-create it with: base64 -w0 release.keystore"
+    else
+        HINT="re-create it with: base64 -w0 release.keystore  (single line, no quotes)"
+    fi
+    echo "::error::KEYSTORE_BASE64 is not valid base64 (raw length=${#KEYSTORE_BASE64}, cleaned length=$CLEAN_LEN, cleaned mod 4=$(( CLEAN_LEN % 4 )), non-base64 chars=$BAD; base64 said: ${B64_ERR:-unknown}). $HINT" >&2
     rm -f "$B64_ERRFILE" "$KEYSTORE_PATH"
     exit 1
 fi
