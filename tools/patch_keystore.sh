@@ -12,18 +12,11 @@ fi
 
 KEYSTORE_PATH="$(pwd)/release.keystore"
 
-# Tolerate the common paste defects: whitespace (LF/CRLF/indentation) and a
-# layer of surrounding quotes. Neither can ever appear in valid base64, so
-# stripping them cannot corrupt a good value — but each will make a strict
-# `base64 -d` fail.
-CLEAN=$(printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]')
-CLEAN="${CLEAN#\"}"
-CLEAN="${CLEAN%\"}"
 # Rebuild canonical base64. Whitespace and quotes are never part of the
 # alphabet, and '=' is padding rather than data — so stripping all three and
-# re-applying the correct padding is lossless for any well-formed value, while
-# repairing the two most common copy defects (lost trailing '=' and stray
-# line breaks/indentation).
+# re-applying the correct amount is lossless for any well-formed value, while
+# repairing the common copy defects (lost trailing '=', stray line breaks,
+# accidental surrounding quotes).
 CLEAN=$(printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]')
 CLEAN="${CLEAN#\"}"
 CLEAN="${CLEAN%\"}"
@@ -38,14 +31,20 @@ case $(( CLEAN_LEN % 4 )) in
     1) : ;; # length % 4 == 1 is unrecoverable; fall through to the error below
 esac
 
-if ! printf '%s' "$CLEAN" | base64 -d > "$KEYSTORE_PATH" 2>/dev/null; then
-    # Diagnose without ever echoing the secret itself. The cleaned length is
-    # what actually reached the decoder, so that is what we report.
+# base64's own objection never contains the input, only what it objected to,
+# so relaying stderr is safe. Use a file: ordering of 2>&1 against a redirect
+# is easy to get wrong and would otherwise pollute the decoded keystore.
+B64_ERRFILE="$(mktemp)"
+if ! printf '%s' "$CLEAN" | base64 -d > "$KEYSTORE_PATH" 2> "$B64_ERRFILE"; then
+    # Diagnose without ever echoing the secret. The cleaned length is what
+    # actually reached the decoder, so that is what we report.
     BAD=$(printf '%s' "$CLEAN" | tr -d 'A-Za-z0-9+/=' | wc -c)
-    echo "::error::KEYSTORE_BASE64 is not valid base64 (raw length=${#KEYSTORE_BASE64}, cleaned length=$CLEAN_LEN, cleaned mod 4=$(( CLEAN_LEN % 4 )), non-base64 chars=$BAD). Re-create it with: base64 -w0 release.keystore  (single line, no quotes)" >&2
-    rm -f "$KEYSTORE_PATH"
+    B64_ERR=$(tr '\n' ' ' < "$B64_ERRFILE")
+    echo "::error::KEYSTORE_BASE64 is not valid base64 (raw length=${#KEYSTORE_BASE64}, cleaned length=$CLEAN_LEN, cleaned mod 4=$(( CLEAN_LEN % 4 )), non-base64 chars=$BAD; base64 said: ${B64_ERR:-unknown}). Re-create it with: base64 -w0 release.keystore  (single line, no quotes)" >&2
+    rm -f "$B64_ERRFILE" "$KEYSTORE_PATH"
     exit 1
 fi
+rm -f "$B64_ERRFILE"
 
 # A blank/truncated secret decodes to 0 bytes; Godot would then fail later with
 # a much less actionable ERR_FILE_CANT_OPEN. Catch it here instead.
