@@ -100,7 +100,7 @@ func _collect_device_info() -> void:
 
 
 func _log_startup_banner() -> void:
-	print("[perf] ---- Desi Royale boot ----")
+	print("[perf] ---- Battle Horizons: Last Survival boot ----")
 	print("[perf] engine=%s" % Engine.get_version_info().string)
 	print("[perf] device=%s os=%s" % [device_model, OS.get_name()])
 	print("[perf] gpu=%s vendor=%s gl=%s" % [gpu_name, gpu_vendor, gl_api_version])

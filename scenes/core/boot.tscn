@@ -54,4 +54,4 @@ theme_override_colors/font_outline_color = Color(0.03, 0.03, 0.05, 1)
 theme_override_constants/outline_size = 6
 theme_override_constants/line_spacing = 8
 theme_override_font_sizes/font_size = 22
-text = "DESI ROYALE — Phase 1 boot baseline\nDevice: ... | GPU: ... | GLES3 ...\nFPS: ... | static: ... | video: ... | draws: ..."
+text = "BATTLE HORIZONS: LAST SURVIVAL — Phase 1 boot baseline\nDevice: ... | GPU: ... | GLES3 ...\nFPS: ... | static: ... | video: ... | draws: ..."
