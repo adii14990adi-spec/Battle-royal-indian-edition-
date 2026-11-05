@@ -12,8 +12,22 @@ fi
 
 KEYSTORE_PATH="$(pwd)/release.keystore"
 
-if ! printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH" 2>/dev/null; then
-    echo "::error::KEYSTORE_BASE64 is not valid base64" >&2
+# Tolerate the common paste defects: whitespace (LF/CRLF/indentation) and a
+# layer of surrounding quotes. Neither can ever appear in valid base64, so
+# stripping them cannot corrupt a good value — but each will make a strict
+# `base64 -d` fail.
+CLEAN=$(printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]')
+CLEAN="${CLEAN#\"}"
+CLEAN="${CLEAN%\"}"
+CLEAN="${CLEAN#\'}"
+CLEAN="${CLEAN%\'}"
+
+if ! printf '%s' "$CLEAN" | base64 -d > "$KEYSTORE_PATH" 2>/dev/null; then
+    # Diagnose without ever echoing the secret itself: length alone usually
+    # identifies the mistake (a pasted file path is ~20 chars, a real keystore
+    # base64 is several thousand).
+    BAD=$(printf '%s' "$CLEAN" | tr -d 'A-Za-z0-9+/=' | wc -c)
+    echo "::error::KEYSTORE_BASE64 is not valid base64 (length=${#KEYSTORE_BASE64}, non-base64 chars=$BAD). Re-create it with: base64 -w0 release.keystore  (single line, no quotes)" >&2
     rm -f "$KEYSTORE_PATH"
     exit 1
 fi
