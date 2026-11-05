@@ -37,7 +37,7 @@ func _refresh_label() -> void:
 	if _info_label == null:
 		return
 	# PerfManager is an autoload, so it is already _ready() before this scene.
-	_info_label.text = "DESI ROYALE — Phase 1 boot baseline\n%s\n%s" % [
+	_info_label.text = "BATTLE HORIZONS: LAST SURVIVAL — Phase 1 boot baseline\n%s\n%s" % [
 		PerfManager.get_status_line(),
 		PerfManager.get_stats_line(),
 	]

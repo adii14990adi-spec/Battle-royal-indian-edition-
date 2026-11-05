@@ -90,7 +90,7 @@ unzip -p build/desi-royale-0.0.1-setup.apk AndroidManifest.xml | strings | grep 
 ```bash
 # Airplane mode on, then:
 adb logcat -c
-adb shell am start -n com.desiroyale.game/com.godot.game.GodotApp
+adb shell am start -n com.aurastudios.battlehorizons/com.godot.game.GodotApp
 sleep 60
 
 # Gate 7: this must print nothing at all
@@ -101,7 +101,7 @@ adb logcat -d | grep "\[perf\]" | head -20
 adb logcat -d | grep "\[boot\]"
 
 # Budget snapshot
-adb shell dumpsys meminfo com.desiroyale.game | grep -E "TOTAL PSS|TOTAL RSS"
+adb shell dumpsys meminfo com.aurastudios.battlehorizons | grep -E "TOTAL PSS|TOTAL RSS"
 ```
 
 Pass criteria:

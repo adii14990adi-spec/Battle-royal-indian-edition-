@@ -11,6 +11,12 @@ export/
 *.zip
 build/
 
+# Signing material — NEVER commit (Phase 2, docs/KEYSTORE_SETUP.md)
+release.keystore
+release.keystore.b64
+*.keystore
+*.jks
+
 # Editor files
 .vscode/
 .idea/
