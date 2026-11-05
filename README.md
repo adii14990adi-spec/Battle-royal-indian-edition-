@@ -1,4 +1,4 @@
-# Desi Royale
+# Battle Horizons: Last Survival
 
 [![Build APK](https://github.com/adii14990adi-spec/Battle-royal-indian-edition-/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/adii14990adi-spec/Battle-royal-indian-edition-/actions/workflows/build.yml)
 
@@ -117,6 +117,6 @@ godot --headless --path . --export-release "Android_APK_Unisoc" \
 
 # Install + soak test
 adb install -r build/desi-royale-0.0.1-setup.apk
-adb logcat -c && adb shell am start -n com.desiroyale.game/com.godot.game.GodotApp
+adb logcat -c && adb shell am start -n com.aurastudios.battlehorizons/com.godot.game.GodotApp
 adb logcat | grep -iE "gl_error|vulkan|crash|desi|perf"
 ```

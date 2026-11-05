@@ -1,4 +1,4 @@
-# Contributing to Desi Royale
+# Contributing to Battle Horizons: Last Survival
 
 Offline-only, GLES3-only, 30 FPS floor. Read `docs/UNISOC_BUDGET.md` before you
 add anything that renders, streams or allocates.
