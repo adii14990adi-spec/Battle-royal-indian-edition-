@@ -74,6 +74,22 @@ case "$HEAD4" in
         ;;
 esac
 
+# Fail fast, and say WHICH credential is wrong. Godot only reports
+# "Release Username and/or Password is invalid for the given Release
+# Keystore" after taking the whole export path down, and does not say which
+# of the two is at fault. keytool is present under the CI's JDK; skip
+# silently when it is not (local runs without a JDK).
+if command -v keytool >/dev/null 2>&1; then
+    if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+        echo "::error::KEYSTORE_PASSWORD does not open the decoded keystore. Check it with: keytool -list -keystore release.keystore -storepass '<password>'  — then update the KEYSTORE_PASSWORD secret." >&2
+        exit 1
+    fi
+    if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" -alias "$KEYSTORE_USER" >/dev/null 2>&1; then
+        echo "::error::KEYSTORE_USER='$KEYSTORE_USER' is not an alias in this keystore (the password was accepted). List aliases with: keytool -list -keystore release.keystore -storepass '<password>'  — then update the KEYSTORE_USER secret." >&2
+        exit 1
+    fi
+fi
+
 USER_ESC=$(printf '%s' "$KEYSTORE_USER" | sed -e 's/[\/&]/\\&/g')
 PASS_ESC=$(printf '%s' "$KEYSTORE_PASSWORD" | sed -e 's/[\/&]/\\&/g')
 PATH_ESC=$(printf '%s' "$KEYSTORE_PATH" | sed -e 's/[\/&]/\\&/g')
