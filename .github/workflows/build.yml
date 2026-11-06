@@ -120,6 +120,22 @@ jobs:
           fi
           echo "Import clean."
 
+      # A config file Godot cannot read fails much later, inside the export, with
+      # a single line of output: `ConfigFile parse error at …:9`. `#` is not a
+      # comment in Godot config files (only `;` is), so parse both files for real
+      # here and assert the settings the APK depends on.
+      - name: Validate the Godot config files
+        run: |
+          set -uo pipefail
+          if "$GODOT_BIN" --headless --path "$PWD" \
+              --script res://tools/check_project_config.gd 2>&1 | tee config-check.log; then
+            exit 0
+          fi
+          grep -E 'CONFIG ERROR|parse error' config-check.log \
+            | head -10 | while IFS= read -r line; do echo "::error::$line"; done
+          echo "::error::project.godot / export_presets.cfg failed validation"
+          exit 1
+
       # Optional: with the three signing secrets set, the APK is signed with the
       # real release key. Without them the build still produces an installable
       # APK, signed with the throwaway CI debug keystore — the warning below is

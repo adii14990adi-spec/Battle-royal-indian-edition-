@@ -52,6 +52,22 @@ Proven by `tools/verify_apk.sh` gate E, which lists the APK and requires
 `assets/scenes/world/terrain/chunk_*.tscn` ×64 plus the matching
 `*_collision.res` ×64 (`verify_phase3.sh` gate 11 pins the preset settings).
 
+#### The first attempt died in the export step
+
+The fix above was pushed once and the run failed in **Export release APK** with a
+single line: `ConfigFile parse error at res://export_presets.cfg:9: Unexpected
+identifier 'all_resources'.` The comment block explaining `include_filter` had
+been written with `#`. Godot's config files have exactly one comment character,
+`;` (`VariantParser::get_token`, `core/variant/variant_parser.cpp`); a `#` line is
+read as a token, and the whole preset becomes unreadable.
+
+Two gates now cover it: `verify_phase3.sh` gate 11 greps for `#` at the start of
+a line in `project.godot` / `export_presets.cfg` (works everywhere), and gate 12
+plus a CI step load both files with Godot's own `ConfigFile` through
+`tools/check_project_config.gd`, which also asserts `include_filter`, the splash
+setting, `run/main_scene` and `export_path`. A config file that does not parse is
+no longer something a grep can miss.
+
 ---
 
 ## 1. Before the bake
