@@ -148,11 +148,19 @@ jobs:
         run: |
           set -uo pipefail
           if ! bash tools/bake_siran_island.sh 2>&1 | tee bake.log; then
-            echo "::error::the bake failed; last output:"
-            tail -40 bake.log | while IFS= read -r line; do echo "::error::$line"; done
+            # GitHub keeps at most 10 annotations per step, and a 60-line tail
+            # spends all of them before reaching the interesting part. Spend
+            # them on the verdict and the failing checks instead.
+            verdict="$(grep -E '^\[check\]' bake.log | tail -1)"
+            echo "::error::the bake failed${verdict:+ — $verdict}"
+            grep -E '^  FAIL|^\[bake\] FAILED|^\[bake\] .*failed' bake.log | head -6 \
+              | while IFS= read -r line; do echo "::error::$line"; done
+            grep -E '^(ERROR|SCRIPT ERROR|ERROR:)' bake.log | head -3 \
+              | while IFS= read -r line; do echo "::error::$line"; done
+            echo "::error::bake.log is $(wc -l < bake.log) lines; see the siran-island-bake artifact"
             exit 1
           fi
-          grep -E '^\[bake\]|Summary:|baked terrain footprint' bake.log || true
+          grep -E '^\[bake\]|^\[check\]|baked terrain footprint' bake.log || true
 
       # Now that the chunks exist, gate 7 checks them: 64 scenes, every one with
       # a HeightMapShape3D and none with a trimesh collider.
@@ -230,8 +238,9 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-      # Lets anyone look at what the bake produced without running Godot.
+      # `if: always()`: on a failed bake this artifact *is* the evidence.
       - name: Upload bake output
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: siran-island-bake-${{ github.sha }}
