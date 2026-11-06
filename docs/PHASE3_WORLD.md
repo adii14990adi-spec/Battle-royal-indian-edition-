@@ -184,6 +184,10 @@ safety floor:
 `stream_radius_m` is an exported property on the `ChunkManager` node. Once Phase 4
 adds landmarks to hide the edge behind, raise it to ~600–900 and set
 `keep_ring = 0`; the self-check covers both cases (`compute_desired_for()`).
+Note what the radius means: a chunk is resident when its rect *grown by
+`stream_radius_m`* contains the focus, so the result depends on where in a chunk
+the player stands — 1 chunk mid-chunk, and 4 at a chunk corner (the map origin is
+one). The `keep_ring` floor is what keeps that from ever being a hole.
 
 ### Draw calls per frame
 

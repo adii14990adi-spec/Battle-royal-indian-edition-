@@ -139,11 +139,24 @@ func _check_streaming_radius() -> void:
 			"%d chunks at the corner" % corner.size())
 	_expect(corner.has(Vector2i(0, 0)), "corner chunk (0, 0) is resident", "absent")
 
+	# With keep_ring 0 the set is purely "which chunk rect, grown by the radius,
+	# contains the focus" — so the answer depends on where inside the chunk the
+	# player stands. Mid-chunk (250 m from every edge) a 50 m radius reaches one:
 	manager.keep_ring = 0
-	var bare: Array[Vector2i] = manager.compute_desired_for(Vector3(0.0, 40.0, 0.0))
-	_expect(bare.size() == 1, "with keep_ring 0 and a 50 m radius only one chunk survives",
-			"%d chunks" % bare.size())
-	_expect(bare.has(Vector2i(4, 4)), "and it is the chunk under the focus", "absent")
+	var interior: Array[Vector2i] = manager.compute_desired_for(Vector3(250.0, 40.0, 250.0))
+	_expect(interior.size() == 1, "keep_ring 0 + 50 m radius keeps one chunk mid-chunk",
+			"%d chunks" % interior.size())
+	_expect(interior.has(Vector2i(4, 4)), "and it is the chunk under the focus", "absent")
+
+	# ...while the map origin is a *corner* shared by four chunks, so all four are
+	# legitimately within 50 m. Returning one there would put the void exactly
+	# where the player is standing; the ring floor is what normally prevents it.
+	var on_corner: Array[Vector2i] = manager.compute_desired_for(Vector3(0.0, 40.0, 0.0))
+	_expect(on_corner.size() == 4, "keep_ring 0 at a corner keeps the four chunks that meet there",
+			"%d chunks at the origin" % on_corner.size())
+	for corner_chunk in [Vector2i(3, 3), Vector2i(3, 4), Vector2i(4, 3), Vector2i(4, 4)]:
+		_expect(on_corner.has(corner_chunk), "corner set includes chunk %s" % str(corner_chunk),
+				"absent")
 
 	manager.stream_radius_m = 1200.0
 	var wide: Array[Vector2i] = manager.compute_desired_for(Vector3(0.0, 40.0, 0.0))
