@@ -1,4 +1,4 @@
-# Contributing to Desi Royale
+# Contributing to Battle Horizons: Last Survival
 
 Offline-only, GLES3-only, 30 FPS floor. Read `docs/UNISOC_BUDGET.md` before you
 add anything that renders, streams or allocates.
@@ -99,6 +99,7 @@ PR checklist:
 - [ ] Budget impact noted in the PR description (PSS, VRAM, draw calls).
 - [ ] Device smoke test on a Unisoc-class phone, or an explicit note that only
       the desktop GLES3 run was done.
+- [ ] CI is green: `build-debug` passed and all four APK gates held (see §7).
 
 ## 6. Phase tags
 
@@ -111,3 +112,65 @@ git push origin v0.2.0-ci
 
 Versioning is SemVer-ish per docs: `v<phase>` tags (`v0.0.1-setup`,
 `v0.2.0-ci`, ...), each with a one-line annotated message.
+
+## 7. Phase 2 — CI/CD and required status checks
+
+One workflow, [`.github/workflows/build.yml`](.github/workflows/build.yml):
+
+| Job | Trigger | Gate |
+| --- | --- | --- |
+| `build-debug` | push to `develop`, PR to `develop`/`main` | required before merge |
+| `build-release` | tag `v*` | creates the GitHub Release |
+
+### Required status check
+
+Mark **`build-debug`** as a required status check on `develop` (and on `main`,
+if you protect it too). Repository settings → **Branches → Branch protection
+rule** → **Require status checks to pass before merging** → add `build-debug`.
+
+Do **not** add `build-release` to the required list. It only runs on tag
+pushes, so it never reports on a pull request — requiring it would leave every
+PR stuck waiting for a check that will never arrive.
+
+> Creating a branch-protection rule needs admin access and cannot be done from
+> a workflow, so this step is manual.
+
+### What the job enforces
+
+`build-debug` runs `tools/verify_apk.sh` against the exported APK and fails the
+build unless all four gates hold:
+
+- **A** — no `android.permission.INTERNET` (the game is fully offline)
+- **B** — `android.permission.WAKE_LOCK` present (empty permission list ⇒
+  manifest generation silently failed)
+- **C** — size ≤ 120 MB
+- **D** — `arm64-v8a` present; `armeabi-v7a` missing is a warning only
+
+It also runs `tools/patch_keystore.sh`, which hard-fails with a `::error::`
+annotation if `KEYSTORE_BASE64`, `KEYSTORE_USER` or `KEYSTORE_PASSWORD` is
+missing, not valid base64, or decodes to an empty file. There is deliberately
+no fallback to an unsigned or debug-signed release build.
+
+### Rules for CI changes
+
+- **One workflow file.** Do not split into `build-debug.yml` /
+  `build-release.yml` — both jobs share setup logic and belong together.
+- **No retries** on import or export steps. A flaky Godot import is a bug worth
+  seeing, not papering over; retrying hides it.
+- **Fail loud.** Every failure path emits `::error::` so it shows as an
+  annotation on the PR rather than as an anonymous red cross.
+- **Never** commit `release.keystore`, `release.keystore.b64`, `*.keystore` or
+  `*.jks`. They are gitignored; signing material lives only in GitHub Secrets
+  (see `docs/KEYSTORE_SETUP.md`).
+- **Keep `export_presets.cfg` keystore fields blank** in Git. They are patched
+  at build time and must not carry real paths or passwords.
+- Changing `GODOT_VERSION` requires a new cache key
+  (`godot-<version>-templates-v1`), otherwise a stale template set is restored.
+
+### Local equivalents
+
+```bash
+bash tools/patch_keystore.sh   # needs KEYSTORE_* env vars; safe to run — it only rewrites export_presets.cfg
+bash tools/verify_apk.sh build/desi-royale-debug.apk
+bash tools/verify_phase1.sh    # unchanged Phase 1 gates
+```

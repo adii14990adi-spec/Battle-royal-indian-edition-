@@ -1,7 +1,8 @@
 # Unisoc T606 performance budget
 
 Everything in `project.godot`, `export_presets.cfg` and this document exists to
-keep Desi Royale at a **30 FPS floor on a Unisoc T606 with 4 GB of RAM**. If a
+keep Battle Horizons: Last Survival at a **30 FPS floor on a Unisoc T606 with 4
+GB of RAM**. If a
 change breaks one of the numbers below, it does not ship — no exceptions for
 "it looks better on my Redmi".
 
@@ -20,7 +21,7 @@ change breaks one of the numbers below, it does not ship — no exceptions for
 
 | Budget | Limit | Where it is measured |
 | --- | --- | --- |
-| Process memory (PSS) | ≤ 800 MB | `adb shell dumpsys meminfo com.desiroyale.game` |
+| Process memory (PSS) | ≤ 800 MB | `adb shell dumpsys meminfo com.aurastudios.battlehorizons` |
 | GPU memory | ≤ 180 MB | `Performance.RENDER_VIDEO_MEM_USED` (logged by PerfManager) |
 | Draw calls | ≤ 60 | `Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME` |
 | Frame time | ≤ 33.3 ms (30 FPS) | `Performance.TIME_FPS` |
@@ -74,8 +75,8 @@ change breaks one of the numbers below, it does not ship — no exceptions for
 adb logcat -s godot | grep "\[perf\]"
 
 # Process memory
-adb shell dumpsys meminfo com.desiroyale.game | grep -E "TOTAL PSS|TOTAL RSS"
+adb shell dumpsys meminfo com.aurastudios.battlehorizons | grep -E "TOTAL PSS|TOTAL RSS"
 
 # Sustained performance (watch for thermal throttling over 10 minutes)
-adb shell dumpsys gfxinfo com.desiroyale.game framestats | head -40
+adb shell dumpsys gfxinfo com.aurastudios.battlehorizons framestats | head -40
 ```

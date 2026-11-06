@@ -6,15 +6,16 @@
 ;   [section] ; section goes between []
 ;   param=value ; assign values to parameters
 ;
-; Desi Royale — Phase 1 baseline. Every value below is chosen for a
-; Unisoc T606 / 4 GB RAM Android device (GLES3 Compat renderer, 30 FPS floor).
+; Battle Horizons: Last Survival — Phase 1 baseline. Every value below is
+; chosen for a Unisoc T606 / 4 GB RAM Android device (GLES3 Compat renderer,
+; 30 FPS floor).
 ; See docs/UNISOC_BUDGET.md before raising any of these numbers.
 
 config_version=5
 
 [application]
 
-config/name="Desi Royale"
+config/name="Battle Horizons: Last Survival"
 config/version="0.0.1-setup"
 run/main_scene="res://scenes/core/boot.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
