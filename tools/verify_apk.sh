@@ -21,6 +21,17 @@ if [[ -z "$APK" || ! -f "$APK" ]]; then
     exit 1
 fi
 
+# An unexpected non-zero exit used to surface as a bare "exit code 2" with no
+# indication of which check produced it (CI annotations are capped, so the real
+# message can be dropped). This trap always names the failing line.
+on_unexpected_error() {
+    local status=$?
+    printf '::error::%s aborted with status %d at tools/verify_apk.sh line %s\n' \
+        "$(basename "${APK:-no-apk}")" "$status" "${BASH_LINENO[0]}"
+    exit "$status"
+}
+trap on_unexpected_error ERR
+
 AAPT2="$(command -v aapt2 || true)"
 AAPT="$(command -v aapt || true)"
 if [[ -z "$AAPT2" && -z "$AAPT" ]]; then
@@ -154,13 +165,11 @@ else
     # Publish a digest every run. Artifacts cannot be downloaded from the build
     # sandbox, so annotations are the only way to see what actually shipped.
     digest=$(printf '%s\n' "$ENTRIES" | grep '^assets/' \
-        | sed -n 's/.*\.\([A-Za-z0-9]\{1,10\}\)$/\1/p' | sort | uniq -c | sort -rn | head -8 \
-        | awk '{ printf "%s=%s ", $2, $1 }')
+        | sed -n 's/.*\.\([A-Za-z0-9]\{1,10\}\)$/\1/p' | sort | uniq -c | sort -rn \
+        | sed -n '1,8p' | awk '{ printf "%s=%s ", $2, $1 }')
     echo "assets/ extensions: ${digest:-<none>}"
     if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
         echo "::notice::assets/ extensions: ${digest:-<none>}"
-        printf '%s\n' "$ENTRIES" | grep -E '^assets/(scenes|resources)/world/' | head -6 \
-            | while IFS= read -r sample; do echo "::notice::packed: $sample"; done
     fi
 
     # Text resources can be converted to binary at export time
@@ -203,7 +212,10 @@ else
 
     if [[ "$payload_problems" -ne 0 ]]; then
         echo "APK entry sample (first 12 lines):" >&2
-        printf '%s\n' "$ENTRIES" | head -12 >&2
+        printf '%s\n' "$ENTRIES" | sed -n '1,12p' >&2
+        echo "world/ entries:" >&2
+        printf '%s\n' "$ENTRIES" | grep -E '^assets/(scenes|resources)/world/' \
+            | sed -n '1,8p' >&2 || true
         exit 1
     fi
     echo "Payload verified: $chunk_scenes chunk scenes, $chunk_collisions collision resources," \
