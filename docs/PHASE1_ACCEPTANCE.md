@@ -48,7 +48,7 @@ Prerequisites on the build machine, not in the repo:
 2. Android SDK + build-tools + platform-tools (`adb`), `JAVA_HOME` pointing at a JDK 17.
 3. Debug keystore **outside the repo**:
    ```bash
-   keytool -genkey -v -keystore ~/.android/desi-royale-debug.keystore \
+   keytool -genkey -v -keystore ~/.android/battle-horizons-debug.keystore \
      -alias androiddebugkey -storepass android -keypass android \
      -keyalg RSA -keysize 2048 -validity 10000 \
      -dname "CN=Android Debug,O=Android,C=US"
@@ -65,23 +65,23 @@ godot --headless --path . --import
 
 # 2. Release export (this is the artefact the gate is about — see caveat C3)
 mkdir -p build
-godot --headless --path . --export-release "Android_APK_Unisoc" build/desi-royale-0.0.1-setup.apk
+godot --headless --path . --export-release "Android_APK_Unisoc" build/battle-horizons.apk
 
 # 3. Install on the phone over USB (turn airplane mode ON afterwards)
-adb install -r build/desi-royale-0.0.1-setup.apk
+adb install -r build/battle-horizons.apk
 ```
 
 Confirm the APK really is offline, before you even launch it:
 
 ```bash
 # aapt2 (build-tools 30+) — expect NO android.permission.INTERNET line
-"$ANDROID_HOME"/build-tools/*/aapt2 dump permissions build/desi-royale-0.0.1-setup.apk
+"$ANDROID_HOME"/build-tools/*/aapt2 dump permissions build/battle-horizons.apk
 
 # or apkanalyzer
-apkanalyzer manifest permissions build/desi-royale-0.0.1-setup.apk
+apkanalyzer manifest permissions build/battle-horizons.apk
 
 # or unzip + decode
-unzip -p build/desi-royale-0.0.1-setup.apk AndroidManifest.xml | strings | grep -i internet
+unzip -p build/battle-horizons.apk AndroidManifest.xml | strings | grep -i internet
 # expected: no output
 ```
 

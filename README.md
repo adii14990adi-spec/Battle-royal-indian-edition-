@@ -20,17 +20,32 @@ Target: Unisoc T606 / 4 GB RAM Android, 30 FPS floor.
 
 ## Build
 
-CI lives in a single workflow, [`.github/workflows/build.yml`](.github/workflows/build.yml).
+CI lives in a single workflow, [`.github/workflows/build.yml`](.github/workflows/build.yml),
+with the Godot/Android plumbing factored into a composite action,
+[`.github/actions/setup-godot-android`](.github/actions/setup-godot-android/action.yml).
 
-| Trigger | Job | Output |
+| Trigger | Jobs | Output |
 | --- | --- | --- |
-| push to `develop`, PR to `develop`/`main` | `build-debug` | `desi-royale-debug-<sha>` (14 days) |
-| tag `v*` | `build-release` | `desi-royale-release-<tag>` (90 days) + GitHub Release |
+| PR to `main`/`develop`, push to `main`/`develop`/`arena/**`, manual run | `gates` → `build` | `battle-horizons.apk` + `battle-horizons-debug.apk`, artifact `battle-horizons-apk-<sha>` (14 days) |
+| tag `v*` | `build` → `publish` | the same APK attached to the GitHub Release |
 
-Both jobs: JDK 17 → Android SDK (`build-tools;34.0.0`) → Godot 4.4.1 + export
-templates (cached) → `--import` pre-heat → keystore injection → export →
-verify → upload. No retries on import/export; every failure is a hard stop with
-a `::error::` annotation.
+**The map is baked in CI, not on your laptop** — the workflow is the only place
+the 64 terrain chunks are produced:
+
+1. `gates` — `tools/verify_phase1.sh` and `tools/verify_phase3.sh` on a fresh
+   clone (no Godot needed; the bake gate skips until something is baked).
+2. `build` — JDK 17 + Android SDK (`build-tools;34.0.0`) + Godot 4.4.1 and its
+   export templates (cached) → `--import` twice (a cold pass may print ERROR
+   lines, a warm pass may not) → signing material → `bash
+   tools/bake_siran_island.sh` (import → bake → self-check `--require-bake`) →
+   `tools/verify_phase3.sh` again, now with 64 chunks on disk → `--export-release`
+   → `--export-debug` → `tools/verify_apk.sh` on both APKs.
+3. `publish` — tag pushes only.
+
+Grab the APK from the run's **Artifacts**; the `siran-island-bake-<sha>`
+artifact holds the generated island preview, the bake summary and the bake log.
+No retries on import/bake/export; every failure is a hard stop with a
+`::error::` annotation.
 
 ### Every APK must pass four gates
 
@@ -47,7 +62,7 @@ than a hope:
 Run them locally against a built APK:
 
 ```bash
-APK_SIZE_LIMIT_MB=120 bash tools/verify_apk.sh build/desi-royale-debug.apk
+APK_SIZE_LIMIT_MB=120 bash tools/verify_apk.sh build/battle-horizons.apk
 ```
 
 ### Signing
@@ -84,6 +99,7 @@ vegetation yet**. Full design notes: `docs/PHASE3_WORLD.md`. Gates:
 | World scene (ocean, lake, river, sun, streamer, camera, HUD) | `scenes/world/siran_island.tscn` |
 | Unshaded terrain/road/water shaders | `assets/shaders/` |
 | Machine-checkable Phase 3 gates | `bash tools/verify_phase3.sh` |
+| Bake + gates + APK, run automatically on every push | `.github/workflows/build.yml` |
 | In-engine self-check (collision vs mesh, flatness, radius maths) | `godot --headless --path . scenes/tests/phase3_selfcheck.tscn` |
 
 ### Bake the island
@@ -94,8 +110,11 @@ bash tools/bake_siran_island.sh        # needs Godot 4.4+; writes ~11 MB of chun
 godot --path . scenes/world/siran_island.tscn
 ```
 
-The baked chunks are committed, so a fresh clone runs without baking. If they are
-missing, the world still opens — the HUD just tells you to bake.
+The baked chunks are **not** committed (64 scenes + 128 resources of
+generated data): `tools/bake_siran_island.sh` writes them, and CI runs it on
+every push, so `battle-horizons.apk` always ships a freshly baked island. A
+fresh clone without a bake still opens the world — the HUD just tells you to
+bake.
 
 ### Streaming, in one line
 
@@ -135,7 +154,7 @@ res://
 │                systems, player, ui, tests
 ├── resources/   world (materials, baked terrain), loot_tables, themes, config
 ├── addons/      third-party plugins (none yet)
-└── export_presets/  archived preset copies used by CI
+└── export_presets/  frozen v0.0.1-setup snapshot (see its README)
 ```
 
 Root-level extras: `docs/`, `tools/`, `export_presets.cfg`, `project.godot`.
@@ -143,7 +162,9 @@ Root-level extras: `docs/`, `tools/`, `export_presets.cfg`, `project.godot`.
 ## Verify the baseline
 
 ```bash
-bash tools/verify_phase1.sh          # all machine-checkable Phase 1 gates
+bash tools/verify_phase1.sh          # Phase 1: budget, preset, project identity
+bash tools/verify_phase3.sh          # Phase 3: streaming, shaders, baked output
+bash tools/bake_siran_island.sh      # import -> bake -> self-check (needs Godot)
 ```
 
 Device acceptance (physical Unisoc T606, airplane mode) is documented step by
@@ -153,10 +174,10 @@ CI machine cannot close for you.
 ```bash
 # Export the APK (Godot 4.4+, Android export templates installed)
 godot --headless --path . --export-release "Android_APK_Unisoc" \
-      build/desi-royale-0.0.1-setup.apk
+      build/battle-horizons.apk
 
 # Install + soak test
-adb install -r build/desi-royale-0.0.1-setup.apk
+adb install -r build/battle-horizons.apk
 adb logcat -c && adb shell am start -n com.aurastudios.battlehorizons/com.godot.game.GodotApp
-adb logcat | grep -iE "gl_error|vulkan|crash|desi|perf"
+adb logcat | grep -iE "gl_error|vulkan|crash|battlehorizons|perf"
 ```

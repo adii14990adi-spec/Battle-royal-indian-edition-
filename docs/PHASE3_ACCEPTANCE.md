@@ -57,14 +57,19 @@ Anything that fails here fails in the *bake*, not on the phone. Fix it there.
 
 ## 3. Device run — build, install, enter the world
 
+You do not have to build it yourself: every push runs the bake and uploads
+`battle-horizons.apk` (plus the generated island preview) as the
+`battle-horizons-apk-<sha>` artifact of the `Build APK` workflow. Use the local
+commands below when you want to iterate on the phone without a CI round-trip.
+
 Same toolchain as Phase 1 (`docs/PHASE1_ACCEPTANCE.md` §2):
 
 ```bash
 godot --headless --path . --export-release "Android_APK_Unisoc" \
-      build/desi-royale-0.3.0-world.apk
-adb install -r build/desi-royale-0.3.0-world.apk
+      build/battle-horizons.apk
+adb install -r build/battle-horizons.apk
 adb logcat -c
-adb shell am start -n com.desiroyale.game/com.godot.game.GodotApp
+adb shell am start -n com.aurastudios.battlehorizons/com.godot.game.GodotApp
 ```
 
 Tap **ENTER SIRAN ISLAND — PHASE 3 GREYBOX** on the boot screen. Expect: ocean,
@@ -85,10 +90,10 @@ adb logcat -s godot | grep "\[perf\]"
 adb exec-out screencap -p > phase3-tour.png
 
 # Memory
-adb shell dumpsys meminfo com.desiroyale.game | grep -E "TOTAL PSS|TOTAL RSS"
+adb shell dumpsys meminfo com.aurastudios.battlehorizons | grep -E "TOTAL PSS|TOTAL RSS"
 
 # Sustained frame time (thermal throttling shows up here, not in the average)
-adb shell dumpsys gfxinfo com.desiroyale.game framestats | head -40
+adb shell dumpsys gfxinfo com.aurastudios.battlehorizons framestats | head -40
 ```
 
 | Metric | Threshold | Unisoc T606 | Adreno 619 |

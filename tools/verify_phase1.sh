@@ -114,6 +114,13 @@ if grep -qE 'config/features=PackedStringArray\("4\.[0-9]+", "GL Compatibility"\
 else
 	fail "config/features must declare \"GL Compatibility\""
 fi
+# The project identity is a Phase 3 rename; these gates make a partial rename
+# (the classic "name changed, package id did not") impossible to merge.
+if grep -qxE 'config/name="Battle Horizons: Last Survival"' project.godot; then
+	pass 'config/name = "Battle Horizons: Last Survival"'
+else
+	fail 'config/name must be "Battle Horizons: Last Survival"'
+fi
 
 # --- Gate 5: Android export preset -------------------------------------------
 head2 'Gate 5 — Android export preset (APK, offline)'
@@ -133,6 +140,13 @@ check_preset 'architectures/x86=false' 'x86 disabled'
 check_preset 'architectures/x86_64=false' 'x86_64 disabled'
 check_preset 'version/code=1' 'version/code=1'
 check_preset 'version/name="0\.0\.1-setup"' 'version/name matches project version'
+check_preset 'package/unique_name="com\.aurastudios\.battlehorizons"' \
+	'package/unique_name = com.aurastudios.battlehorizons'
+check_preset 'package/name="Battle Horizons: Last Survival"' \
+	'package/name = Battle Horizons: Last Survival'
+# The CI workflow exports to exactly this path and uploads exactly this file.
+check_preset 'export_path="build/battle-horizons\.apk"' \
+	'export_path = build/battle-horizons.apk (the CI artifact name)'
 if grep -qE 'permissions/custom_permissions=.*INTERNET' export_presets.cfg; then
 	fail 'custom_permissions re-adds INTERNET'
 else
