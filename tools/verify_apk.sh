@@ -157,39 +157,39 @@ elif ! ENTRIES="$(list_apk_entries)"; then
 else
     entry_count=$(printf '%s\n' "$ENTRIES" | wc -l | tr -d ' ')
     asset_count=$(printf '%s\n' "$ENTRIES" | grep -c '^assets/' || true)
-    echo "APK contains $entry_count entries, $asset_count under assets/"
-    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
-        echo "::notice::$(basename "$APK"): $entry_count entries, $asset_count under assets/"
-    fi
 
-    # Publish a digest every run. Artifacts cannot be downloaded from the build
-    # sandbox, so annotations are the only way to see what actually shipped.
+    packed_count() {
+        printf '%s\n' "$ENTRIES" | grep -cE "$1" || true
+    }
+
+    # Godot may convert text resources at export time and store the result as
+    # .godot/exported/<hash>/export-<md5>-<name>.scn, leaving a `<path>.remap`
+    # beside the original path (editor_export_platform.cpp: _export_customize,
+    # then save_file(from + ".remap", ...)). The engine resolves res://x.tscn
+    # through that remap, so "packed" means the file itself OR its .remap is in
+    # the APK. Three earlier runs of this gate failed on exactly that distinction
+    # and blamed the pack for it.
+    world_scene=$(packed_count '^assets/scenes/world/siran_island\.tscn(\.remap)?$')
+    chunk_scenes=$(packed_count '^assets/scenes/world/terrain/chunk_[0-9]+_[0-9]+\.tscn(\.remap)?$')
+    chunk_collisions=$(packed_count '^assets/resources/world/terrain/chunk_[0-9]+_[0-9]+_collision\.res(\.remap)?$')
+    boot_script=$(packed_count '^assets/scripts/ui/boot_world_link\.(gd|gdc)(\.remap)?$')
+    water_shader=$(packed_count '^assets/assets/shaders/water_surface\.gdshader(\.remap)?$')
+    converted=$(packed_count '^assets/\.godot/exported/')
+
     digest=$(printf '%s\n' "$ENTRIES" | grep '^assets/' \
         | sed -n 's/.*\.\([A-Za-z0-9]\{1,10\}\)$/\1/p' | sort | uniq -c | sort -rn \
         | sed -n '1,8p' | awk '{ printf "%s=%s ", $2, $1 }')
+
+    echo "APK contains $entry_count entries, $asset_count under assets/, $converted converted under .godot/exported/"
     echo "assets/ extensions: ${digest:-<none>}"
     if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+        echo "::notice::$(basename "$APK"): $entry_count entries, $asset_count under assets/, $converted converted"
         echo "::notice::assets/ extensions: ${digest:-<none>}"
     fi
 
-    # Text resources can be converted to binary at export time
-    # (editor/export/convert_text_resources_to_binary: .tscn -> .scn), and the
-    # pack's remaps keep res://…tscn loadable, so both spellings are legitimate.
-    # Scripts likewise depend on script_export_mode (.gd or .gdc).
-    world_scene=$(printf '%s\n' "$ENTRIES" \
-        | grep -cE '^assets/scenes/world/siran_island\.(tscn|scn)$' || true)
-    chunk_scenes=$(printf '%s\n' "$ENTRIES" \
-        | grep -cE '^assets/scenes/world/terrain/chunk_[0-9]+_[0-9]+\.(tscn|scn)$' || true)
-    chunk_collisions=$(printf '%s\n' "$ENTRIES" \
-        | grep -cE '^assets/resources/world/terrain/chunk_[0-9]+_[0-9]+_collision\.(res|tres)$' || true)
-    boot_script=$(printf '%s\n' "$ENTRIES" \
-        | grep -cE '^assets/scripts/ui/boot_world_link\.(gd|gdc)$' || true)
-    water_shader=$(printf '%s\n' "$ENTRIES" \
-        | grep -cE '^assets/assets/shaders/water_surface\.(gdshader|res)$' || true)
-
     payload_problems=0
     if [[ "$world_scene" -lt 1 ]]; then
-        echo "::error::the world scene is not in the APK (looked for assets/scenes/world/siran_island.tscn|.scn)" >&2
+        echo "::error::the world scene is not in the APK (assets/scenes/world/siran_island.tscn or its .remap)" >&2
         payload_problems=$((payload_problems + 1))
     fi
     if [[ "$boot_script" -lt 1 ]]; then
@@ -218,9 +218,6 @@ else
             | sed -n '1,8p' >&2 || true
         exit 1
     fi
-    echo "Payload verified: $chunk_scenes chunk scenes, $chunk_collisions collision resources," \
-        "world scene, water shader and button script present"
-    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
-        echo "::notice::$(basename "$APK") payload: $chunk_scenes/64 chunk scenes, $chunk_collisions/64 collision resources"
-    fi
+    echo "Payload verified: $world_scene world scene, $chunk_scenes chunk scenes," \
+        "$chunk_collisions collision resources, water shader, button script"
 fi
