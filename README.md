@@ -47,7 +47,7 @@ artifact holds the generated island preview, the bake summary and the bake log.
 No retries on import/bake/export; every failure is a hard stop with a
 `::error::` annotation.
 
-### Every APK must pass four gates
+### Every APK must pass five gates
 
 `tools/verify_apk.sh <apk>` enforces them, so a green build is evidence rather
 than a hope:
@@ -58,6 +58,7 @@ than a hope:
 | B | `android.permission.WAKE_LOCK` **present** | an empty permission list means manifest generation silently failed |
 | C | size ≤ **120 MB** | install budget on the target device |
 | D | `arm64-v8a` present (`armeabi-v7a` warn-only) | Unisoc T606 is 64-bit |
+| E | 64 baked chunk scenes + 64 collision `.res` files **inside the APK** | an APK with a working UI and no world looks exactly like a working APK |
 
 Run them locally against a built APK:
 
@@ -115,6 +116,24 @@ generated data): `tools/bake_siran_island.sh` writes them, and CI runs it on
 every push, so `battle-horizons.apk` always ships a freshly baked island. A
 fresh clone without a bake still opens the world — the HUD just tells you to
 bake.
+
+### "Nothing happens when I tap ENTER SIRAN ISLAND"
+
+That was a real shipped defect: the APK installed, the boot screen animated, and
+the button did nothing. `export_filter="all_resources"` builds its file list
+from the editor's **scanned** filesystem, and the bake runs after that scan, so
+the baked world could be left out of the pack while every static gate stayed
+green. Three things now stop it from recurring:
+
+| Layer | What it does |
+| --- | --- |
+| `include_filter` in `export_presets.cfg` | packs every `*.tscn`/`*.res`/`*.gd` that exists **on disk** at export time, via a `DirAccess` walk — independent of the scan |
+| CI re-import after the bake | refreshes the editor's file list so the export list already contains the new files |
+| the boot button itself | shows `world scene packed: false \| baked chunks: 0/64` in amber before you even tap, and prints the exact `change_scene_to_file` error on screen |
+
+On the phone, the boot screen now answers the question by itself; in CI,
+`tools/verify_apk.sh` gate E lists the APK and fails the build when the payload
+is short.
 
 ### Streaming, in one line
 

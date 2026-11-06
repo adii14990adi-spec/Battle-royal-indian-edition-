@@ -28,6 +28,30 @@ bash tools/bake_siran_island.sh    # re-bake + in-engine self-check
 "PASS (data)" means the numbers are asserted in code and the self-check; the
 visual result is judged from the preview image and the device run.
 
+### Packaging regression (2026-11-06)
+
+The first APK built from `main` installed, drew the boot screen, and did nothing
+when the tester tapped **ENTER SIRAN ISLAND**. The bake itself was fine — the
+files were simply not in the pack. `export_filter="all_resources"` derives its
+list from the editor's scanned filesystem, and the 64 chunk scenes are written
+by `tools/bake_siran_island.sh` *after* that scan.
+
+Fixed on three layers, each independently sufficient:
+
+1. `export_presets.cfg` — `include_filter="*.tscn,*.res,*.tres,*.gd,scenes/world/*,resources/world/*"`.
+   Godot applies it by walking the directory tree from `res://`
+   (`EditorExportPlatform::_edit_files_with_filter` → `DirAccess`), so what is
+   on disk is what ships.
+2. `.github/workflows/build.yml` — a `--headless --import` step after the bake,
+   so the editor's file list contains the new files before the export runs.
+3. `scripts/ui/boot_world_link.gd` — the button reports
+   `world scene packed: … | baked chunks: N/64` on the boot screen and prints
+   any `change_scene_to_file` failure as text, instead of a silent `return`.
+
+Proven by `tools/verify_apk.sh` gate E, which lists the APK and requires
+`assets/scenes/world/terrain/chunk_*.tscn` ×64 plus the matching
+`*_collision.res` ×64 (`verify_phase3.sh` gate 11 pins the preset settings).
+
 ---
 
 ## 1. Before the bake

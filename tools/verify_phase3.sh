@@ -301,6 +301,29 @@ else
 fi
 
 # --- Lint --------------------------------------------------------------------
+# --- Gate 11: what actually reaches the phone --------------------------------
+# The APK that shipped from main booted, drew the UI, and did nothing when the
+# tester tapped "Enter Siran Island". Every gate above was green: the bake was
+# correct, it just was not in the pack. These checks pin the packaging side.
+head2 'Gate 11 — export packaging keeps the baked world and hides the logo'
+if grep -q '^include_filter=".*\*\.tscn' export_presets.cfg &&
+	grep -q '\*\.res' export_presets.cfg; then
+	pass 'include_filter lists *.tscn and *.res — disk walk, not the editor scan'
+else
+	fail 'export_presets.cfg include_filter must list *.tscn and *.res: files created after the last import (the bake) can otherwise be left out of the APK'
+fi
+if grep -q '^boot_splash/show_image=false' project.godot; then
+	pass 'boot splash image disabled (no Godot logo over the boot screen)'
+else
+	fail 'project.godot must set boot_splash/show_image=false'
+fi
+if grep -q 'func _show_error' scripts/ui/boot_world_link.gd &&
+	grep -q 'FileAccess.file_exists(WORLD_SCENE)' scripts/ui/boot_world_link.gd; then
+	pass 'boot button shows the failure on screen instead of returning silently'
+else
+	fail 'scripts/ui/boot_world_link.gd must check the scene exists and put the error on screen'
+fi
+
 head2 'Extra — GDScript parses and lints'
 if command -v gdparse >/dev/null 2>&1; then
 	broken=0

@@ -4,6 +4,15 @@
 #   Gate B: android.permission.WAKE_LOCK present (manifest not silently empty)
 #   Gate C: size <= APK_SIZE_LIMIT_MB (default 120)
 #   Gate D: arm64-v8a present (Unisoc T606); armeabi-v7a warn-only
+#   Gate E: the baked world is actually inside the package (chunk scenes and
+#           collision resources reachable at assets/…), so "it installs and the
+#           boot screen works" can never again pass for a playable build.
+#
+# Gate E is what catches the worst failure mode this project has hit: the APK
+# boots, the UI works, you tap "Enter Siran Island" and nothing happens, because
+# the baked files were created after the editor's last filesystem scan and never
+# made it into the pack. It can be skipped with APK_SKIP_PAYLOAD_GATE=1 for a
+# deliberately unbaked build.
 set -euo pipefail
 
 APK="${1:-}"
@@ -90,3 +99,61 @@ if ! printf '%s\n' "$ARCHS" | grep -q "armeabi-v7a"; then
 fi
 
 echo "APK verified: ${SIZE_MB}MB, arches=[${ARCHS}], INTERNET absent, WAKE_LOCK present"
+
+# --- Gate E: the baked world is inside the package ---------------------------
+# Godot stores every exported file as its own APK entry under assets/
+# (EditorExportPlatformAndroid::save_apk_file maps "res://x" to "assets/x"), so
+# the payload can be audited from the entry list without a device.
+if [[ "${APK_SKIP_PAYLOAD_GATE:-0}" == "1" ]]; then
+    echo "::warning::Gate E skipped (APK_SKIP_PAYLOAD_GATE=1)"
+elif ! command -v unzip >/dev/null 2>&1; then
+    echo "::warning::Gate E skipped: unzip is not installed"
+else
+    ENTRIES="$(unzip -Z1 "$APK" 2>/dev/null || unzip -l "$APK" 2>/dev/null || true)"
+    if [[ -z "$ENTRIES" ]]; then
+        echo "::error::could not list entries in $APK (unzip failed)" >&2
+        exit 1
+    fi
+
+    payload_problems=0
+    for required in \
+        "assets/scenes/world/siran_island.tscn" \
+        "assets/assets/shaders/water_surface.gdshader"; do
+        if printf '%s\n' "$ENTRIES" | grep -qx "$required"; then
+            continue
+        fi
+        echo "::error::APK is missing $required — it was not packed" >&2
+        payload_problems=$((payload_problems + 1))
+    done
+
+    # Scripts are re-encoded by script_export_mode, so accept either spelling:
+    # a node whose script is absent still renders and still looks pressable.
+    if ! printf '%s\n' "$ENTRIES" | grep -qE '^assets/scripts/ui/boot_world_link\.gdc?$'; then
+        echo "::error::APK is missing assets/scripts/ui/boot_world_link.gd — the boot button would do nothing" >&2
+        payload_problems=$((payload_problems + 1))
+    fi
+
+    # grep -c prints 0 and exits 1 when nothing matches, hence `|| true`.
+    chunk_scenes=$(printf '%s\n' "$ENTRIES" \
+        | grep -cE '^assets/scenes/world/terrain/chunk_[0-9]+_[0-9]+\.tscn$' || true)
+    chunk_collisions=$(printf '%s\n' "$ENTRIES" \
+        | grep -cE '^assets/resources/world/terrain/chunk_[0-9]+_[0-9]+_collision\.res$' || true)
+
+    if [[ "$chunk_scenes" -lt 64 ]]; then
+        echo "::error::$chunk_scenes baked chunk scenes in the APK, expected 64 — the bake is not in the pack" >&2
+        echo "::error::bake BEFORE exporting, then re-import so the editor file list includes the new files; export_presets.cfg's include_filter must list *.tscn and *.res" >&2
+        payload_problems=$((payload_problems + 1))
+    fi
+    if [[ "$chunk_collisions" -lt 64 ]]; then
+        echo "::error::$chunk_collisions baked collision resources in the APK, expected 64" >&2
+        payload_problems=$((payload_problems + 1))
+    fi
+
+    if [[ "$payload_problems" -ne 0 ]]; then
+        exit 1
+    fi
+    echo "Payload verified: $chunk_scenes chunk scenes, $chunk_collisions collision resources, world scene and button script present"
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+        echo "::notice::$(basename "$APK") payload: $chunk_scenes/64 chunk scenes, $chunk_collisions/64 collision resources"
+    fi
+fi

@@ -19,7 +19,11 @@ config/name="Battle Horizons: Last Survival"
 config/version="0.0.1-setup"
 run/main_scene="res://scenes/core/boot.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
-boot_splash/show_image=true
+; Phase 3: the default Godot logo covered the boot screen and looked like a
+; hang on a slow device. No splash image; the sky colour is shown instead so
+; the first frame is not a black flash either.
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.63, 0.73, 0.84, 1)
 run/max_fps=30
 
 [autoload]
