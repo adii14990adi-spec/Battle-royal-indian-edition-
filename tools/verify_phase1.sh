@@ -18,7 +18,15 @@ PASSES=0
 SKIPS=0
 
 pass() { PASSES=$((PASSES + 1)); printf '  \033[32mPASS\033[0m  %s\n' "$1"; }
-fail() { FAILURES=$((FAILURES + 1)); printf '  \033[31mFAIL\033[0m  %s\n' "$1"; }
+fail() {
+	FAILURES=$((FAILURES + 1))
+	printf '  \033[31mFAIL\033[0m  %s\n' "$1"
+	# Actions keeps at most 10 annotations per step and the raw log archive is
+	# not reachable from every network, so a failing gate names itself here.
+	if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+		printf '::error::%s\n' "$1"
+	fi
+}
 skip() { SKIPS=$((SKIPS + 1)); printf '  \033[33mSKIP\033[0m  %s\n' "$1"; }
 head2() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 

@@ -23,7 +23,15 @@ PASSES=0
 SKIPS=0
 
 pass() { PASSES=$((PASSES + 1)); printf '  \033[32mPASS\033[0m  %s\n' "$1"; }
-fail() { FAILURES=$((FAILURES + 1)); printf '  \033[31mFAIL\033[0m  %s\n' "$1"; }
+fail() {
+	FAILURES=$((FAILURES + 1))
+	printf '  \033[31mFAIL\033[0m  %s\n' "$1"
+	# Actions keeps at most 10 annotations per step and the raw log archive is
+	# not reachable from every network, so a failing gate names itself here.
+	if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+		printf '::error::%s\n' "$1"
+	fi
+}
 skip() { SKIPS=$((SKIPS + 1)); printf '  \033[33mSKIP\033[0m  %s\n' "$1"; }
 head2() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
@@ -204,14 +212,35 @@ else
 	fi
 	no_heightmap=0
 	trimeshes=0
+	# The shape is serialised to a companion .res and merely *referenced* from
+	# the scene (island_baker.gd saves chunk_<x>_<y>_collision.res), so the
+	# scene text never contains the string "HeightMapShape3D". Grepping the
+	# .tscn for it fails on every chunk of a perfectly good bake — the check has
+	# to follow the reference and look inside the resource.
+	unreferenced=0
+	first_bad=""
 	for scene in scenes/world/terrain/chunk_*.tscn; do
-		grep -q 'HeightMapShape3D' "$scene" || no_heightmap=$((no_heightmap + 1))
-		grep -q 'ConcavePolygonShape3D' "$scene" && trimeshes=$((trimeshes + 1))
+		base=$(basename "$scene" .tscn)
+		collision="resources/world/terrain/${base}_collision.res"
+		if ! grep -q "${base}_collision\.res" "$scene"; then
+			unreferenced=$((unreferenced + 1))
+		fi
+		# -a: .res is binary, and grep would otherwise only say "Binary file
+		# matches" without a usable exit status.
+		if ! grep -qa 'HeightMapShape3D' "$collision" 2>/dev/null; then
+			no_heightmap=$((no_heightmap + 1))
+			[ -n "$first_bad" ] || first_bad="$base"
+		fi
+		if grep -qa 'ConcavePolygonShape3D' "$scene" "$collision" 2>/dev/null; then
+			trimeshes=$((trimeshes + 1))
+		fi
 	done
-	[ "$no_heightmap" -eq 0 ] && pass "every chunk scene instantiates a HeightMapShape3D" \
-		|| fail "$no_heightmap chunk scene(s) have no HeightMapShape3D"
-	[ "$trimeshes" -eq 0 ] && pass "no chunk scene uses a trimesh collider" \
-		|| fail "$trimeshes chunk scene(s) use ConcavePolygonShape3D"
+	[ "$unreferenced" -eq 0 ] && pass "every chunk scene references its collision resource" \
+		|| fail "$unreferenced chunk scene(s) do not reference chunk_<x>_<y>_collision.res"
+	[ "$no_heightmap" -eq 0 ] && pass "every baked collision resource is a HeightMapShape3D" \
+		|| fail "$no_heightmap collision resource(s) are not a HeightMapShape3D (first: $first_bad)"
+	[ "$trimeshes" -eq 0 ] && pass "no chunk scene or collision resource uses a trimesh" \
+		|| fail "$trimeshes chunk(s) use ConcavePolygonShape3D"
 	if [ -f resources/world/baked/siran_island_summary.tres ]; then
 		pass "bake summary written"
 		if grep -q 'generator_version = ' resources/world/baked/siran_island_summary.tres; then
