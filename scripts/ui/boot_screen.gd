@@ -11,10 +11,10 @@ extends Node3D
 const SPIN_SPEED_RAD_PER_SEC: float = 0.6
 const LABEL_REFRESH_SEC: float = 0.5
 
+var _elapsed: float = 0.0
+
 @onready var _test_box: MeshInstance3D = $TestBox
 @onready var _info_label: Label = $UI/Root/InfoLabel
-
-var _elapsed: float = 0.0
 
 
 func _ready() -> void:
