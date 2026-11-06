@@ -59,3 +59,4 @@ lights_and_shadows/positional_shadow/atlas_size=512
 limits/opengl/max_lights_per_object=2
 limits/opengl/max_renderable_elements=100000
 occlusion_culling/use_occlusion_culling=false
+environment/defaults/default_clear_color=Color(0.63, 0.73, 0.84, 1)

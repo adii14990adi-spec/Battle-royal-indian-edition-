@@ -9,11 +9,11 @@ Nothing signing-related is ever committed — `.gitignore` blocks `release.keyst
 ```bash
 keytool -genkeypair -v \
   -keystore release.keystore \
-  -alias desiroyale \
+  -alias battlehorizons \
   -keyalg RSA -keysize 2048 -validity 10000 \
   -storepass "<STRONG_PASSWORD>" \
   -keypass  "<STRONG_PASSWORD>" \
-  -dname "CN=Desi Royale, O=Desi Royale, C=IN"
+  -dname "CN=Battle Horizons, O=Aura Studios, C=IN"
 ```
 
 > **Lose this file and you can never update the app on existing devices.**
@@ -38,7 +38,7 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 | Secret name | Value |
 | --- | --- |
 | `KEYSTORE_BASE64` | contents of `release.keystore.b64` (single line, no wrapping) |
-| `KEYSTORE_USER` | the `-alias` you chose above (e.g. `desiroyale`) |
+| `KEYSTORE_USER` | the `-alias` you chose above (e.g. `battlehorizons`) |
 | `KEYSTORE_PASSWORD` | the `-storepass` value |
 
 All three are **required**. `tools/patch_keystore.sh` fails the build with a
@@ -76,3 +76,10 @@ that file is missing. The workflow therefore also exports
 `GODOT_ANDROID_KEYSTORE_DEBUG_PATH`, `GODOT_ANDROID_KEYSTORE_DEBUG_USER` and
 `GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD`, which Godot's `get_or_env()` prefers
 over both the preset and the editor setting.
+
+The same mechanism is the fallback for `--export-release`: when
+`KEYSTORE_BASE64` is absent the workflow points
+`GODOT_ANDROID_KEYSTORE_RELEASE_{PATH,USER,PASSWORD}` at that debug keystore, so
+the run still produces an installable `battle-horizons.apk` and only warns. If
+the artifact name is right but the APK is signed by `androiddebugkey`, the three
+secrets from §2 are missing.

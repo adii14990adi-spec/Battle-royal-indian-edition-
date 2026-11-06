@@ -59,7 +59,9 @@ func is_gles3_baseline_ok() -> bool:
 ## One-line proof for the on-device label:
 ## "Device: Galaxy A03 | GPU: Mali-G57 | GLES3 OK"
 func get_status_line() -> String:
-	var state: String = "OK" if is_gles3_baseline_ok() else "FAIL (%s / %s)" % [rendering_method, rendering_driver]
+	var state: String = "OK"
+	if not is_gles3_baseline_ok():
+		state = "FAIL (%s / %s)" % [rendering_method, rendering_driver]
 	return "Device: %s | GPU: %s | GLES3 %s" % [device_model, gpu_name, state]
 
 
@@ -68,8 +70,10 @@ func get_stats_line() -> String:
 	var static_mb: float = Performance.get_monitor(Performance.MEMORY_STATIC) / BYTES_PER_MB
 	var video_mb: float = Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / BYTES_PER_MB
 	var fps: int = int(round(Performance.get_monitor(Performance.TIME_FPS)))
-	var draw_calls: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
-	return "FPS: %d | static: %.1f MB | video: %.1f MB | draws: %d" % [fps, static_mb, video_mb, draw_calls]
+	var draw_calls: int = int(
+			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+	return "FPS: %d | static: %.1f MB | video: %.1f MB | draws: %d" % [
+		fps, static_mb, video_mb, draw_calls]
 
 
 ## The Phase 1 acceptance requirement: static memory to the console every second.

@@ -172,6 +172,12 @@ traced). Tested with `p/w&d`.
 
 ## 4. Workflow design notes
 
+> **Superseded by §6.** This section describes the two-job
+> `build-debug`/`build-release` workflow as first committed. Phase 3 folded the
+> bake into the pipeline, merged the two build jobs into one and moved the setup
+> into a composite action; §6 is the current description. The reasoning below is
+> kept because it still explains the cache and template-install decisions.
+
 - **One file**, `.github/workflows/build.yml`. `build-debug` runs on
   `pull_request` to `develop`/`main` and on `push` to `develop`, guarded by
   `if: ${{ !startsWith(github.ref, 'refs/tags/') }}` so it does *not* also fire
@@ -215,3 +221,50 @@ traced). Tested with `p/w&d`.
    repaired by this phase.
 4. **First real CI run** is the remaining proof: local tests validate the gate
    logic against stubs, not against a Godot-produced APK.
+
+## 6. Phase 3 revision — the bake moved into CI
+
+Phase 3 cannot ship without a bake, and no Godot binary was available in the
+development sandbox, so the workflow became the only place the island is
+generated. Three changes, all in this branch:
+
+**1. One build job, three-job pipeline.** `build-debug` / `build-release`
+became `gates` → `build` → `publish`. Both previous jobs duplicated ~120 lines
+of Godot/Android setup; that setup now lives in
+`.github/actions/setup-godot-android/action.yml`, so a version bump or a
+keystore change happens once. `publish` only runs on `v*` tags and merely
+attaches the already-built APK to the Release.
+
+**2. The bake is a build step.** Order is now: import (twice, see below) →
+signing material → `bash tools/bake_siran_island.sh` → `tools/verify_phase3.sh`
+with 64 chunks on disk → `--export-release build/battle-horizons.apk` →
+`--export-debug` → `tools/verify_apk.sh` on both. A failed bake fails the build
+with the tail of `bake.log` re-emitted as `::error::` lines, because Actions
+logs are not always retrievable after the fact.
+
+**3. Two bugs that would have failed the first real run.**
+
+- The Godot download pointed at `godotengine/godot/releases/download/…`. Since
+  4.3 the prebuilt binaries live in **`godotengine/godot-builds`**; the
+  `godotengine/godot` release assets are source tarballs only, so `curl -f`
+  would have 404'd before any export logic ran. Verified against the API:
+  `Godot_v4.4.1-stable_linux.x86_64.zip` (62 203 199 B) and
+  `Godot_v4.4.1-stable_export_templates.tpz` exist under `4.4.1-stable` there.
+- `export/android/android_sdk_path` and `export/android/java_sdk_path` are read
+  with `EDITOR_GET()` and have **no** environment fallback in 4.4.1, so a
+  headless export dies with *"Android SDK path must be configured in Editor
+  Settings"* even with `ANDROID_HOME` set. The action now writes
+  `<config>/godot/editor_settings-4.4.tres` (`EditorSettings::get_existing_settings_path()`
+  uses `<major>.<minor>` from 4.3 on) and verifies the three paths Godot
+  validates: `platform-tools/adb`, `build-tools/34.0.0/apksigner`,
+  `$JAVA_HOME/bin/java`.
+
+Also worth knowing: `get_or_env()` prefers the preset, then
+`GODOT_ANDROID_KEYSTORE_{DEBUG,RELEASE}_{PATH,USER,PASSWORD}` — which is why a
+build without secrets can still be signed (with the debug key) instead of
+aborting, and why the `::warning::` is the thing to watch for.
+
+A cold `--import` is allowed to print `ERROR` lines (it is building
+`.godot/uid_cache.bin` and the shader cache); the second pass must be silent,
+and only that one is gated. Gating the first pass, as the original workflow did,
+turns a healthy cold build red.

@@ -18,7 +18,15 @@ PASSES=0
 SKIPS=0
 
 pass() { PASSES=$((PASSES + 1)); printf '  \033[32mPASS\033[0m  %s\n' "$1"; }
-fail() { FAILURES=$((FAILURES + 1)); printf '  \033[31mFAIL\033[0m  %s\n' "$1"; }
+fail() {
+	FAILURES=$((FAILURES + 1))
+	printf '  \033[31mFAIL\033[0m  %s\n' "$1"
+	# Actions keeps at most 10 annotations per step and the raw log archive is
+	# not reachable from every network, so a failing gate names itself here.
+	if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+		printf '::error::%s\n' "$1"
+	fi
+}
 skip() { SKIPS=$((SKIPS + 1)); printf '  \033[33mSKIP\033[0m  %s\n' "$1"; }
 head2() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
@@ -114,6 +122,13 @@ if grep -qE 'config/features=PackedStringArray\("4\.[0-9]+", "GL Compatibility"\
 else
 	fail "config/features must declare \"GL Compatibility\""
 fi
+# The project identity is a Phase 3 rename; these gates make a partial rename
+# (the classic "name changed, package id did not") impossible to merge.
+if grep -qxE 'config/name="Battle Horizons: Last Survival"' project.godot; then
+	pass 'config/name = "Battle Horizons: Last Survival"'
+else
+	fail 'config/name must be "Battle Horizons: Last Survival"'
+fi
 
 # --- Gate 5: Android export preset -------------------------------------------
 head2 'Gate 5 — Android export preset (APK, offline)'
@@ -133,6 +148,13 @@ check_preset 'architectures/x86=false' 'x86 disabled'
 check_preset 'architectures/x86_64=false' 'x86_64 disabled'
 check_preset 'version/code=1' 'version/code=1'
 check_preset 'version/name="0\.0\.1-setup"' 'version/name matches project version'
+check_preset 'package/unique_name="com\.aurastudios\.battlehorizons"' \
+	'package/unique_name = com.aurastudios.battlehorizons'
+check_preset 'package/name="Battle Horizons: Last Survival"' \
+	'package/name = Battle Horizons: Last Survival'
+# The CI workflow exports to exactly this path and uploads exactly this file.
+check_preset 'export_path="build/battle-horizons\.apk"' \
+	'export_path = build/battle-horizons.apk (the CI artifact name)'
 if grep -qE 'permissions/custom_permissions=.*INTERNET' export_presets.cfg; then
 	fail 'custom_permissions re-adds INTERNET'
 else
@@ -193,6 +215,11 @@ for f in README.md CONTRIBUTING.md docs/UNISOC_BUDGET.md docs/PHASE1_ACCEPTANCE.
 done
 if git rev-parse -q --verify 'refs/tags/v0.0.1-setup' >/dev/null; then
 	pass "tag v0.0.1-setup exists locally"
+elif [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+	# actions/checkout defaults to fetch-depth 1, which fetches no tags at all.
+	# The workflow asks for the full history, so this only fires for ad-hoc
+	# shallow clones.
+	skip "shallow clone — tags were never fetched; run 'git fetch --tags'"
 else
 	fail "tag v0.0.1-setup missing"
 fi

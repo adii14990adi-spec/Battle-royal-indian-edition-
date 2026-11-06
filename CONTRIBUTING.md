@@ -78,7 +78,7 @@ git lfs ls-files
   Phase 1 `.gitignore` follows the spec verbatim and does not list it; treat this
   as a hard rule and keep the file out of Git by hand.
 - Debug/production keystores. The debug keystore lives outside the repo
-  (`~/.android/desi-royale-debug.keystore`).
+  (`~/.android/battle-horizons-debug.keystore`).
 
 ## 5. Before you open a PR
 
@@ -99,7 +99,8 @@ PR checklist:
 - [ ] Budget impact noted in the PR description (PSS, VRAM, draw calls).
 - [ ] Device smoke test on a Unisoc-class phone, or an explicit note that only
       the desktop GLES3 run was done.
-- [ ] CI is green: `build-debug` passed and all four APK gates held (see §7).
+- [ ] CI is green: **Static gates** and **Bake, verify, export** both passed,
+      and all four APK gates held (see §7).
 
 ## 6. Phase tags
 
@@ -115,30 +116,47 @@ Versioning is SemVer-ish per docs: `v<phase>` tags (`v0.0.1-setup`,
 
 ## 7. Phase 2 — CI/CD and required status checks
 
-One workflow, [`.github/workflows/build.yml`](.github/workflows/build.yml):
+One workflow, [`.github/workflows/build.yml`](.github/workflows/build.yml), plus
+one composite action, `.github/actions/setup-godot-android/`, which owns the
+Godot/SDK/keystore installation so the two jobs cannot drift apart:
 
-| Job | Trigger | Gate |
+| Job (display name) | Trigger | Gate |
 | --- | --- | --- |
-| `build-debug` | push to `develop`, PR to `develop`/`main` | required before merge |
-| `build-release` | tag `v*` | creates the GitHub Release |
+| `gates` (Static gates) | push to `main`/`develop`/`arena/**`, PR to `main`/`develop`, manual run | required before merge |
+| `build` (Bake, verify, export) | same, after `gates` | required before merge |
+| `publish` (Publish GitHub Release) | tag `v*` | creates the GitHub Release |
 
-### Required status check
+**The map is baked here.** `build` runs `bash tools/bake_siran_island.sh`, so
+every APK — and the `siran-island-bake-<sha>` artifact next to it — carries
+freshly generated terrain. Nothing baked is committed.
 
-Mark **`build-debug`** as a required status check on `develop` (and on `main`,
-if you protect it too). Repository settings → **Branches → Branch protection
-rule** → **Require status checks to pass before merging** → add `build-debug`.
+### Required status checks
 
-Do **not** add `build-release` to the required list. It only runs on tag
-pushes, so it never reports on a pull request — requiring it would leave every
-PR stuck waiting for a check that will never arrive.
+Mark **Static gates** and **Bake, verify, export** as required status checks on
+`develop` (and on `main`, if you protect it too). Repository settings →
+**Branches → Branch protection rule** → **Require status checks to pass before
+merging** → add both.
+
+Do **not** add **Publish GitHub Release**. It only runs on tag pushes, so it
+never reports on a pull request — requiring it would leave every PR stuck
+waiting for a check that will never arrive.
 
 > Creating a branch-protection rule needs admin access and cannot be done from
 > a workflow, so this step is manual.
 
 ### What the job enforces
 
-`build-debug` runs `tools/verify_apk.sh` against the exported APK and fails the
-build unless all four gates hold:
+`build` follows this order and stops at the first failure:
+
+1. `--import` twice — a cold pass may print `ERROR` lines while it fills
+   `.godot/`, a warm pass may not.
+2. `bash tools/bake_siran_island.sh` — import → bake → self-check with
+   `--require-bake`.
+3. `bash tools/verify_phase3.sh` — now with all 64 chunk scenes on disk.
+4. `--export-release` to `build/battle-horizons.apk`, then `--export-debug` to
+   `build/battle-horizons-debug.apk`.
+5. `tools/verify_apk.sh` against both APKs; it fails the build unless all four
+   gates hold:
 
 - **A** — no `android.permission.INTERNET` (the game is fully offline)
 - **B** — `android.permission.WAKE_LOCK` present (empty permission list ⇒
@@ -146,10 +164,14 @@ build unless all four gates hold:
 - **C** — size ≤ 120 MB
 - **D** — `arm64-v8a` present; `armeabi-v7a` missing is a warning only
 
-It also runs `tools/patch_keystore.sh`, which hard-fails with a `::error::`
-annotation if `KEYSTORE_BASE64`, `KEYSTORE_USER` or `KEYSTORE_PASSWORD` is
-missing, not valid base64, or decodes to an empty file. There is deliberately
-no fallback to an unsigned or debug-signed release build.
+Signing: when `KEYSTORE_BASE64` is set, `tools/patch_keystore.sh` injects the
+release key and hard-fails with a `::error::` annotation if `KEYSTORE_USER` or
+`KEYSTORE_PASSWORD` is missing, or if the blob is not valid base64, does not
+decode, does not open with that password, or has no such alias. When the secret
+is **absent** the build still completes, signed with the throwaway CI debug
+keystore and flagged with a `::warning::` — that keeps the APK downloadable from
+a private repo or a fork without publishing signing material. A store build
+must have the three secrets set; the warning is the tripwire.
 
 ### Rules for CI changes
 
@@ -164,13 +186,18 @@ no fallback to an unsigned or debug-signed release build.
   (see `docs/KEYSTORE_SETUP.md`).
 - **Keep `export_presets.cfg` keystore fields blank** in Git. They are patched
   at build time and must not carry real paths or passwords.
-- Changing `GODOT_VERSION` requires a new cache key
-  (`godot-<version>-templates-v1`), otherwise a stale template set is restored.
+- Changing `GODOT_VERSION` requires a new cache key: bump the action's
+  `cache-revision` input, otherwise a stale template set is restored.
+- Godot, SDK, build-tools and keystore installation belongs in the composite
+  action, never inline in a job. Both jobs must get there by `uses:` only.
+- `arena/**` pushes build too, so a branch gets an APK before it is merged.
 
 ### Local equivalents
 
 ```bash
-bash tools/patch_keystore.sh   # needs KEYSTORE_* env vars; safe to run — it only rewrites export_presets.cfg
-bash tools/verify_apk.sh build/desi-royale-debug.apk
-bash tools/verify_phase1.sh    # unchanged Phase 1 gates
+bash tools/bake_siran_island.sh   # needs Godot 4.4+; writes the 64 chunks
+bash tools/verify_phase1.sh       # Unisoc budget + preset + identity gates
+bash tools/verify_phase3.sh       # Phase 3 gates, incl. the baked output
+bash tools/patch_keystore.sh      # needs KEYSTORE_* env vars; safe to run — it only rewrites export_presets.cfg
+bash tools/verify_apk.sh build/battle-horizons.apk
 ```
