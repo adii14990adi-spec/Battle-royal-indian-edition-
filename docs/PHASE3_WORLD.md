@@ -209,9 +209,12 @@ Needs a Godot **4.4+** binary with the project importable; there is no offline
 substitute, because the heightfield comes from `FastNoiseLite` inside the engine.
 The wrapper does three things and stops on the first failure:
 
-1. `godot --headless --path . --import` — builds `.godot/`, generates the
-   `.import` files for new assets (**commit
-   `assets/textures/water_normal_256.png.import` after the first run**);
+1. `godot --headless --path . --import` — builds `.godot/` and generates the
+   sidecar files the project needs but cannot generate on another machine:
+   `assets/textures/water_normal_256.png.import` and the `*.gd.uid` files Godot
+   4.4 writes next to every script. **Commit both** after the first run (the
+   `.import` file is the import contract — see `docs/ASSET_PIPELINE.md` §2 —
+   and stable script UIDs keep scene references stable);
 2. `godot --headless --path . --script res://tools/bake/bake_siran_island.gd`;
 3. `godot --headless --path . scenes/tests/phase3_selfcheck.tscn -- --require-bake`.
 

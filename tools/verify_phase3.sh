@@ -163,6 +163,11 @@ if [ -f resources/world/materials/terrain_greybox.tres ] &&
 else
 	fail "resources/world/materials/terrain_greybox.tres missing or not a ShaderMaterial"
 fi
+if [ -f assets/textures/water_normal_256.png.import ]; then
+	pass "water normal map has a committed .import file"
+else
+	skip "water_normal_256.png.import not committed yet — run 'godot --headless --path . --import' and commit it"
+fi
 
 # --- Gate 6: a fresh clone can still open the world scene --------------------
 head2 'Gate 6 — world scene never hard-references bake output'
