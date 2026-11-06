@@ -104,15 +104,51 @@ echo "APK verified: ${SIZE_MB}MB, arches=[${ARCHS}], INTERNET absent, WAKE_LOCK 
 # Godot stores every exported file as its own APK entry under assets/
 # (EditorExportPlatformAndroid::save_apk_file maps "res://x" to "assets/x"), so
 # the payload can be audited from the entry list without a device.
+# Entry listing helpers. `unzip -l` prints a formatted table (dates, sizes, and a
+# 40-character truncation for long paths), so ONLY a names-only listing may be
+# parsed: zipinfo -1, or Python's zipfile, which also copes with the APK signing
+# block. Mixing in `unzip -l` output silently turns every `grep -x path` into a
+# false negative and the gate then blames the pack for its own parsing bug.
+list_apk_entries_unzip() {
+    command -v unzip >/dev/null 2>&1 || return 1
+    unzip -Z1 "$APK" 2>/dev/null
+}
+
+list_apk_entries_python() {
+    command -v python3 >/dev/null 2>&1 || return 1
+    python3 - "$APK" 2>/dev/null <<'PYZIP'
+import sys
+import zipfile
+
+with zipfile.ZipFile(sys.argv[1]) as archive:
+    sys.stdout.write("\n".join(archive.namelist()))
+PYZIP
+}
+
+list_apk_entries() {
+    local entries
+    if entries="$(list_apk_entries_unzip)" && [[ -n "$entries" ]]; then
+        printf '%s\n' "$entries"
+        return 0
+    fi
+    if entries="$(list_apk_entries_python)" && [[ -n "$entries" ]]; then
+        printf '%s\n' "$entries"
+        return 0
+    fi
+    return 1
+}
+
 if [[ "${APK_SKIP_PAYLOAD_GATE:-0}" == "1" ]]; then
     echo "::warning::Gate E skipped (APK_SKIP_PAYLOAD_GATE=1)"
-elif ! command -v unzip >/dev/null 2>&1; then
-    echo "::warning::Gate E skipped: unzip is not installed"
+elif ! ENTRIES="$(list_apk_entries)"; then
+    echo "::error::could not list the entries in $APK (no names-only listing available)" >&2
+    exit 1
 else
-    ENTRIES="$(unzip -Z1 "$APK" 2>/dev/null || unzip -l "$APK" 2>/dev/null || true)"
-    if [[ -z "$ENTRIES" ]]; then
-        echo "::error::could not list entries in $APK (unzip failed)" >&2
-        exit 1
+    entry_count=$(printf '%s\n' "$ENTRIES" | wc -l | tr -d ' ')
+    asset_count=$(printf '%s\n' "$ENTRIES" | grep -c '^assets/' || true)
+    echo "APK contains $entry_count entries, $asset_count under assets/"
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+        echo "::notice::$(basename "$APK"): $entry_count entries, $asset_count under assets/"
     fi
 
     payload_problems=0
@@ -150,6 +186,10 @@ else
     fi
 
     if [[ "$payload_problems" -ne 0 ]]; then
+        echo "APK entry sample (first 12 lines):" >&2
+        printf '%s\n' "$ENTRIES" | head -12 >&2
+        echo "assets/ entries (first 12):" >&2
+        printf '%s\n' "$ENTRIES" | grep '^assets/' | head -12 >&2
         exit 1
     fi
     echo "Payload verified: $chunk_scenes chunk scenes, $chunk_collisions collision resources, world scene and button script present"
