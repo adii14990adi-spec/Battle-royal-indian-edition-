@@ -26,6 +26,44 @@ SemVer, tagged per phase: `v0.0.1-setup`, `v0.2.0-ci`, ...
 
 ---
 
+## Phase 3 status — World & map generation (Siran Island greybox)
+
+Terrain, water, roads and coloured zone markers only: **no buildings, props or
+vegetation yet**. Full design notes: `docs/PHASE3_WORLD.md`. Gates:
+`docs/PHASE3_ACCEPTANCE.md`.
+
+| Item | Where |
+| --- | --- |
+| 4 km × 4 km island layout (zones, lake, river, moat, 5 roads) as auditable data | `scripts/world/siran_map_config.gd` |
+| FastNoiseLite heightfield: island mask, hills, ridged east, lake, river, zone pads | `scripts/world/bake/island_heightmap.gd` |
+| Terrain mesh + `HeightMapShape3D` per chunk (never a trimesh) | `scripts/world/bake/terrain_mesh_builder.gd` |
+| One-command bake (import → bake → self-check) | `bash tools/bake_siran_island.sh` |
+| 500 m chunk streaming, threaded, radius driven | `scripts/world/chunk_manager.gd` |
+| World scene (ocean, lake, river, sun, streamer, camera, HUD) | `scenes/world/siran_island.tscn` |
+| Unshaded terrain/road/water shaders | `assets/shaders/` |
+| Machine-checkable Phase 3 gates | `bash tools/verify_phase3.sh` |
+| In-engine self-check (collision vs mesh, flatness, radius maths) | `godot --headless --path . scenes/tests/phase3_selfcheck.tscn` |
+
+### Bake the island
+
+```bash
+bash tools/bake_siran_island.sh        # needs Godot 4.4+; writes ~11 MB of chunks
+# then run the world (or tap "ENTER SIRAN ISLAND" on the boot screen)
+godot --path . scenes/world/siran_island.tscn
+```
+
+The baked chunks are committed, so a fresh clone runs without baking. If they are
+missing, the world still opens — the HUD just tells you to bake.
+
+### Streaming, in one line
+
+500 m chunks, `ResourceLoader.load_threaded_request()` at 5 Hz, two loads in
+flight, a 50 m radius per spec plus a `keep_ring = 1` floor so the player is
+never standing on the edge of the world. Raise `stream_radius_m` once Phase 4
+props exist to hide behind.
+
+---
+
 ## Phase 1 status
 
 Phase 1 (project setup & version control) is committed and tagged `v0.0.1-setup`.
@@ -49,9 +87,11 @@ What is in the repo today:
 ```
 res://
 ├── assets/      models (per biome), textures, audio (music/sfx/voice), shaders, fonts
-├── scenes/      core (boot), gameplay, characters, weapons, loot, ui
-├── scripts/     autoload, systems, player, ui
-├── resources/   loot_tables, themes, config (.tres tunables)
+├── scenes/      core (boot), world (island scene + baked chunks), tests,
+│                gameplay, characters, weapons, loot, ui
+├── scripts/     autoload, world (map config, chunk streamer), world/bake,
+│                systems, player, ui, tests
+├── resources/   world (materials, baked terrain), loot_tables, themes, config
 ├── addons/      third-party plugins (none yet)
 └── export_presets/  archived preset copies used by CI
 ```
