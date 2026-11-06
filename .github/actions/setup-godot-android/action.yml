@@ -23,24 +23,79 @@ runs:
   using: composite
   steps:
     - name: Set up JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: "17"
 
-    # `tools`, `platform-tools` are setup-android's own defaults; build-tools is
-    # what apksigner and zipalign come from, and platforms;android-34 matches
-    # Godot 4.4's default target SDK.
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v3
-      with:
-        packages: >-
-          tools platform-tools build-tools;${{ inputs.android-build-tools }}
-          platforms;android-34
-
-    - name: Expose Android build-tools on PATH
+    # A notice, not an error: if setup-java dies this step never runs, so the
+    # presence or absence of the notice in the run's annotations says which step
+    # failed without needing the (usually unavailable) raw log.
+    - name: Report Java
       shell: bash
-      run: echo "$ANDROID_HOME/build-tools/${{ inputs.android-build-tools }}" >> "$GITHUB_PATH"
+      run: |
+        set -uo pipefail
+        echo "::notice::JAVA_HOME=${JAVA_HOME:-<unset>}"
+        java -version 2>&1 | head -2 || echo "::warning::java is not on PATH"
+
+    # continue-on-error + an explicit fallback: the GitHub images ship the SDK at
+    # /usr/local/lib/android/sdk, so a setup-android hiccup (it is a third-party
+    # action, and ubuntu-latest now moves between Ubuntu releases) must not take
+    # the whole build down. The next step installs the packages itself and is the
+    # one that hard-fails, with an annotation.
+    - name: Set up Android SDK
+      id: android-sdk
+      uses: android-actions/setup-android@v3
+      continue-on-error: true
+
+    - name: Install Android SDK packages
+      shell: bash
+      run: |
+        set -uo pipefail
+        echo "::notice::setup-android outcome=${{ steps.android-sdk.outcome }} ANDROID_HOME=${ANDROID_HOME:-<unset>}"
+
+        SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+        if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+          for candidate in /usr/local/lib/android/sdk "$HOME/android-sdk"; do
+            if [ -d "$candidate" ]; then SDK="$candidate"; break; fi
+          done
+        fi
+        if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+          echo "::error::no Android SDK found (looked at \$ANDROID_HOME, \$ANDROID_SDK_ROOT, /usr/local/lib/android/sdk)"
+          exit 1
+        fi
+        export ANDROID_HOME="$SDK"
+        export ANDROID_SDK_ROOT="$SDK"
+        echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+        echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+        echo "::notice::using Android SDK at $SDK"
+        # aapt2/apksigner/zipalign for tools/verify_apk.sh and Godot itself.
+        echo "$SDK/build-tools/${{ inputs.android-build-tools }}" >> "$GITHUB_PATH"
+
+        # `;` must never reach a shell here, so every package is quoted.
+        for pkg in "platform-tools" "build-tools;34.0.0" "platforms;android-34"; do
+          printf 'installing %s\n' "$pkg"
+        done
+        SDKMGR="$SDK/cmdline-tools/latest/bin/sdkmanager"
+        if [ ! -x "$SDKMGR" ]; then
+          SDKMGR="$(command -v sdkmanager || true)"
+        fi
+        if [ -z "$SDKMGR" ] || [ ! -x "$SDKMGR" ]; then
+          echo "::error::sdkmanager not found (looked in $SDK/cmdline-tools/latest/bin and on PATH)"
+          ls -la "$SDK" 2>/dev/null | head -20 || true
+          exit 1
+        fi
+        for pkg in "platform-tools" "build-tools;34.0.0" "platforms;android-34"; do
+          if ! yes | "$SDKMGR" --sdk_root="$SDK" --install "$pkg" > /tmp/sdkmanager.log 2>&1; then
+            echo "::error::sdkmanager failed to install '$pkg'"
+            tail -25 /tmp/sdkmanager.log | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
+        done
+        for probe in "$SDK/platform-tools/adb" "$SDK/build-tools/34.0.0/apksigner"; do
+          [ -e "$probe" ] || { echo "::error::missing required tool after install: $probe"; exit 1; }
+        done
+        echo "::notice::Android SDK ready: adb + apksigner + platform 34 present"
 
     - name: Cache Godot binary and export templates
       uses: actions/cache@v4
@@ -63,9 +118,15 @@ runs:
         BIN_NAME="Godot_v${GODOT_VERSION}-stable_linux.x86_64"
         mkdir -p "$HOME/godot-bin"
         if [ ! -x "$HOME/godot-bin/$BIN_NAME" ]; then
-          curl -fsSL --retry 3 -o /tmp/godot.zip \
-            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/${BIN_NAME}.zip"
-          unzip -q -o /tmp/godot.zip -d "$HOME/godot-bin"
+          URL="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/${BIN_NAME}.zip"
+          if ! curl -fsSL --retry 3 -o /tmp/godot.zip "$URL"; then
+            echo "::error::could not download $URL"
+            exit 1
+          fi
+          if ! unzip -q -o /tmp/godot.zip -d "$HOME/godot-bin"; then
+            echo "::error::could not unzip the Godot archive"
+            exit 1
+          fi
           chmod +x "$HOME/godot-bin/$BIN_NAME"
         fi
         ln -sf "$HOME/godot-bin/$BIN_NAME" "$HOME/godot-bin/godot"
@@ -82,10 +143,16 @@ runs:
         set -euo pipefail
         TPL_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
         if [ ! -f "$TPL_DIR/android_release.apk" ]; then
-          curl -fsSL --retry 3 -o /tmp/templates.tpz \
-            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          URL="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          if ! curl -fsSL --retry 3 -o /tmp/templates.tpz "$URL"; then
+            echo "::error::could not download $URL (it is ~1.2 GB)"
+            exit 1
+          fi
           rm -rf /tmp/tpz && mkdir -p /tmp/tpz
-          unzip -q /tmp/templates.tpz -d /tmp/tpz
+          if ! unzip -q /tmp/templates.tpz -d /tmp/tpz; then
+            echo "::error::could not unzip the export templates archive"
+            exit 1
+          fi
           # The archive unpacks to templates/ with a version.txt next to the
           # actual template files; that directory is what belongs in TPL_DIR.
           VER_FILE="$(find /tmp/tpz -name version.txt -print -quit)"
@@ -111,12 +178,15 @@ runs:
         set -euo pipefail
         mkdir -p "$HOME/.android"
         if [ ! -f "$HOME/.android/debug.keystore" ]; then
-          keytool -genkeypair -v \
-            -keystore "$HOME/.android/debug.keystore" \
-            -alias androiddebugkey \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
+          if ! keytool -genkeypair -v \
+              -keystore "$HOME/.android/debug.keystore" \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US"; then
+            echo "::error::keytool could not create the debug keystore (is JAVA_HOME set?)"
+            exit 1
+          fi
         fi
         {
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$HOME/.android/debug.keystore"
@@ -133,8 +203,10 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        : "${ANDROID_HOME:?ANDROID_HOME is not set}"
-        : "${JAVA_HOME:?JAVA_HOME is not set}"
+        if [ -z "${ANDROID_HOME:-}" ] || [ -z "${JAVA_HOME:-}" ]; then
+          echo "::error::ANDROID_HOME ('${ANDROID_HOME:-}') or JAVA_HOME ('${JAVA_HOME:-}') is unset; Godot cannot be pointed at the SDK"
+          exit 1
+        fi
         CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/godot"
         SETTINGS="$CONFIG_DIR/editor_settings-4.4.tres"
         mkdir -p "$CONFIG_DIR"

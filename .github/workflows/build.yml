@@ -35,7 +35,9 @@ env:
 jobs:
   gates:
     name: Static gates
-    runs-on: ubuntu-latest
+    # Pinned: `ubuntu-latest` starts migrating to Ubuntu 26 in Oct 2026, and a
+    # preview image is not the place to discover an Android SDK regression.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       # Full history: the Phase 1 gates assert that the v0.0.1-setup tag exists,
@@ -69,7 +71,9 @@ jobs:
   build:
     name: Bake, verify, export
     needs: gates
-    runs-on: ubuntu-latest
+    # Pinned: `ubuntu-latest` starts migrating to Ubuntu 26 in Oct 2026, and a
+    # preview image is not the place to discover an Android SDK regression.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       # Full history: the Phase 1 gates assert that the v0.0.1-setup tag exists,
@@ -242,7 +246,9 @@ jobs:
     name: Publish GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
-    runs-on: ubuntu-latest
+    # Pinned: `ubuntu-latest` starts migrating to Ubuntu 26 in Oct 2026, and a
+    # preview image is not the place to discover an Android SDK regression.
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
