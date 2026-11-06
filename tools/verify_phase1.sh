@@ -207,6 +207,11 @@ for f in README.md CONTRIBUTING.md docs/UNISOC_BUDGET.md docs/PHASE1_ACCEPTANCE.
 done
 if git rev-parse -q --verify 'refs/tags/v0.0.1-setup' >/dev/null; then
 	pass "tag v0.0.1-setup exists locally"
+elif [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+	# actions/checkout defaults to fetch-depth 1, which fetches no tags at all.
+	# The workflow asks for the full history, so this only fires for ad-hoc
+	# shallow clones.
+	skip "shallow clone — tags were never fetched; run 'git fetch --tags'"
 else
 	fail "tag v0.0.1-setup missing"
 fi

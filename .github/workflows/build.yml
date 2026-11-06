@@ -38,14 +38,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # Full history: the Phase 1 gates assert that the v0.0.1-setup tag exists,
+      # and actions/checkout's default depth-1 fetch brings no tags.
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       # A toolcache Python, not the distro one: Ubuntu 24.04 marks its
       # /usr/bin/python3 as externally managed, so `pip install --user` would
       # refuse without --break-system-packages.
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -68,8 +72,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      # Full history: the Phase 1 gates assert that the v0.0.1-setup tag exists,
+      # and actions/checkout's default depth-1 fetch brings no tags.
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Godot + Android SDK
         uses: ./.github/actions/setup-godot-android
@@ -80,7 +88,7 @@ jobs:
       # /usr/bin/python3 as externally managed, so `pip install --user` would
       # refuse without --break-system-packages.
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
