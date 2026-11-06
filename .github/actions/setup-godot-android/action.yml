@@ -48,54 +48,89 @@ runs:
       uses: android-actions/setup-android@v3
       continue-on-error: true
 
-    - name: Install Android SDK packages
+    # Godot needs exactly two things from the SDK: platform-tools/adb and any
+    # build-tools directory >= 28 that contains apksigner (it scans them itself,
+    # preferring the one matching the target SDK). The runner image ships both,
+    # so the first branch is the normal path — and `sdkmanager` is only a
+    # fallback, into a directory this job is guaranteed to own.
+    #
+    # Depending on `sdkmanager` here was the first failure: both
+    # android-actions/setup-android and an explicit `sdkmanager --install` died
+    # against the image's /usr/local/lib/android/sdk before writing anything.
+    - name: Locate a usable Android SDK
       shell: bash
       run: |
         set -uo pipefail
-        echo "::notice::setup-android outcome=${{ steps.android-sdk.outcome }} ANDROID_HOME=${ANDROID_HOME:-<unset>}"
+
+        pick_build_tools() { # $1 = sdk root; echoes a build-tools dir or nothing
+          local root="$1" preferred="${{ inputs.android-build-tools }}" dir major
+          if [ -x "$root/build-tools/$preferred/apksigner" ]; then
+            echo "$root/build-tools/$preferred"
+            return 0
+          fi
+          for dir in $(ls -1 "$root/build-tools" 2>/dev/null | sort -Vr); do
+            major="${dir%%.*}"
+            case "$major" in ''|*[!0-9]*) continue;; esac
+            if [ "$major" -ge 28 ] && [ -x "$root/build-tools/$dir/apksigner" ]; then
+              echo "$root/build-tools/$dir"
+              return 0
+            fi
+          done
+          return 1
+        }
 
         SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
         if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
-          for candidate in /usr/local/lib/android/sdk "$HOME/android-sdk"; do
-            if [ -d "$candidate" ]; then SDK="$candidate"; break; fi
-          done
+          SDK=/usr/local/lib/android/sdk
         fi
-        if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
-          echo "::error::no Android SDK found (looked at \$ANDROID_HOME, \$ANDROID_SDK_ROOT, /usr/local/lib/android/sdk)"
-          exit 1
-        fi
-        export ANDROID_HOME="$SDK"
-        export ANDROID_SDK_ROOT="$SDK"
-        echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
-        echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
-        echo "::notice::using Android SDK at $SDK"
-        # aapt2/apksigner/zipalign for tools/verify_apk.sh and Godot itself.
-        echo "$SDK/build-tools/${{ inputs.android-build-tools }}" >> "$GITHUB_PATH"
+        echo "::notice::setup-android outcome=${{ steps.android-sdk.outcome }}; candidate SDK=$SDK"
 
-        # `;` must never reach a shell here, so every package is quoted.
-        for pkg in "platform-tools" "build-tools;34.0.0" "platforms;android-34"; do
-          printf 'installing %s\n' "$pkg"
-        done
-        SDKMGR="$SDK/cmdline-tools/latest/bin/sdkmanager"
-        if [ ! -x "$SDKMGR" ]; then
-          SDKMGR="$(command -v sdkmanager || true)"
+        BT=""
+        if [ -d "$SDK" ]; then
+          BT="$(pick_build_tools "$SDK")" || BT=""
         fi
-        if [ -z "$SDKMGR" ] || [ ! -x "$SDKMGR" ]; then
-          echo "::error::sdkmanager not found (looked in $SDK/cmdline-tools/latest/bin and on PATH)"
+
+        if [ -x "$SDK/platform-tools/adb" ] && [ -n "$BT" ]; then
+          echo "::notice::using the preinstalled SDK at $SDK (build-tools $(basename "$BT"))"
+        else
+          echo "::notice::preinstalled SDK incomplete (adb=$([ -x "$SDK/platform-tools/adb" ] && echo yes || echo no), build-tools=${BT:-none}); installing into $HOME/android-sdk"
+          SDK="$HOME/android-sdk"
+          mkdir -p "$SDK"
+          SDKMGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKMGR" ] || SDKMGR="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMGR" ]; then
+            echo "::error::no usable SDK and no sdkmanager to build one"
+            exit 1
+          fi
+          for pkg in "platform-tools" "build-tools;${{ inputs.android-build-tools }}" "platforms;android-34"; do
+            if ! yes | "$SDKMGR" --sdk_root="$SDK" --install "$pkg" > /tmp/sdkmanager.log 2>&1; then
+              echo "::error::sdkmanager could not install '$pkg' into $SDK"
+              tail -20 /tmp/sdkmanager.log | while IFS= read -r line; do echo "::error::$line"; done
+              exit 1
+            fi
+          done
+          BT="$(pick_build_tools "$SDK")" || BT=""
+        fi
+
+        if [ ! -x "$SDK/platform-tools/adb" ]; then
+          echo "::error::platform-tools/adb is missing under $SDK"
           ls -la "$SDK" 2>/dev/null | head -20 || true
           exit 1
         fi
-        for pkg in "platform-tools" "build-tools;34.0.0" "platforms;android-34"; do
-          if ! yes | "$SDKMGR" --sdk_root="$SDK" --install "$pkg" > /tmp/sdkmanager.log 2>&1; then
-            echo "::error::sdkmanager failed to install '$pkg'"
-            tail -25 /tmp/sdkmanager.log | while IFS= read -r line; do echo "::error::$line"; done
-            exit 1
-          fi
-        done
-        for probe in "$SDK/platform-tools/adb" "$SDK/build-tools/34.0.0/apksigner"; do
-          [ -e "$probe" ] || { echo "::error::missing required tool after install: $probe"; exit 1; }
-        done
-        echo "::notice::Android SDK ready: adb + apksigner + platform 34 present"
+        if [ -z "$BT" ]; then
+          echo "::error::no build-tools directory >= 28 with apksigner under $SDK/build-tools"
+          ls -la "$SDK/build-tools" 2>/dev/null | head -20 || true
+          exit 1
+        fi
+
+        {
+          echo "ANDROID_HOME=$SDK"
+          echo "ANDROID_SDK_ROOT=$SDK"
+          echo "ANDROID_BUILD_TOOLS=$BT"
+        } >> "$GITHUB_ENV"
+        # aapt2/apksigner/zipalign for tools/verify_apk.sh and for Godot itself.
+        echo "$BT" >> "$GITHUB_PATH"
+        echo "$SDK/platform-tools" >> "$GITHUB_PATH"
 
     - name: Cache Godot binary and export templates
       uses: actions/cache@v4
@@ -229,12 +264,19 @@ runs:
     - name: Check the SDK layout Godot validates
       shell: bash
       run: |
-        set -euo pipefail
+        set -uo pipefail
         # has_valid_export_configuration() hard-requires each of these.
+        missing=0
         for probe in \
           "$ANDROID_HOME/platform-tools/adb" \
-          "$ANDROID_HOME/build-tools/${{ inputs.android-build-tools }}/apksigner" \
+          "$ANDROID_BUILD_TOOLS/apksigner" \
           "$JAVA_HOME/bin/java"; do
-          [ -e "$probe" ] || { echo "::error::missing required tool: $probe"; exit 1; }
-          echo "ok  $probe"
+          if [ -e "$probe" ]; then
+            echo "ok  $probe"
+          else
+            echo "::error::missing required tool: $probe"
+            missing=$((missing + 1))
+          fi
         done
+        [ "$missing" -eq 0 ] || exit 1
+        echo "::notice::Godot SDK preconditions satisfied"
