@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3]
+
+; Phase 3 self-check. Not part of the game: it runs the data + physics gates that
+; can be verified without a phone.
+;
+;   godot --headless --path . scenes/tests/phase3_selfcheck.tscn
+;   godot --headless --path . scenes/tests/phase3_selfcheck.tscn -- --require-bake
+
+[ext_resource type="Script" path="res://scripts/tests/phase3_selfcheck.gd" id="1_check"]
+
+[node name="Phase3SelfCheck" type="Node"]
+script = ExtResource("1_check")
