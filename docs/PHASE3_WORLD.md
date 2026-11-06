@@ -270,6 +270,12 @@ step is Git LFS for `*.res` (`.gitattributes` currently LFS-tracks only
   draw calls. The five pads are also why the map is readable from the air during
   a streaming test.
 
+The specification allowed "a simple 1.5K texture **or** vertex colour" for the
+terrain. The Unisoc budget caps textures at 512² (a 1536² texture is 9× the
+area of a 512² and roughly 1.5 MB of VRAM before compression), so vertex colour
+wins: the terrain is completely texture-free, and the only texture in the whole
+world is the 256² water normal map.
+
 ---
 
 ## 9. Changing the map

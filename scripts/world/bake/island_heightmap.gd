@@ -168,13 +168,6 @@ func water_surface_at(x: float, z: float) -> float:
 	return surface
 
 
-func lake_bed_below_surface(x: float, z: float) -> float:
-	## Negative when the point is under the lake surface (used by validation).
-	if config.lake == null:
-		return 999.0
-	return sample_height(x, z) - config.lake.surface_height
-
-
 # --- Terrain palette ----------------------------------------------------------
 
 func color_at(x: float, z: float, height: float, normal: Vector3) -> Color:
@@ -329,13 +322,17 @@ func base_height(x: float, z: float) -> float:
 	var hills: float = _hills.get_noise_2d(x, z)
 	var ridges: float = absf(_ridges.get_noise_2d(x, z))
 	var detail: float = _detail.get_noise_2d(x, z)
+	var continent: float = _continent.get_noise_2d(x, z)
 	var hill_boost: float = _graveyard_weight(x, z)
 
+	# `continent` is the slow 900 m tilt: it stops the island from looking like a
+	# hill farm, tipping one side up and letting the other slide to the sea.
 	var land: float = sea + 12.0 \
 			+ hills * 22.0 \
 			+ ridges * (10.0 + 44.0 * hill_boost) \
 			+ hill_boost * 20.0 \
-			+ detail * 2.4
+			+ detail * 2.4 \
+			+ continent * 7.0
 	var seabed: float = sea - 26.0 - 12.0 * (1.0 - mask) + hills * 5.0
 	var height: float = lerpf(seabed, land, mask)
 
@@ -395,6 +392,7 @@ func _carve_river(x: float, z: float, height: float) -> float:
 
 
 func _carve_channels(x: float, z: float, height: float) -> float:
+	## Accumulates over every channel: overlapping moats must not cancel out.
 	for channel in config.channels:
 		if channel == null or channel.points.size() < 3:
 			continue
@@ -403,11 +401,11 @@ func _carve_channels(x: float, z: float, height: float) -> float:
 		var bed: float = config.sea_level - channel.depth_m
 		if distance <= channel.half_width_m:
 			var k: float = distance / maxf(channel.half_width_m, 0.001)
-			return minf(height, bed + channel.depth_m * k * k - 0.4)
-		if distance <= channel.half_width_m + channel.bank_width_m:
+			height = minf(height, bed + channel.depth_m * k * k - 0.4)
+		elif distance <= channel.half_width_m + channel.bank_width_m:
 			var weight: float = 1.0 - IslandShapeMath.smooth01(
 					(distance - channel.half_width_m) / maxf(channel.bank_width_m, 0.001))
-			return minf(height, lerpf(height, config.sea_level - 0.6, weight * 0.9))
+			height = minf(height, lerpf(height, config.sea_level - 0.6, weight * 0.9))
 	return height
 
 

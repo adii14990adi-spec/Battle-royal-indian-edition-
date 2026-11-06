@@ -28,13 +28,15 @@ skip() { SKIPS=$((SKIPS + 1)); printf '  \033[33mSKIP\033[0m  %s\n' "$1"; }
 head2() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 # grep the tracked source tree, ignoring docs (which may quote forbidden names)
-code_hits() { # $1 = regex, $2 = extra grep args (optional)
-	git grep -nE "$1" -- '*.gd' '*.tscn' '*.tres' '*.gdshader' 2>/dev/null
+# and comment lines (a comment mentioning FastNoiseLite is not a runtime call).
+code_hits() { # $1 = regex
+	git grep -nE "$1" -- '*.gd' '*.tscn' '*.tres' '*.gdshader' 2>/dev/null \
+		| grep -vE '^[^:]+:[0-9]+:[[:space:]]*#'
 }
 
 # --- Gate 1: terrain collision is a height field, never a trimesh -------------
 head2 'Gate 1 — terrain collision uses HeightMapShape3D, never ConcavePolygonShape3D'
-trimesh_hits=$(code_hits 'ConcavePolygonShape3D' | grep -v '^scripts/tests/' | grep -v ':[0-9]*:##' | grep -v ':[0-9]*:#')
+trimesh_hits=$(code_hits 'ConcavePolygonShape3D' | grep -v '^scripts/tests/')
 if [ -z "$trimesh_hits" ]; then
 	pass "no ConcavePolygonShape3D in terrain code (comments and the self-check aside)"
 else

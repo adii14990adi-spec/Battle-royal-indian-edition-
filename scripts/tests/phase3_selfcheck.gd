@@ -110,8 +110,15 @@ func _check_grid_math() -> void:
 	var rect: Rect2 = _config.chunk_rect(centre_chunk)
 	_expect(is_equal_approx(rect.size.x, 500.0) and is_equal_approx(rect.size.y, 500.0),
 			"chunk rect is 500 x 500 m", str(rect.size))
-	_expect(is_equal_approx(rect.position.x, -250.0) and is_equal_approx(rect.position.y, -250.0),
-			"map centre chunk spans -250 .. 250 m", str(rect.position))
+	# 8 chunks per side means the world origin sits on a chunk *corner*, not in a
+	# chunk centre. Asserting it stops someone "fixing" the grid to 9x9 later and
+	# silently shifting every baked chunk by 250 m.
+	_expect(is_equal_approx(rect.position.x, 0.0) and is_equal_approx(rect.position.y, 0.0),
+			"chunk (4, 4) spans 0 .. 500 m (the origin is a chunk corner)",
+			str(rect.position))
+	_expect(_config.chunk_center(Vector2i(0, 0)).is_equal_approx(
+			Vector3(-1750.0, 0.0, -1750.0)), "chunk (0, 0) is centred at -1750, -1750",
+			str(_config.chunk_center(Vector2i(0, 0))))
 	_expect(_config.world_to_chunk(-1999.0, -1999.0) == Vector2i(0, 0),
 			"map corner maps to chunk (0, 0)", str(_config.world_to_chunk(-1999.0, -1999.0)))
 	_expect(_config.world_to_chunk(1999.0, 1999.0) == Vector2i(7, 7),

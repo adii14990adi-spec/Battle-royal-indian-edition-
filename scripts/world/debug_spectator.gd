@@ -162,8 +162,10 @@ func _advance_tour(delta: float) -> void:
 	var radians: float = deg_to_rad(_tour_angle_degrees)
 	global_position = Vector3(cos(radians) * TOUR_RADIUS_M, TOUR_ALTITUDE_M,
 			sin(radians) * TOUR_RADIUS_M)
-	# Look along the tangent, tilted down towards the island.
-	_yaw_degrees = -_tour_angle_degrees - 90.0
+	# Look along the tangent (not across the circle, or the tour would be staring
+	# at the ground it has already passed) and tilt down towards the island.
+	# With Godot's -Z forward, a tangent of (-sin, cos) at angle θ needs yaw = 180° - θ.
+	_yaw_degrees = 180.0 - _tour_angle_degrees
 	_pitch_degrees = -14.0
 	_apply_rotation()
 

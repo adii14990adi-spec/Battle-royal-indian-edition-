@@ -94,66 +94,74 @@ func _write_chunks(terrain_material: Material, road_material: Material,
 		road_meshes: Dictionary) -> int:
 	var side: int = config.chunks_per_side()
 	var written: int = 0
-	var mesh_bytes: int = 0
-	var collision_bytes: int = 0
-	var scene_bytes: int = 0
-	var vertices: int = 0
-	var triangles: int = 0
-
 	for cz in range(side):
 		for cx in range(side):
-			var chunk := Vector2i(cx, cz)
-			var mesh: ArrayMesh = TerrainMeshBuilder.build_chunk_mesh(config, heightmap, chunk)
-			if not TerrainMeshBuilder.verify_winding(mesh):
-				push_error("[bake] chunk %s has flipped winding — terrain would be invisible"
-						% str(chunk))
+			var stats: Dictionary = _write_chunk(Vector2i(cx, cz), terrain_material,
+					road_material, road_meshes)
+			if stats.is_empty():
 				return 0
-
-			var mesh_path: String = "%s/chunk_%d_%d_mesh.res" % [MESH_DIR, cx, cz]
-			var shape_path: String = "%s/chunk_%d_%d_collision.res" % [MESH_DIR, cx, cz]
-			var scene_path: String = "%s/chunk_%d_%d.tscn" % [TERRAIN_SCENE_DIR, cx, cz]
-			var road_path: String = ""
-
-			if ResourceSaver.save(mesh, mesh_path) != OK:
-				push_error("[bake] could not write %s" % mesh_path)
-				return 0
-			var shape: HeightMapShape3D = TerrainMeshBuilder.build_chunk_collision(
-					config, heightmap, chunk)
-			if ResourceSaver.save(shape, shape_path) != OK:
-				push_error("[bake] could not write %s" % shape_path)
-				return 0
-
-			if road_meshes.has(chunk):
-				road_path = "%s/chunk_%d_%d_road.res" % [MESH_DIR, cx, cz]
-				if ResourceSaver.save(road_meshes[chunk], road_path) != OK:
-					push_error("[bake] could not write %s" % road_path)
-					return 0
-
-			var scene: PackedScene = _build_chunk_scene(chunk, mesh_path, shape_path, road_path,
-					terrain_material, road_material)
-			if ResourceSaver.save(scene, scene_path) != OK:
-				push_error("[bake] could not write %s" % scene_path)
-				return 0
-
 			written += 1
-			mesh_bytes += _file_size(mesh_path)
-			collision_bytes += _file_size(shape_path)
-			scene_bytes += _file_size(scene_path)
-			if road_path != "":
-				scene_bytes += _file_size(road_path)
-			vertices += mesh.surface_get_array_len(0)
-			triangles += mesh.surface_get_array_index_len(0) / 3
-
+			summary.chunk_scene_bytes += stats["scene_bytes"]
+			summary.mesh_bytes += stats["mesh_bytes"]
+			summary.collision_bytes += stats["collision_bytes"]
+			summary.terrain_vertices_total += stats["vertices"]
+			summary.terrain_triangles_total += stats["triangles"]
 			if written % PROGRESS_EVERY == 0 or written == config.chunk_count():
 				print("[bake]   %d/%d chunks (%.1f MB meshes)"
-						% [written, config.chunk_count(), float(mesh_bytes) / 1048576.0])
-
-	summary.chunk_scene_bytes = scene_bytes
-	summary.mesh_bytes = mesh_bytes
-	summary.collision_bytes = collision_bytes
-	summary.terrain_vertices_total = vertices
-	summary.terrain_triangles_total = triangles
+						% [written, config.chunk_count(),
+						float(summary.mesh_bytes) / 1048576.0])
 	return written
+
+
+func _write_chunk(chunk: Vector2i, terrain_material: Material, road_material: Material,
+		road_meshes: Dictionary) -> Dictionary:
+	## Writes one chunk's mesh, collision shape, optional road ribbon and scene.
+	## Returns per-chunk stats, or an empty Dictionary if anything failed — the
+	## caller turns that into a failed bake instead of a half-written map.
+	var mesh_path: String = "%s/chunk_%d_%d_mesh.res" % [MESH_DIR, chunk.x, chunk.y]
+	var shape_path: String = "%s/chunk_%d_%d_collision.res" % [MESH_DIR, chunk.x, chunk.y]
+	var road_path: String = "%s/chunk_%d_%d_road.res" % [MESH_DIR, chunk.x, chunk.y]
+	var scene_path: String = "%s/chunk_%d_%d.tscn" % [TERRAIN_SCENE_DIR, chunk.x, chunk.y]
+	var has_road: bool = road_meshes.has(chunk)
+	if not has_road:
+		road_path = ""
+
+	var mesh: ArrayMesh = TerrainMeshBuilder.build_chunk_mesh(config, heightmap, chunk)
+	var failure: String = ""
+	if not TerrainMeshBuilder.verify_winding(mesh):
+		failure = "flipped winding — terrain would be invisible with cull_back"
+	elif ResourceSaver.save(mesh, mesh_path) != OK:
+		failure = "could not write %s" % mesh_path
+	elif ResourceSaver.save(TerrainMeshBuilder.build_chunk_collision(config, heightmap, chunk),
+			shape_path) != OK:
+		failure = "could not write %s" % shape_path
+	elif has_road and ResourceSaver.save(road_meshes[chunk], road_path) != OK:
+		failure = "could not write %s" % road_path
+	else:
+		var scene: PackedScene = _build_chunk_scene(chunk, mesh_path, shape_path, road_path,
+				terrain_material, road_material)
+		var expected_nodes: int = 5 if has_road else 4
+		var packed_nodes: int = scene.get_state().get_node_count()
+		if packed_nodes != expected_nodes:
+			# Happens if `owner` was not set before pack(); see _build_chunk_scene().
+			failure = "packed %d nodes, expected %d" % [packed_nodes, expected_nodes]
+		elif ResourceSaver.save(scene, scene_path) != OK:
+			failure = "could not write %s" % scene_path
+
+	if not failure.is_empty():
+		push_error("[bake] chunk %s: %s" % [str(chunk), failure])
+		return {}
+
+	var scene_bytes: int = _file_size(scene_path)
+	if has_road:
+		scene_bytes += _file_size(road_path)
+	return {
+		"scene_bytes": scene_bytes,
+		"mesh_bytes": _file_size(mesh_path),
+		"collision_bytes": _file_size(shape_path),
+		"vertices": mesh.surface_get_array_len(0),
+		"triangles": mesh.surface_get_array_index_len(0) / 3,
+	}
 
 
 func _build_chunk_scene(chunk: Vector2i, mesh_path: String, shape_path: String,
@@ -194,10 +202,23 @@ func _build_chunk_scene(chunk: Vector2i, mesh_path: String, shape_path: String,
 	body.add_child(shape_node)
 	root.add_child(body)
 
+	# PackedScene.pack() silently *discards* any node whose `owner` is not the
+	# scene root ("discard nodes that do not belong to be processed",
+	# packed_scene.cpp). Forget this and you bake 64 scenes that contain nothing
+	# but an empty Node3D — which renders as a world with no ground at all, and
+	# only on the device, because nothing in the editor looks at these files.
+	_set_owner_recursive(root, root)
+
 	var scene := PackedScene.new()
 	scene.pack(root)
 	root.free()
 	return scene
+
+
+static func _set_owner_recursive(node: Node, scene_root: Node) -> void:
+	for child in node.get_children():
+		child.owner = scene_root
+		_set_owner_recursive(child, scene_root)
 
 
 # --- River, preview, summary --------------------------------------------------
