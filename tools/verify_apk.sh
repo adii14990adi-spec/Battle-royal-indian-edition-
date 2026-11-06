@@ -151,33 +151,49 @@ else
         echo "::notice::$(basename "$APK"): $entry_count entries, $asset_count under assets/"
     fi
 
-    payload_problems=0
-    for required in \
-        "assets/scenes/world/siran_island.tscn" \
-        "assets/assets/shaders/water_surface.gdshader"; do
-        if printf '%s\n' "$ENTRIES" | grep -qx "$required"; then
-            continue
-        fi
-        echo "::error::APK is missing $required — it was not packed" >&2
-        payload_problems=$((payload_problems + 1))
-    done
-
-    # Scripts are re-encoded by script_export_mode, so accept either spelling:
-    # a node whose script is absent still renders and still looks pressable.
-    if ! printf '%s\n' "$ENTRIES" | grep -qE '^assets/scripts/ui/boot_world_link\.gdc?$'; then
-        echo "::error::APK is missing assets/scripts/ui/boot_world_link.gd — the boot button would do nothing" >&2
-        payload_problems=$((payload_problems + 1))
+    # Publish a digest every run. Artifacts cannot be downloaded from the build
+    # sandbox, so annotations are the only way to see what actually shipped.
+    digest=$(printf '%s\n' "$ENTRIES" | grep '^assets/' \
+        | sed -n 's/.*\.\([A-Za-z0-9]\{1,10\}\)$/\1/p' | sort | uniq -c | sort -rn | head -8 \
+        | awk '{ printf "%s=%s ", $2, $1 }')
+    echo "assets/ extensions: ${digest:-<none>}"
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+        echo "::notice::assets/ extensions: ${digest:-<none>}"
+        printf '%s\n' "$ENTRIES" | grep -E '^assets/(scenes|resources)/world/' | head -6 \
+            | while IFS= read -r sample; do echo "::notice::packed: $sample"; done
     fi
 
-    # grep -c prints 0 and exits 1 when nothing matches, hence `|| true`.
+    # Text resources can be converted to binary at export time
+    # (editor/export/convert_text_resources_to_binary: .tscn -> .scn), and the
+    # pack's remaps keep res://…tscn loadable, so both spellings are legitimate.
+    # Scripts likewise depend on script_export_mode (.gd or .gdc).
+    world_scene=$(printf '%s\n' "$ENTRIES" \
+        | grep -cE '^assets/scenes/world/siran_island\.(tscn|scn)$' || true)
     chunk_scenes=$(printf '%s\n' "$ENTRIES" \
-        | grep -cE '^assets/scenes/world/terrain/chunk_[0-9]+_[0-9]+\.tscn$' || true)
+        | grep -cE '^assets/scenes/world/terrain/chunk_[0-9]+_[0-9]+\.(tscn|scn)$' || true)
     chunk_collisions=$(printf '%s\n' "$ENTRIES" \
-        | grep -cE '^assets/resources/world/terrain/chunk_[0-9]+_[0-9]+_collision\.res$' || true)
+        | grep -cE '^assets/resources/world/terrain/chunk_[0-9]+_[0-9]+_collision\.(res|tres)$' || true)
+    boot_script=$(printf '%s\n' "$ENTRIES" \
+        | grep -cE '^assets/scripts/ui/boot_world_link\.(gd|gdc)$' || true)
+    water_shader=$(printf '%s\n' "$ENTRIES" \
+        | grep -cE '^assets/assets/shaders/water_surface\.(gdshader|res)$' || true)
 
+    payload_problems=0
+    if [[ "$world_scene" -lt 1 ]]; then
+        echo "::error::the world scene is not in the APK (looked for assets/scenes/world/siran_island.tscn|.scn)" >&2
+        payload_problems=$((payload_problems + 1))
+    fi
+    if [[ "$boot_script" -lt 1 ]]; then
+        echo "::error::the boot button script is not in the APK — the button would look fine and do nothing" >&2
+        payload_problems=$((payload_problems + 1))
+    fi
+    if [[ "$water_shader" -lt 1 ]]; then
+        echo "::error::assets/shaders/water_surface.gdshader is not in the APK" >&2
+        payload_problems=$((payload_problems + 1))
+    fi
     if [[ "$chunk_scenes" -lt 64 ]]; then
         echo "::error::$chunk_scenes baked chunk scenes in the APK, expected 64 — the bake is not in the pack" >&2
-        echo "::error::bake BEFORE exporting, then re-import so the editor file list includes the new files; export_presets.cfg's include_filter must list *.tscn and *.res" >&2
+        echo "::error::bake BEFORE exporting, then re-import so the editor file list includes the new files; export_presets.cfg include_filter must list *.tscn and *.res" >&2
         payload_problems=$((payload_problems + 1))
     fi
     if [[ "$chunk_collisions" -lt 64 ]]; then
@@ -188,11 +204,10 @@ else
     if [[ "$payload_problems" -ne 0 ]]; then
         echo "APK entry sample (first 12 lines):" >&2
         printf '%s\n' "$ENTRIES" | head -12 >&2
-        echo "assets/ entries (first 12):" >&2
-        printf '%s\n' "$ENTRIES" | grep '^assets/' | head -12 >&2
         exit 1
     fi
-    echo "Payload verified: $chunk_scenes chunk scenes, $chunk_collisions collision resources, world scene and button script present"
+    echo "Payload verified: $chunk_scenes chunk scenes, $chunk_collisions collision resources," \
+        "world scene, water shader and button script present"
     if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
         echo "::notice::$(basename "$APK") payload: $chunk_scenes/64 chunk scenes, $chunk_collisions/64 collision resources"
     fi
