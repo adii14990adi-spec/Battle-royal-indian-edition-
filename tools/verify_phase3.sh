@@ -318,10 +318,15 @@ else
 	fail 'project.godot must set boot_splash/show_image=false'
 fi
 if grep -q 'func _show_error' scripts/ui/boot_world_link.gd &&
-	grep -q 'FileAccess.file_exists(WORLD_SCENE)' scripts/ui/boot_world_link.gd; then
-	pass 'boot button shows the failure on screen instead of returning silently'
+	grep -q 'ResourceLoader.exists(path)' scripts/ui/boot_world_link.gd; then
+	pass 'boot button checks with ResourceLoader.exists (follows .remap) and shows failures'
 else
-	fail 'scripts/ui/boot_world_link.gd must check the scene exists and put the error on screen'
+	fail 'boot button must check existence via ResourceLoader.exists() and put failures on screen — FileAccess.file_exists() is remap-blind inside an APK'
+fi
+if grep -q 'func _unhandled_input' scripts/ui/boot_screen.gd; then
+	pass 'boot screen takes a tap the UI did not consume (no dead end)'
+else
+	fail 'scripts/ui/boot_screen.gd must keep the unhandled-tap fallback'
 fi
 if grep -qE '^[[:space:]]*#' project.godot export_presets.cfg export_presets/*.cfg 2>/dev/null; then
 	fail "'#' is not a comment in Godot config files — use ';', or ConfigFile.load() fails and the export dies with one parse-error line"

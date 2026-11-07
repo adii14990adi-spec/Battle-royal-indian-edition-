@@ -14,6 +14,15 @@ extends Button
 ##   broken:  world scene packed: false | baked chunks: 0/64   (amber)
 ##
 ## and every failure path puts plain text on screen instead of a silent `return`.
+##
+## Those checks must go through `ResourceLoader.exists()`, never plain
+## `FileAccess.file_exists()`. At export time Godot converts text resources to
+## binary and writes `<path>.remap` beside them (`_export_customize` in
+## editor_export_platform.cpp), so inside an APK `chunk_0_0.tscn` does not exist
+## as a file at all — it is `chunk_0_0.tscn.remap` plus a `.scn` under
+## `.godot/exported/`. `ResourceLoader.exists()` follows that remap
+## (`ResourceLoader::_path_remap`); `FileAccess` does not, which is precisely how
+## a fully packed build can report itself as unbaked on a phone.
 
 const WORLD_SCENE: String = "res://scenes/world/siran_island.tscn"
 const TERRAIN_DIR: String = "res://scenes/world/terrain/"
@@ -67,7 +76,7 @@ func _make_label(font_size: int, colour: Color) -> Label:
 
 
 func _refresh_status() -> void:
-	var world_packed: bool = FileAccess.file_exists(WORLD_SCENE)
+	var world_packed: bool = resource_in_build(WORLD_SCENE)
 	var chunks: int = count_baked_chunks()
 	if world_packed and chunks == TOTAL_CHUNKS:
 		text = "ENTER SIRAN ISLAND — PHASE 3 GREYBOX"
@@ -84,14 +93,21 @@ func _refresh_status() -> void:
 	print("[boot] %s" % _status.text)
 
 
+func resource_in_build(path: String) -> bool:
+	## Raw file first (editor, or a build with conversion disabled), then the
+	## loader, which is the only check that follows `<path>.remap`.
+	if FileAccess.file_exists(path):
+		return true
+	return ResourceLoader.exists(path)
+
+
 func count_baked_chunks() -> int:
-	## Probed by path instead of listing the directory: `FileAccess.file_exists()`
-	## behaves the same in the editor and inside an APK, where every exported file
-	## is an individual `assets/` entry.
+	## Probed by path instead of listing the directory, and through
+	## resource_in_build() so a packed-and-converted chunk still counts.
 	var found: int = 0
 	for cz in range(CHUNKS_PER_SIDE):
 		for cx in range(CHUNKS_PER_SIDE):
-			if FileAccess.file_exists("%schunk_%d_%d.tscn" % [TERRAIN_DIR, cx, cz]):
+			if resource_in_build("%schunk_%d_%d.tscn" % [TERRAIN_DIR, cx, cz]):
 				found += 1
 	return found
 
@@ -100,7 +116,7 @@ func _on_pressed() -> void:
 	# Both checks exist because the export, not the code, is what usually breaks:
 	# a file created after the editor's last import can be left out of the pack
 	# and every loader below then fails with nothing visible on screen.
-	if not FileAccess.file_exists(WORLD_SCENE):
+	if not resource_in_build(WORLD_SCENE):
 		_show_error("Missing %s — the world scene is not in this build." % WORLD_SCENE)
 		return
 	var chunks: int = count_baked_chunks()

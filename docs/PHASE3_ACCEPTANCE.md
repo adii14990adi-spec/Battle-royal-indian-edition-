@@ -31,26 +31,39 @@ visual result is judged from the preview image and the device run.
 ### Packaging regression (2026-11-06)
 
 The first APK built from `main` installed, drew the boot screen, and did nothing
-when the tester tapped **ENTER SIRAN ISLAND**. The bake itself was fine — the
-files were simply not in the pack. `export_filter="all_resources"` derives its
-list from the editor's scanned filesystem, and the 64 chunk scenes are written
-by `tools/bake_siran_island.sh` *after* that scan.
+when the tester tapped **ENTER SIRAN ISLAND**. The pack turned out to be
+complete — 112,403,727 bytes before the fixes, 112,415,464 after, and the baked
+island alone is ≈ 11 MB — so nothing was missing from the APK.
 
-Fixed on three layers, each independently sufficient:
+The real defect is a self-reporting one. Godot converts text resources to binary
+at export time and writes `<path>.remap` next to the original path
+(`EditorExportPlatform::_export_customize`, then `save_file(from + ".remap")`).
+`ResourceLoader::exists()` follows that remap through `_path_remap`;
+`FileAccess.file_exists()` does not. The button's "has the island been baked?"
+test used `FileAccess`, so a fully packed build called itself unbaked, and
+`_on_pressed()` reported failures only through `push_error()` — invisible on a
+phone.
 
-1. `export_presets.cfg` — `include_filter="*.tscn,*.res,*.tres,*.gd,scenes/world/*,resources/world/*"`.
-   Godot applies it by walking the directory tree from `res://`
-   (`EditorExportPlatform::_edit_files_with_filter` → `DirAccess`), so what is
-   on disk is what ships.
-2. `.github/workflows/build.yml` — a `--headless --import` step after the bake,
-   so the editor's file list contains the new files before the export runs.
-3. `scripts/ui/boot_world_link.gd` — the button reports
-   `world scene packed: … | baked chunks: N/64` on the boot screen and prints
-   any `change_scene_to_file` failure as text, instead of a silent `return`.
+Fixed on four layers:
 
-Proven by `tools/verify_apk.sh` gate E, which lists the APK and requires
-`assets/scenes/world/terrain/chunk_*.tscn` ×64 plus the matching
-`*_collision.res` ×64 (`verify_phase3.sh` gate 11 pins the preset settings).
+1. `scripts/ui/boot_world_link.gd` — `resource_in_build()` = `FileAccess.file_exists() or ResourceLoader.exists()`,
+   used for the world scene and all 64 chunk probes; the boot screen prints
+   `Ready — world scene packed, baked terrain 64/64` or the exact problem, and a
+   failed `change_scene_to_file` becomes on-screen text.
+2. `scripts/ui/boot_screen.gd` — a tap no control consumed enters the world
+   (`_unhandled_input`), and if the button's script ever fails to load it gets a
+   fallback handler.
+3. `export_presets.cfg` — `include_filter="*.tscn,*.res,*.tres,*.gd,scenes/world/*,resources/world/*"`
+   plus a post-bake re-import in CI. Defensive: the pack was fine this time, but
+   `include_filter` walks the disk (`_edit_files_with_filter` → `DirAccess`) and
+   so cannot be fooled by a stale editor scan.
+4. `project.godot` — no boot splash image, so the boot screen appears at once.
+
+Gates: `verify_apk.sh` gate E lists the APK and requires 64 chunk scenes and 64
+collision resources (accepting either the file or its `.remap`, and either
+`.tscn`/`.scn`); `verify_phase3.sh` gate 11 pins the remap-aware check, the tap
+fallback and the packaging settings, and gate 12 parses both config files with
+Godot itself.
 
 #### The first attempt died in the export step
 

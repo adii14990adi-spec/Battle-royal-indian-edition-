@@ -119,21 +119,36 @@ bake.
 
 ### "Nothing happens when I tap ENTER SIRAN ISLAND"
 
-That was a real shipped defect: the APK installed, the boot screen animated, and
-the button did nothing. `export_filter="all_resources"` builds its file list
-from the editor's **scanned** filesystem, and the bake runs after that scan, so
-the baked world could be left out of the pack while every static gate stayed
-green. Three things now stop it from recurring:
+That was a real shipped defect. What the measurements actually say:
+
+| Measurement | Value |
+| --- | --- |
+| APK built from `main` (`1976adb`) | 112,403,727 bytes |
+| APK after the fixes below | 112,415,464 bytes (+11.5 KB) |
+| Baked world (64 chunk scenes + 128 resources) | ≈ 11 MB |
+
+The 11.5 KB delta is roughly the extra script text, so the pack **already
+contained** the baked island — the export filters were not the cause. What the
+build did get wrong was judging itself: at export time Godot converts text
+resources to binary and writes `<path>.remap` beside them, so inside an APK
+`chunk_0_0.tscn` is not a file at all. `FileAccess.file_exists()` is blind to
+that remap (only `ResourceLoader.exists()` follows it), so the button's own
+"is the island baked?" test answered **no** in a fully packed build.
+
+Four things now make that class of failure impossible to hide:
 
 | Layer | What it does |
 | --- | --- |
-| `include_filter` in `export_presets.cfg` | packs every `*.tscn`/`*.res`/`*.gd` that exists **on disk** at export time, via a `DirAccess` walk — independent of the scan |
-| CI re-import after the bake | refreshes the editor's file list so the export list already contains the new files |
-| the boot button itself | shows `world scene packed: false \| baked chunks: 0/64` in amber before you even tap, and prints the exact `change_scene_to_file` error on screen |
+| `ResourceLoader.exists()` in `boot_world_link.gd` | existence checks see through `.remap`, so a packed build reports itself as packed |
+| status line under the button | prints `Ready — world scene packed, baked terrain 64/64` in green *before* you tap, or the exact problem in amber |
+| failure text on screen | a failed `change_scene_to_file` is printed on the boot screen, not just to logcat |
+| tap fallback in `boot_screen.gd` | a tap that reaches no control still enters the world, so a covered button cannot strand a tester |
 
-On the phone, the boot screen now answers the question by itself; in CI,
-`tools/verify_apk.sh` gate E lists the APK and fails the build when the payload
-is short.
+In CI, `tools/verify_apk.sh` gate E lists the APK (file **or** its `.remap`) and
+fails the build when the payload is short; `verify_phase3.sh` gate 11 pins the
+remap-aware check, and gate 12 loads both config files with Godot's own parser.
+If the tap still fails on a device, the boot screen now says why — that is the
+next thing to read, and `adb logcat -s godot` carries the same lines.
 
 ### Streaming, in one line
 
