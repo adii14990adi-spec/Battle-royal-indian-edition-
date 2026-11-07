@@ -120,6 +120,22 @@ jobs:
           fi
           echo "Import clean."
 
+      # A config file Godot cannot read fails much later, inside the export, with
+      # a single line of output: `ConfigFile parse error at …:9`. `#` is not a
+      # comment in Godot config files (only `;` is), so parse both files for real
+      # here and assert the settings the APK depends on.
+      - name: Validate the Godot config files
+        run: |
+          set -uo pipefail
+          if "$GODOT_BIN" --headless --path "$PWD" \
+              --script res://tools/check_project_config.gd 2>&1 | tee config-check.log; then
+            exit 0
+          fi
+          grep -E 'CONFIG ERROR|parse error' config-check.log \
+            | head -10 | while IFS= read -r line; do echo "::error::$line"; done
+          echo "::error::project.godot / export_presets.cfg failed validation"
+          exit 1
+
       # Optional: with the three signing secrets set, the APK is signed with the
       # real release key. Without them the build still produces an installable
       # APK, signed with the throwaway CI debug keystore — the warning below is
@@ -161,6 +177,23 @@ jobs:
             exit 1
           fi
           grep -E '^\[bake\]|^\[check\]|baked terrain footprint' bake.log || true
+
+      # The export builds its file list from the editor's *scanned* filesystem
+      # (EditorExportPlatform::export_project_files), and the 64 chunk scenes plus
+      # their .res siblings were created after the last scan. Without this the
+      # pack can omit them: the APK installs, the boot screen works, and "Enter
+      # Siran Island" appears to do nothing. include_filter in
+      # export_presets.cfg also forces them in from disk — two independent
+      # defences, because the failure is invisible until it is on a phone.
+      - name: Refresh the import cache after the bake
+        run: |
+          set -uo pipefail
+          if ! "$GODOT_BIN" --headless --path "$PWD" --import 2>&1 | tee import-post-bake.log; then
+            echo "::error::re-import after the bake failed"
+            tail -10 import-post-bake.log | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
+          echo "Re-import done; chunk scenes known to the editor: $(ls scenes/world/terrain/chunk_*.tscn | wc -l | tr -d ' ')"
 
       # Now that the chunks exist, gate 7 checks them: 64 scenes, every one with
       # a HeightMapShape3D and none with a trimesh collider.
@@ -221,6 +254,11 @@ jobs:
               fi
             done
             echo "| Chunk scenes baked | $(ls scenes/world/terrain/chunk_*.tscn 2>/dev/null | wc -l | tr -d ' ') |"
+            if [ -f "build/$APK_NAME" ] && command -v unzip >/dev/null 2>&1; then
+              packed=$(unzip -Z1 "build/$APK_NAME" 2>/dev/null \
+                | grep -cE '^assets/scenes/world/terrain/chunk_[0-9]+_[0-9]+\.tscn$' || true)
+              echo "| Chunk scenes **inside the APK** | ${packed:-0} |"
+            fi
             echo "| Baked terrain on disk | $(du -ch scenes/world/terrain/*.tscn resources/world/terrain/*.res resources/world/baked/*.res 2>/dev/null | tail -1 | cut -f1) |"
             echo
             echo '```'

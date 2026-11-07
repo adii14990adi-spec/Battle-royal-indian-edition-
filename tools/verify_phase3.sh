@@ -301,6 +301,57 @@ else
 fi
 
 # --- Lint --------------------------------------------------------------------
+# --- Gate 11: what actually reaches the phone --------------------------------
+# The APK that shipped from main booted, drew the UI, and did nothing when the
+# tester tapped "Enter Siran Island". Every gate above was green: the bake was
+# correct, it just was not in the pack. These checks pin the packaging side.
+head2 'Gate 11 — export packaging keeps the baked world and hides the logo'
+if grep -q '^include_filter=".*\*\.tscn' export_presets.cfg &&
+	grep -q '\*\.res' export_presets.cfg; then
+	pass 'include_filter lists *.tscn and *.res — disk walk, not the editor scan'
+else
+	fail 'export_presets.cfg include_filter must list *.tscn and *.res: files created after the last import (the bake) can otherwise be left out of the APK'
+fi
+if grep -q '^boot_splash/show_image=false' project.godot; then
+	pass 'boot splash image disabled (no Godot logo over the boot screen)'
+else
+	fail 'project.godot must set boot_splash/show_image=false'
+fi
+if grep -q 'func _show_error' scripts/ui/boot_world_link.gd &&
+	grep -q 'ResourceLoader.exists(path)' scripts/ui/boot_world_link.gd; then
+	pass 'boot button checks with ResourceLoader.exists (follows .remap) and shows failures'
+else
+	fail 'boot button must check existence via ResourceLoader.exists() and put failures on screen — FileAccess.file_exists() is remap-blind inside an APK'
+fi
+if grep -q 'func _unhandled_input' scripts/ui/boot_screen.gd; then
+	pass 'boot screen takes a tap the UI did not consume (no dead end)'
+else
+	fail 'scripts/ui/boot_screen.gd must keep the unhandled-tap fallback'
+fi
+if grep -qE '^[[:space:]]*#' project.godot export_presets.cfg export_presets/*.cfg 2>/dev/null; then
+	fail "'#' is not a comment in Godot config files — use ';', or ConfigFile.load() fails and the export dies with one parse-error line"
+else
+	pass "no '#' comment lines in the Godot config files (';' only)"
+fi
+
+# --- Gate 12: the real parser reads them ------------------------------------
+# The '#' above is the cheap version. This is the authoritative one: load both
+# files with Godot's own ConfigFile and assert the settings the APK depends on.
+head2 'Gate 12 — project.godot and export_presets.cfg load in Godot'
+CONFIG_CHECK_GODOT="${GODOT_BIN:-}"
+if [[ -z "$CONFIG_CHECK_GODOT" ]]; then
+	CONFIG_CHECK_GODOT="$(command -v godot4 || command -v godot || true)"
+fi
+if [[ -z "$CONFIG_CHECK_GODOT" ]]; then
+	skip 'no Godot binary on PATH — the same script runs in CI after the import'
+elif CONFIG_OUT="$("$CONFIG_CHECK_GODOT" --headless --path "$PWD" \
+		--script res://tools/check_project_config.gd 2>&1)"; then
+	pass 'ConfigFile parses both files; include_filter, splash and main scene intact'
+else
+	printf '%s\n' "$CONFIG_OUT" | grep 'CONFIG ERROR' | head -5
+	fail 'tools/check_project_config.gd reported problems'
+fi
+
 head2 'Extra — GDScript parses and lints'
 if command -v gdparse >/dev/null 2>&1; then
 	broken=0

@@ -4,6 +4,15 @@
 #   Gate B: android.permission.WAKE_LOCK present (manifest not silently empty)
 #   Gate C: size <= APK_SIZE_LIMIT_MB (default 120)
 #   Gate D: arm64-v8a present (Unisoc T606); armeabi-v7a warn-only
+#   Gate E: the baked world is actually inside the package (chunk scenes and
+#           collision resources reachable at assets/…), so "it installs and the
+#           boot screen works" can never again pass for a playable build.
+#
+# Gate E is what catches the worst failure mode this project has hit: the APK
+# boots, the UI works, you tap "Enter Siran Island" and nothing happens, because
+# the baked files were created after the editor's last filesystem scan and never
+# made it into the pack. It can be skipped with APK_SKIP_PAYLOAD_GATE=1 for a
+# deliberately unbaked build.
 set -euo pipefail
 
 APK="${1:-}"
@@ -11,6 +20,17 @@ if [[ -z "$APK" || ! -f "$APK" ]]; then
     echo "::error::APK missing: ${APK:-<none given>}" >&2
     exit 1
 fi
+
+# An unexpected non-zero exit used to surface as a bare "exit code 2" with no
+# indication of which check produced it (CI annotations are capped, so the real
+# message can be dropped). This trap always names the failing line.
+on_unexpected_error() {
+    local status=$?
+    printf '::error::%s aborted with status %d at tools/verify_apk.sh line %s\n' \
+        "$(basename "${APK:-no-apk}")" "$status" "${BASH_LINENO[0]}"
+    exit "$status"
+}
+trap on_unexpected_error ERR
 
 AAPT2="$(command -v aapt2 || true)"
 AAPT="$(command -v aapt || true)"
@@ -90,3 +110,114 @@ if ! printf '%s\n' "$ARCHS" | grep -q "armeabi-v7a"; then
 fi
 
 echo "APK verified: ${SIZE_MB}MB, arches=[${ARCHS}], INTERNET absent, WAKE_LOCK present"
+
+# --- Gate E: the baked world is inside the package ---------------------------
+# Godot stores every exported file as its own APK entry under assets/
+# (EditorExportPlatformAndroid::save_apk_file maps "res://x" to "assets/x"), so
+# the payload can be audited from the entry list without a device.
+# Entry listing helpers. `unzip -l` prints a formatted table (dates, sizes, and a
+# 40-character truncation for long paths), so ONLY a names-only listing may be
+# parsed: zipinfo -1, or Python's zipfile, which also copes with the APK signing
+# block. Mixing in `unzip -l` output silently turns every `grep -x path` into a
+# false negative and the gate then blames the pack for its own parsing bug.
+list_apk_entries_unzip() {
+    command -v unzip >/dev/null 2>&1 || return 1
+    unzip -Z1 "$APK" 2>/dev/null
+}
+
+list_apk_entries_python() {
+    command -v python3 >/dev/null 2>&1 || return 1
+    python3 - "$APK" 2>/dev/null <<'PYZIP'
+import sys
+import zipfile
+
+with zipfile.ZipFile(sys.argv[1]) as archive:
+    sys.stdout.write("\n".join(archive.namelist()))
+PYZIP
+}
+
+list_apk_entries() {
+    local entries
+    if entries="$(list_apk_entries_unzip)" && [[ -n "$entries" ]]; then
+        printf '%s\n' "$entries"
+        return 0
+    fi
+    if entries="$(list_apk_entries_python)" && [[ -n "$entries" ]]; then
+        printf '%s\n' "$entries"
+        return 0
+    fi
+    return 1
+}
+
+if [[ "${APK_SKIP_PAYLOAD_GATE:-0}" == "1" ]]; then
+    echo "::warning::Gate E skipped (APK_SKIP_PAYLOAD_GATE=1)"
+elif ! ENTRIES="$(list_apk_entries)"; then
+    echo "::error::could not list the entries in $APK (no names-only listing available)" >&2
+    exit 1
+else
+    entry_count=$(printf '%s\n' "$ENTRIES" | wc -l | tr -d ' ')
+    asset_count=$(printf '%s\n' "$ENTRIES" | grep -c '^assets/' || true)
+
+    packed_count() {
+        printf '%s\n' "$ENTRIES" | grep -cE "$1" || true
+    }
+
+    # Godot may convert text resources at export time and store the result as
+    # .godot/exported/<hash>/export-<md5>-<name>.scn, leaving a `<path>.remap`
+    # beside the original path (editor_export_platform.cpp: _export_customize,
+    # then save_file(from + ".remap", ...)). The engine resolves res://x.tscn
+    # through that remap, so "packed" means the file itself OR its .remap is in
+    # the APK. Three earlier runs of this gate failed on exactly that distinction
+    # and blamed the pack for it.
+    world_scene=$(packed_count '^assets/scenes/world/siran_island\.tscn(\.remap)?$')
+    chunk_scenes=$(packed_count '^assets/scenes/world/terrain/chunk_[0-9]+_[0-9]+\.tscn(\.remap)?$')
+    chunk_collisions=$(packed_count '^assets/resources/world/terrain/chunk_[0-9]+_[0-9]+_collision\.res(\.remap)?$')
+    boot_script=$(packed_count '^assets/scripts/ui/boot_world_link\.(gd|gdc)(\.remap)?$')
+    water_shader=$(packed_count '^assets/assets/shaders/water_surface\.gdshader(\.remap)?$')
+    converted=$(packed_count '^assets/\.godot/exported/')
+
+    digest=$(printf '%s\n' "$ENTRIES" | grep '^assets/' \
+        | sed -n 's/.*\.\([A-Za-z0-9]\{1,10\}\)$/\1/p' | sort | uniq -c | sort -rn \
+        | sed -n '1,8p' | awk '{ printf "%s=%s ", $2, $1 }')
+
+    echo "APK contains $entry_count entries, $asset_count under assets/, $converted converted under .godot/exported/"
+    echo "assets/ extensions: ${digest:-<none>}"
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+        echo "::notice::$(basename "$APK"): $entry_count entries, $asset_count under assets/, $converted converted"
+        echo "::notice::assets/ extensions: ${digest:-<none>}"
+    fi
+
+    payload_problems=0
+    if [[ "$world_scene" -lt 1 ]]; then
+        echo "::error::the world scene is not in the APK (assets/scenes/world/siran_island.tscn or its .remap)" >&2
+        payload_problems=$((payload_problems + 1))
+    fi
+    if [[ "$boot_script" -lt 1 ]]; then
+        echo "::error::the boot button script is not in the APK — the button would look fine and do nothing" >&2
+        payload_problems=$((payload_problems + 1))
+    fi
+    if [[ "$water_shader" -lt 1 ]]; then
+        echo "::error::assets/shaders/water_surface.gdshader is not in the APK" >&2
+        payload_problems=$((payload_problems + 1))
+    fi
+    if [[ "$chunk_scenes" -lt 64 ]]; then
+        echo "::error::$chunk_scenes baked chunk scenes in the APK, expected 64 — the bake is not in the pack" >&2
+        echo "::error::bake BEFORE exporting, then re-import so the editor file list includes the new files; export_presets.cfg include_filter must list *.tscn and *.res" >&2
+        payload_problems=$((payload_problems + 1))
+    fi
+    if [[ "$chunk_collisions" -lt 64 ]]; then
+        echo "::error::$chunk_collisions baked collision resources in the APK, expected 64" >&2
+        payload_problems=$((payload_problems + 1))
+    fi
+
+    if [[ "$payload_problems" -ne 0 ]]; then
+        echo "APK entry sample (first 12 lines):" >&2
+        printf '%s\n' "$ENTRIES" | sed -n '1,12p' >&2
+        echo "world/ entries:" >&2
+        printf '%s\n' "$ENTRIES" | grep -E '^assets/(scenes|resources)/world/' \
+            | sed -n '1,8p' >&2 || true
+        exit 1
+    fi
+    echo "Payload verified: $world_scene world scene, $chunk_scenes chunk scenes," \
+        "$chunk_collisions collision resources, water shader, button script"
+fi

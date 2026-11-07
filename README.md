@@ -47,7 +47,7 @@ artifact holds the generated island preview, the bake summary and the bake log.
 No retries on import/bake/export; every failure is a hard stop with a
 `::error::` annotation.
 
-### Every APK must pass four gates
+### Every APK must pass five gates
 
 `tools/verify_apk.sh <apk>` enforces them, so a green build is evidence rather
 than a hope:
@@ -58,6 +58,7 @@ than a hope:
 | B | `android.permission.WAKE_LOCK` **present** | an empty permission list means manifest generation silently failed |
 | C | size ≤ **120 MB** | install budget on the target device |
 | D | `arm64-v8a` present (`armeabi-v7a` warn-only) | Unisoc T606 is 64-bit |
+| E | 64 baked chunk scenes + 64 collision `.res` files **inside the APK** | an APK with a working UI and no world looks exactly like a working APK |
 
 Run them locally against a built APK:
 
@@ -115,6 +116,39 @@ generated data): `tools/bake_siran_island.sh` writes them, and CI runs it on
 every push, so `battle-horizons.apk` always ships a freshly baked island. A
 fresh clone without a bake still opens the world — the HUD just tells you to
 bake.
+
+### "Nothing happens when I tap ENTER SIRAN ISLAND"
+
+That was a real shipped defect. What the measurements actually say:
+
+| Measurement | Value |
+| --- | --- |
+| APK built from `main` (`1976adb`) | 112,403,727 bytes |
+| APK after the fixes below | 112,415,464 bytes (+11.5 KB) |
+| Baked world (64 chunk scenes + 128 resources) | ≈ 11 MB |
+
+The 11.5 KB delta is roughly the extra script text, so the pack **already
+contained** the baked island — the export filters were not the cause. What the
+build did get wrong was judging itself: at export time Godot converts text
+resources to binary and writes `<path>.remap` beside them, so inside an APK
+`chunk_0_0.tscn` is not a file at all. `FileAccess.file_exists()` is blind to
+that remap (only `ResourceLoader.exists()` follows it), so the button's own
+"is the island baked?" test answered **no** in a fully packed build.
+
+Four things now make that class of failure impossible to hide:
+
+| Layer | What it does |
+| --- | --- |
+| `ResourceLoader.exists()` in `boot_world_link.gd` | existence checks see through `.remap`, so a packed build reports itself as packed |
+| status line under the button | prints `Ready — world scene packed, baked terrain 64/64` in green *before* you tap, or the exact problem in amber |
+| failure text on screen | a failed `change_scene_to_file` is printed on the boot screen, not just to logcat |
+| tap fallback in `boot_screen.gd` | a tap that reaches no control still enters the world, so a covered button cannot strand a tester |
+
+In CI, `tools/verify_apk.sh` gate E lists the APK (file **or** its `.remap`) and
+fails the build when the payload is short; `verify_phase3.sh` gate 11 pins the
+remap-aware check, and gate 12 loads both config files with Godot's own parser.
+If the tap still fails on a device, the boot screen now says why — that is the
+next thing to read, and `adb logcat -s godot` carries the same lines.
 
 ### Streaming, in one line
 

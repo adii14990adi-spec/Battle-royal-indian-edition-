@@ -28,6 +28,59 @@ bash tools/bake_siran_island.sh    # re-bake + in-engine self-check
 "PASS (data)" means the numbers are asserted in code and the self-check; the
 visual result is judged from the preview image and the device run.
 
+### Packaging regression (2026-11-06)
+
+The first APK built from `main` installed, drew the boot screen, and did nothing
+when the tester tapped **ENTER SIRAN ISLAND**. The pack turned out to be
+complete — 112,403,727 bytes before the fixes, 112,415,464 after, and the baked
+island alone is ≈ 11 MB — so nothing was missing from the APK.
+
+The real defect is a self-reporting one. Godot converts text resources to binary
+at export time and writes `<path>.remap` next to the original path
+(`EditorExportPlatform::_export_customize`, then `save_file(from + ".remap")`).
+`ResourceLoader::exists()` follows that remap through `_path_remap`;
+`FileAccess.file_exists()` does not. The button's "has the island been baked?"
+test used `FileAccess`, so a fully packed build called itself unbaked, and
+`_on_pressed()` reported failures only through `push_error()` — invisible on a
+phone.
+
+Fixed on four layers:
+
+1. `scripts/ui/boot_world_link.gd` — `resource_in_build()` = `FileAccess.file_exists() or ResourceLoader.exists()`,
+   used for the world scene and all 64 chunk probes; the boot screen prints
+   `Ready — world scene packed, baked terrain 64/64` or the exact problem, and a
+   failed `change_scene_to_file` becomes on-screen text.
+2. `scripts/ui/boot_screen.gd` — a tap no control consumed enters the world
+   (`_unhandled_input`), and if the button's script ever fails to load it gets a
+   fallback handler.
+3. `export_presets.cfg` — `include_filter="*.tscn,*.res,*.tres,*.gd,scenes/world/*,resources/world/*"`
+   plus a post-bake re-import in CI. Defensive: the pack was fine this time, but
+   `include_filter` walks the disk (`_edit_files_with_filter` → `DirAccess`) and
+   so cannot be fooled by a stale editor scan.
+4. `project.godot` — no boot splash image, so the boot screen appears at once.
+
+Gates: `verify_apk.sh` gate E lists the APK and requires 64 chunk scenes and 64
+collision resources (accepting either the file or its `.remap`, and either
+`.tscn`/`.scn`); `verify_phase3.sh` gate 11 pins the remap-aware check, the tap
+fallback and the packaging settings, and gate 12 parses both config files with
+Godot itself.
+
+#### The first attempt died in the export step
+
+The fix above was pushed once and the run failed in **Export release APK** with a
+single line: `ConfigFile parse error at res://export_presets.cfg:9: Unexpected
+identifier 'all_resources'.` The comment block explaining `include_filter` had
+been written with `#`. Godot's config files have exactly one comment character,
+`;` (`VariantParser::get_token`, `core/variant/variant_parser.cpp`); a `#` line is
+read as a token, and the whole preset becomes unreadable.
+
+Two gates now cover it: `verify_phase3.sh` gate 11 greps for `#` at the start of
+a line in `project.godot` / `export_presets.cfg` (works everywhere), and gate 12
+plus a CI step load both files with Godot's own `ConfigFile` through
+`tools/check_project_config.gd`, which also asserts `include_filter`, the splash
+setting, `run/main_scene` and `export_path`. A config file that does not parse is
+no longer something a grep can miss.
+
 ---
 
 ## 1. Before the bake
