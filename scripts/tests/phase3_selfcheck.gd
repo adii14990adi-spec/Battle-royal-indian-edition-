@@ -396,6 +396,43 @@ func _check_collision_alignment(instance: Node3D, terrain: MeshInstance3D) -> vo
 			"worst error %.2f m" % worst_error)
 
 
+func _check_zone_flatness(terrain: MeshInstance3D, zone: IslandZone) -> void:
+	## Vertex colours are the zone markers, so the *mesh* must be flat where the
+	## runway is — this catches a road or a noise pass flattening the wrong way.
+	var arrays: Array = terrain.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var lowest: float = INF
+	var highest: float = -INF
+	var samples: int = 0
+	for vertex in vertices:
+		var world: Vector3 = terrain.global_transform * vertex
+		if zone.signed_distance(world.x, world.z) > -30.0:
+			continue
+		lowest = minf(lowest, world.y)
+		highest = maxf(highest, world.y)
+		samples += 1
+	_expect(samples > 0, "the airfield chunk contains airfield vertices",
+			"no vertices inside the runway pad")
+	if samples == 0:
+		return
+	_expect(highest - lowest <= FLATNESS_TOLERANCE_M,
+			"aircraft industry is perfectly flat (spread %.3f m)" % (highest - lowest),
+			"spread %.3f m over %d vertices" % [highest - lowest, samples])
+	_expect(absf(highest - zone.flat_height) <= 0.2,
+			"aircraft industry sits at its bake height (%.1f m)" % zone.flat_height,
+			"%.1f m" % highest)
+
+
+func _count_trimeshes(root: Node) -> int:
+	var count: int = 0
+	for child in root.get_children():
+		count += _count_trimeshes(child)
+	var shape_node: CollisionShape3D = root as CollisionShape3D
+	if shape_node != null and shape_node.shape is ConcavePolygonShape3D:
+		count += 1
+	return count
+
+
 func _count_baked_chunks() -> int:
 	## Counts `Chunk_<x>_<z>` nodes inside the committed baked scene, without
 	## instantiating it: this runs before anything is added to the tree.
