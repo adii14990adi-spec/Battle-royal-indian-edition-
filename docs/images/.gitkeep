@@ -1,2 +1,2 @@
 # Kept in Git so the path exists before the first bake.
-# `bash tools/bake_siran_island.sh` fills this directory.
+# `bash tools/generate_siran_island.sh` fills this directory.

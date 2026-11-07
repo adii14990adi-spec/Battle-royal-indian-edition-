@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="SiranBakeSummary" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/bake/bake_summary.gd" id="1_fo30q"]
+
+[resource]
+script = ExtResource("1_fo30q")
+display_name = "Siran Island"
+generator_version = 3
+noise_seed = 20261106
+baked_at_utc = "2026-11-07T06:32:22"
+bake_duration_ms = 7943
+map_size_m = 4000.0
+chunk_size_m = 500.0
+vertex_spacing_m = 10.0
+chunk_count = 64
+chunks_written = 64
+grid_vertices_per_axis = 401
+terrain_vertices_total = 166464
+terrain_triangles_total = 320000
+min_height_m = -38.0
+max_height_m = 64.8359
+sea_level = 0.0
+spawn_ground_height_m = 17.5249
+zone_stats = {
+"aircraft_industry": {
+"flat_deviation": 0.0,
+"flooded_samples": 0,
+"max_height": 12.0,
+"min_height": 12.0,
+"samples": 7287
+},
+"central_state": {
+"flat_deviation": 4.18616,
+"flooded_samples": 0,
+"max_height": 20.1295,
+"min_height": 11.8138,
+"samples": 12792
+},
+"factory_island": {
+"flat_deviation": 0.0,
+"flooded_samples": 0,
+"max_height": 26.0,
+"min_height": 26.0,
+"samples": 3821
+},
+"graveyard_center": {
+"flat_deviation": 21.2123,
+"flooded_samples": 0,
+"max_height": 63.2123,
+"min_height": 27.4998,
+"samples": 5795
+},
+"konkan_docks": {
+"flat_deviation": 0.0,
+"flooded_samples": 0,
+"max_height": 4.5,
+"min_height": 4.5,
+"samples": 3311
+}
+}
+warnings = PackedStringArray()
+chunk_scene_bytes = 9562856
+river_mesh_bytes = 9733

@@ -16,7 +16,10 @@ const PROJECT_CONFIG: String = "res://project.godot"
 const PRESET_CONFIG: String = "res://export_presets.cfg"
 const PRESET_SECTION: String = "preset.0"
 const INVALID_COMMENT_MARKER: String = "#"
-const REQUIRED_INCLUDE_PATTERNS: Array[String] = ["*.tscn", "*.res", "*.gd"]
+const REQUIRED_INCLUDE_PATTERNS: Array[String] = ["*.tscn", "*.res", "*.scn", "*.gd"]
+## The committed map. If this resource is not loadable, the APK boots into an
+## empty world — the exact failure this project keeps re-learning.
+const BAKED_MAP: String = "res://scenes/world/siran_island_baked.tscn"
 
 var _problems: int = 0
 
@@ -62,6 +65,9 @@ func _check_preset_settings() -> void:
 	for pattern in REQUIRED_INCLUDE_PATTERNS:
 		if not include.contains(pattern):
 			_fail("export_presets.cfg include_filter is missing %s" % pattern)
+	if not ResourceLoader.exists(BAKED_MAP):
+		_fail("%s is missing — run TerrainGenerator (tools/bake/terrain_generator_editor.gd) "
+				% BAKED_MAP + "and commit the scene before exporting")
 	var export_path: String = str(config.get_value(PRESET_SECTION, "export_path", ""))
 	if not export_path.ends_with("battle-horizons.apk"):
 		_fail("export_path must stay build/battle-horizons.apk (got %s)" % export_path)

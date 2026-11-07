@@ -1,10 +1,11 @@
 class_name SiranBakeSummary
 extends Resource
-## Written by `IslandBaker`, read by the debug HUD and `verify_phase3.sh`.
+## Written by `TerrainGenerator`, read by the debug HUD and `verify_phase3.sh`.
 ##
-## Its whole job is to make a stale bake visible: `generator_version` and
+## Its whole job is to make a stale map visible: `generator_version` and
 ## `noise_seed` are compared against `SiranMapConfig` at runtime, and the HUD
-## shouts if the chunk on disk was produced by an older generator than the code.
+## shouts if the committed scene was produced by an older generator than the
+## code that is now streaming it.
 
 @export var display_name: String = ""
 @export var generator_version: int = 0
@@ -32,10 +33,11 @@ extends Resource
 ## Non-fatal issues found while baking (roads through water, etc.).
 @export var warnings: PackedStringArray = PackedStringArray()
 
-## Byte size of everything the bake wrote, for the APK budget.
+## Byte size of everything the generator wrote, for the APK budget. The whole
+## terrain (meshes + collision) lives inside `chunk_scene_bytes` now: it is one
+## `.tscn`, so there is no separate mesh/collision file to weigh.
 @export var chunk_scene_bytes: int = 0
-@export var mesh_bytes: int = 0
-@export var collision_bytes: int = 0
+@export var river_mesh_bytes: int = 0
 
 
 func is_stale(config: SiranMapConfig) -> bool:
@@ -44,10 +46,7 @@ func is_stale(config: SiranMapConfig) -> bool:
 
 
 func human_size() -> String:
-	var total_mb: float = float(chunk_scene_bytes + mesh_bytes + collision_bytes) / 1048576.0
-	return "%.1f MB baked (%.0f KB scenes, %.1f MB meshes, %.1f MB collision)" % [
-		total_mb,
-		float(chunk_scene_bytes) / 1024.0,
-		float(mesh_bytes) / 1048576.0,
-		float(collision_bytes) / 1048576.0,
+	return "%.1f MB baked scene + %.0f KB river" % [
+		float(chunk_scene_bytes) / 1048576.0,
+		float(river_mesh_bytes) / 1024.0,
 	]

@@ -29,23 +29,31 @@ with the Godot/Android plumbing factored into a composite action,
 | PR to `main`/`develop`, push to `main`/`develop`/`arena/**`, manual run | `gates` → `build` | `battle-horizons.apk` + `battle-horizons-debug.apk`, artifact `battle-horizons-apk-<sha>` (14 days) |
 | tag `v*` | `build` → `publish` | the same APK attached to the GitHub Release |
 
-**The map is baked in CI, not on your laptop** — the workflow is the only place
-the 64 terrain chunks are produced:
+**CI builds the APK; it does not generate the map.** Siran Island is generated
+once by `TerrainGenerator` into a single committed scene,
+`scenes/world/siran_island_baked.tscn`:
 
 1. `gates` — `tools/verify_phase1.sh` and `tools/verify_phase3.sh` on a fresh
-   clone (no Godot needed; the bake gate skips until something is baked).
+   clone (no Godot needed; gate 7 inspects the committed scene).
 2. `build` — JDK 17 + Android SDK (`build-tools;34.0.0`) + Godot 4.4.1 and its
    export templates (cached) → `--import` twice (a cold pass may print ERROR
-   lines, a warm pass may not) → signing material → `bash
-   tools/bake_siran_island.sh` (import → bake → self-check `--require-bake`) →
-   `tools/verify_phase3.sh` again, now with 64 chunks on disk → `--export-release`
-   → `--export-debug` → `tools/verify_apk.sh` on both APKs.
+   lines, a warm pass may not) → config validation → signing material → the
+   Phase 3 self-check with `--require-bake` against the committed scene (it
+   counts 64 chunk nodes, a mesh surface and a `HeightMapShape3D` per chunk, and
+   raycasts the collision against the drawn vertices) → `tools/verify_phase3.sh`
+   → `--export-release` → `--export-debug` → `tools/verify_apk.sh` on both APKs.
 3. `publish` — tag pushes only.
 
-Grab the APK from the run's **Artifacts**; the `siran-island-bake-<sha>`
-artifact holds the generated island preview, the bake summary and the bake log.
-No retries on import/bake/export; every failure is a hard stop with a
-`::error::` annotation.
+Grab the APK from the run's **Artifacts**; `siran-island-selfcheck-<sha>` holds
+the self-check log if the map itself is what broke. No retries on
+import/export; every failure is a hard stop with a `::error::` annotation.
+
+> **Why the map is not baked in CI any more.** It was, and it produced APKs that
+> installed, booted, drew the UI — and reported `MISSING BAKE` when you tapped
+> the button. The chunk scenes were written *after* the editor had scanned the
+> filesystem, so `export_filter="all_resources"` could leave them out of the
+> pack entirely. A committed scene cannot be created too late: either it is in
+> Git (and therefore in the pack) or gate 7 fails the build before it starts.
 
 ### Every APK must pass five gates
 
@@ -58,7 +66,7 @@ than a hope:
 | B | `android.permission.WAKE_LOCK` **present** | an empty permission list means manifest generation silently failed |
 | C | size ≤ **120 MB** | install budget on the target device |
 | D | `arm64-v8a` present (`armeabi-v7a` warn-only) | Unisoc T606 is 64-bit |
-| E | 64 baked chunk scenes + 64 collision `.res` files **inside the APK** | an APK with a working UI and no world looks exactly like a working APK |
+| E | the baked map scene (`siran_island_baked.tscn` or its `.remap`) and the river mesh **inside the APK** | an APK with a working UI and no world looks exactly like a working APK |
 
 Run them locally against a built APK:
 
@@ -94,28 +102,39 @@ vegetation yet**. Full design notes: `docs/PHASE3_WORLD.md`. Gates:
 | --- | --- |
 | 4 km × 4 km island layout (zones, lake, river, moat, 5 roads) as auditable data | `scripts/world/siran_map_config.gd` |
 | FastNoiseLite heightfield: island mask, hills, ridged east, lake, river, zone pads | `scripts/world/bake/island_heightmap.gd` |
-| Terrain mesh + `HeightMapShape3D` per chunk (never a trimesh) | `scripts/world/bake/terrain_mesh_builder.gd` |
-| One-command bake (import → bake → self-check) | `bash tools/bake_siran_island.sh` |
+| Generates the map with FastNoiseLite + SurfaceTool into one committed scene | `scripts/world/bake/terrain_generator.gd` |
+| Terrain `HeightMapShape3D` per chunk (never a trimesh) | `scripts/world/bake/terrain_mesh_builder.gd` |
+| One-command generation (import → generate → self-check) | `bash tools/generate_siran_island.sh` |
 | 500 m chunk streaming, threaded, radius driven | `scripts/world/chunk_manager.gd` |
 | World scene (ocean, lake, river, sun, streamer, camera, HUD) | `scenes/world/siran_island.tscn` |
 | Unshaded terrain/road/water shaders | `assets/shaders/` |
 | Machine-checkable Phase 3 gates | `bash tools/verify_phase3.sh` |
-| Bake + gates + APK, run automatically on every push | `.github/workflows/build.yml` |
+| Gates + APK, run automatically on every push (no bake) | `.github/workflows/build.yml` |
 | In-engine self-check (collision vs mesh, flatness, radius maths) | `godot --headless --path . scenes/tests/phase3_selfcheck.tscn` |
 
-### Bake the island
+### Generate the island
+
+The map is generated **once** with a `@tool` script and committed. In the
+editor: open `tools/bake/terrain_generator_editor.gd` and press
+**File > Run** (Ctrl+Shift+X). From a terminal:
 
 ```bash
-bash tools/bake_siran_island.sh        # needs Godot 4.4+; writes ~11 MB of chunks
+bash tools/generate_siran_island.sh    # needs Godot 4.4+; writes the scene + river + summary
 # then run the world (or tap "ENTER SIRAN ISLAND" on the boot screen)
 godot --path . scenes/world/siran_island.tscn
 ```
 
-The baked chunks are **not** committed (64 scenes + 128 resources of
-generated data): `tools/bake_siran_island.sh` writes them, and CI runs it on
-every push, so `battle-horizons.apk` always ships a freshly baked island. A
-fresh clone without a bake still opens the world — the HUD just tells you to
-bake.
+It writes four things, all of which belong in the same commit:
+
+| File | What it is |
+| --- | --- |
+| `scenes/world/siran_island_baked.tscn` | the whole 4 km map: 64 `Chunk_<x>_<z>` nodes, each with a `SurfaceTool` mesh and a `HeightMapShape3D` collider |
+| `resources/world/baked/siran_river_surface.res` | river water ribbon |
+| `resources/world/baked/siran_island_summary.tres` | generator version, noise seed, per-zone integrity numbers |
+| `docs/images/siran_island_preview.png` | top-down layout, for reviewing "did the island move?" |
+
+Nothing generates terrain at runtime: `ChunkManager` loads that one scene on a
+worker thread and streams its chunk children in and out by radius.
 
 ### "Nothing happens when I tap ENTER SIRAN ISLAND"
 
@@ -140,7 +159,7 @@ Four things now make that class of failure impossible to hide:
 | Layer | What it does |
 | --- | --- |
 | `ResourceLoader.exists()` in `boot_world_link.gd` | existence checks see through `.remap`, so a packed build reports itself as packed |
-| status line under the button | prints `Ready — world scene packed, baked terrain 64/64` in green *before* you tap, or the exact problem in amber |
+| status line under the button | prints `Ready — world scene packed, baked map packed` in green *before* you tap, or the exact problem in amber |
 | failure text on screen | a failed `change_scene_to_file` is printed on the boot screen, not just to logcat |
 | tap fallback in `boot_screen.gd` | a tap that reaches no control still enters the world, so a covered button cannot strand a tester |
 
@@ -182,9 +201,10 @@ What is in the repo today:
 ```
 res://
 ├── assets/      models (per biome), textures, audio (music/sfx/voice), shaders, fonts
-├── scenes/      core (boot), world (island scene + baked chunks), tests,
+├── scenes/      core (boot), world (island scene + baked map scene), tests,
 │                gameplay, characters, weapons, loot, ui
-├── scripts/     autoload, world (map config, chunk streamer), world/bake,
+├── scripts/     autoload, world (map config, chunk streamer), world/bake
+│                (heightfield + TerrainGenerator),
 │                systems, player, ui, tests
 ├── resources/   world (materials, baked terrain), loot_tables, themes, config
 ├── addons/      third-party plugins (none yet)
@@ -198,7 +218,7 @@ Root-level extras: `docs/`, `tools/`, `export_presets.cfg`, `project.godot`.
 ```bash
 bash tools/verify_phase1.sh          # Phase 1: budget, preset, project identity
 bash tools/verify_phase3.sh          # Phase 3: streaming, shaders, baked output
-bash tools/bake_siran_island.sh      # import -> bake -> self-check (needs Godot)
+bash tools/generate_siran_island.sh  # import -> generate -> self-check (needs Godot)
 ```
 
 Device acceptance (physical Unisoc T606, airplane mode) is documented step by

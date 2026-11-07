@@ -21,7 +21,7 @@ extends Resource
 ## positive value; kills z-fighting without a visible seam.
 @export var surface_offset: float = 0.18
 
-## --- Bake-time scratch data (filled by IslandBaker) -------------------------
+## --- Bake-time scratch data (filled by the road grader in IslandHeightmap) ---
 ## Resampled centreline, world XZ metres.
 var baked_points: PackedVector2Array = PackedVector2Array()
 ## Ground height at each `baked_points` entry, in metres.

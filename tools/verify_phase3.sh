@@ -10,7 +10,8 @@
 #
 # The gates that need the engine (collision matches the mesh, the runway is
 # flat, the 50 m radius maths) live in scenes/tests/phase3_selfcheck.tscn and
-# are run by tools/bake_siran_island.sh.
+# are run by `bash tools/generate_siran_island.sh` locally, and by the APK
+# workflow against the committed map.
 #
 # Run from anywhere: the script cd's to the repository root itself.
 
@@ -44,7 +45,9 @@ code_hits() { # $1 = regex
 
 # --- Gate 1: terrain collision is a height field, never a trimesh -------------
 head2 'Gate 1 — terrain collision uses HeightMapShape3D, never ConcavePolygonShape3D'
-trimesh_hits=$(code_hits 'ConcavePolygonShape3D' | grep -v '^scripts/tests/')
+# The self-check and tools/check_baked_scene.gd name the class *in order to forbid
+# it*; everything that builds or streams terrain must not mention it at all.
+trimesh_hits=$(code_hits 'ConcavePolygonShape3D' | grep -vE '^(scripts/tests/|tools/)')
 if [ -z "$trimesh_hits" ]; then
 	pass "no ConcavePolygonShape3D in terrain code (comments and the self-check aside)"
 else
@@ -57,7 +60,7 @@ else
 	fail "terrain_mesh_builder.gd does not create a HeightMapShape3D"
 fi
 if grep -q 'shape_node.scale = Vector3(config.vertex_spacing_m, 1.0, config.vertex_spacing_m)' \
-		scripts/world/bake/island_baker.gd; then
+		scripts/world/bake/terrain_generator.gd; then
 	pass "collision cells scaled to vertex_spacing_m on X/Z only (Jolt requirement)"
 else
 	fail "height field cell scale is missing or non-uniform in Z"
@@ -80,7 +83,12 @@ fi
 if grep -q 'SurfaceTool\|ArrayMesh.new()' scripts/world/chunk_manager.gd; then
 	fail "ChunkManager builds geometry at runtime"
 else
-	pass "ChunkManager only instantiates baked scenes"
+	pass "ChunkManager only instantiates the committed baked scene"
+fi
+if grep -q 'SurfaceTool.new()' scripts/world/bake/terrain_generator.gd; then
+	pass "TerrainGenerator builds the terrain mesh with SurfaceTool (generation time)"
+else
+	fail "TerrainGenerator.gd must build the terrain mesh with SurfaceTool"
 fi
 if grep -q 'func _ready' scripts/world/chunk_manager.gd &&
 	! grep -qE 'generate\(|add_surface_from_arrays' scripts/world/chunk_manager.gd; then
@@ -124,11 +132,11 @@ check_config 'MAP_SIZE_DEFAULT_M: float = 4000\.0' 'map is 4000 m square'
 check_config 'CHUNK_SIZE_DEFAULT_M: float = 500\.0' 'chunks are 500 m'
 check_config 'VERTEX_SPACING_DEFAULT_M: float = 10\.0' 'terrain samples every 10 m'
 check_config 'island_radius_m: float = 1950\.0' 'island radius is 1950 m'
-if grep -q '/chunk_%d_%d.tscn' scripts/world/chunk_manager.gd &&
-		grep -q '/chunk_%d_%d.tscn' scripts/world/bake/island_baker.gd; then
-	pass "baker and streamer agree on the chunk scene path"
+if grep -q 'TerrainGenerator.BAKED_SCENE_PATH' scripts/world/chunk_manager.gd &&
+		grep -q 'TerrainGenerator.CHUNK_NODE_PATTERN' scripts/world/chunk_manager.gd; then
+	pass "streamer takes the scene path and chunk node names from TerrainGenerator"
 else
-	fail "chunk scene path pattern differs between baker and streamer"
+	fail "ChunkManager must take its scene path / chunk node names from TerrainGenerator"
 fi
 zones=$(grep -c '_make_zone(&' scripts/world/siran_map_config.gd)
 if [ "$zones" -eq 5 ]; then
@@ -199,67 +207,60 @@ else
 	fail "RiverSurface does not use baked_extras.gd"
 fi
 
-# --- Gate 7: baked output, if present ---------------------------------------
-head2 'Gate 7 — baked chunk output (skipped until the first bake)'
-baked=$(ls scenes/world/terrain/chunk_*.tscn 2>/dev/null | wc -l | tr -d ' ')
-if [ "$baked" -eq 0 ]; then
-	skip "no baked chunks yet — run 'bash tools/bake_siran_island.sh'"
+# --- Gate 7: the committed baked map ----------------------------------------
+# The map is generated once (TerrainGenerator) and committed, so this gate can
+# be strict: the scene must be in Git, must hold 64 chunk nodes, must carry a
+# HeightMapShape3D collider per chunk, and must never contain a trimesh.
+head2 'Gate 7 — committed baked map (scenes/world/siran_island_baked.tscn)'
+BAKED_SCENE="scenes/world/siran_island_baked.tscn"
+if git ls-files --error-unmatch "$BAKED_SCENE" >/dev/null 2>&1; then
+	pass "$BAKED_SCENE is committed"
 else
-	if [ "$baked" -eq 64 ]; then
-		pass "64 chunk scenes on disk"
+	fail "$BAKED_SCENE is not in Git — the APK would ship without a world (run tools/generate_siran_island.sh)"
+fi
+if [ -f "$BAKED_SCENE" ]; then
+	chunks=$(grep -cE '^\[node name="Chunk_[0-9]+_[0-9]+"' "$BAKED_SCENE" || true)
+	[ "$chunks" -eq 64 ] && pass "64 Chunk_<x>_<z> nodes in the baked scene" \
+		|| fail "expected 64 chunk nodes in the baked scene, found $chunks"
+	terrains=$(grep -c 'name="Terrain" type="MeshInstance3D"' "$BAKED_SCENE" || true)
+	[ "$terrains" -eq 64 ] && pass "every chunk has a Terrain MeshInstance3D" \
+		|| fail "expected 64 Terrain MeshInstance3D nodes, found $terrains"
+	heightmaps=$(grep -c 'type="HeightMapShape3D"' "$BAKED_SCENE" || true)
+	[ "$heightmaps" -eq 64 ] && pass "64 HeightMapShape3D collision shapes baked into the scene" \
+		|| fail "expected 64 HeightMapShape3D sub-resources, found $heightmaps"
+	if grep -qa 'ConcavePolygonShape3D' "$BAKED_SCENE"; then
+		fail "the baked scene contains a ConcavePolygonShape3D (terrain collision must be a height field)"
 	else
-		fail "expected 64 chunk scenes, found $baked"
+		pass "no trimesh collision anywhere in the baked scene"
 	fi
-	no_heightmap=0
-	trimeshes=0
-	# The shape is serialised to a companion .res and merely *referenced* from
-	# the scene (island_baker.gd saves chunk_<x>_<y>_collision.res), so the
-	# scene text never contains the string "HeightMapShape3D". Grepping the
-	# .tscn for it fails on every chunk of a perfectly good bake — the check has
-	# to follow the reference and look inside the resource.
-	unreferenced=0
-	first_bad=""
-	for scene in scenes/world/terrain/chunk_*.tscn; do
-		base=$(basename "$scene" .tscn)
-		collision="resources/world/terrain/${base}_collision.res"
-		if ! grep -q "${base}_collision\.res" "$scene"; then
-			unreferenced=$((unreferenced + 1))
-		fi
-		# -a: .res is binary, and grep would otherwise only say "Binary file
-		# matches" without a usable exit status.
-		if ! grep -qa 'HeightMapShape3D' "$collision" 2>/dev/null; then
-			no_heightmap=$((no_heightmap + 1))
-			[ -n "$first_bad" ] || first_bad="$base"
-		fi
-		if grep -qa 'ConcavePolygonShape3D' "$scene" "$collision" 2>/dev/null; then
-			trimeshes=$((trimeshes + 1))
-		fi
-	done
-	[ "$unreferenced" -eq 0 ] && pass "every chunk scene references its collision resource" \
-		|| fail "$unreferenced chunk scene(s) do not reference chunk_<x>_<y>_collision.res"
-	[ "$no_heightmap" -eq 0 ] && pass "every baked collision resource is a HeightMapShape3D" \
-		|| fail "$no_heightmap collision resource(s) are not a HeightMapShape3D (first: $first_bad)"
-	[ "$trimeshes" -eq 0 ] && pass "no chunk scene or collision resource uses a trimesh" \
-		|| fail "$trimeshes chunk(s) use ConcavePolygonShape3D"
-	if [ -f resources/world/baked/siran_island_summary.tres ]; then
-		pass "bake summary written"
-		if grep -q 'generator_version = ' resources/world/baked/siran_island_summary.tres; then
-			baked_version=$(grep -m1 'generator_version = ' \
-				resources/world/baked/siran_island_summary.tres | tr -dc '0-9')
-			code_version=$(grep -m1 'generator_version: int = ' scripts/world/siran_map_config.gd |
-				tr -dc '0-9')
-			if [ "$baked_version" = "$code_version" ]; then
-				pass "baked chunks match the current generator version ($code_version)"
-			else
-				fail "baked chunks are stale (bake v$baked_version, code v$code_version)"
-			fi
-		fi
+	# A scene with the right nodes but empty meshes would sail through the greps
+	# above; the self-check in CI proves the meshes actually have surfaces. This
+	# size floor catches the "packed with no owner" case early and cheaply.
+	bytes=$(stat -c%s "$BAKED_SCENE" 2>/dev/null || echo 0)
+	if [ "$bytes" -gt 1048576 ]; then
+		pass "baked scene is $(du -h "$BAKED_SCENE" | cut -f1) — meshes are really in it"
 	else
-		fail "bake summary missing — the bake did not finish"
+		fail "baked scene is only ${bytes} bytes; the chunk meshes were not packed (owner not set?)"
 	fi
-	size=$(du -ch scenes/world/terrain/*.tscn resources/world/terrain/*.res \
-		resources/world/baked/*.res 2>/dev/null | tail -1 | cut -f1)
-	printf '        baked terrain footprint: %s\n' "${size:-unknown}"
+	printf '        baked map footprint: %s\n' "$(du -h "$BAKED_SCENE" | cut -f1)"
+else
+	fail "$BAKED_SCENE is missing from disk"
+fi
+if [ -f resources/world/baked/siran_island_summary.tres ]; then
+	pass "generation summary written"
+	if grep -q 'generator_version = ' resources/world/baked/siran_island_summary.tres; then
+		baked_version=$(grep -m1 'generator_version = ' \
+			resources/world/baked/siran_island_summary.tres | tr -dc '0-9')
+		code_version=$(grep -m1 'generator_version: int = ' scripts/world/siran_map_config.gd |
+			tr -dc '0-9')
+		if [ "$baked_version" = "$code_version" ]; then
+			pass "baked map matches the current generator version ($code_version)"
+		else
+			fail "baked map is stale (scene v$baked_version, code v$code_version)"
+		fi
+	fi
+else
+	fail "generation summary missing — the map was not generated with TerrainGenerator"
 fi
 
 # --- Gate 8: offline hard requirement ---------------------------------------
@@ -285,19 +286,31 @@ done
 
 # --- Gate 10: tooling reachable ---------------------------------------------
 head2 'Gate 10 — bake tooling is present and runnable'
-for file in tools/bake_siran_island.sh tools/bake/bake_siran_island.gd \
-		tools/bake/bake_siran_island_editor.gd scenes/tests/phase3_selfcheck.tscn \
-		scripts/tests/phase3_selfcheck.gd; do
+for file in tools/generate_siran_island.sh tools/bake/generate_siran_island.gd \
+		tools/bake/terrain_generator_editor.gd scripts/world/bake/terrain_generator.gd \
+		scenes/tests/phase3_selfcheck.tscn scripts/tests/phase3_selfcheck.gd; do
 	if [ -f "$file" ]; then
 		pass "$file present"
 	else
 		fail "$file missing"
 	fi
 done
-if [ -x tools/bake_siran_island.sh ]; then
-	pass "tools/bake_siran_island.sh is executable"
+if [ -x tools/generate_siran_island.sh ]; then
+	pass "tools/generate_siran_island.sh is executable"
 else
-	skip "tools/bake_siran_island.sh is not marked executable"
+	skip "tools/generate_siran_island.sh is not marked executable"
+fi
+# The APK workflow must not generate the map: that is what produced packs with
+# no world in them. It verifies the committed scene instead.
+if grep -q 'bake_siran_island' .github/workflows/build.yml; then
+	fail ".github/workflows/build.yml still runs a bake — CI must only build the APK"
+else
+	pass "the APK workflow runs no bake step"
+fi
+if grep -q 'Verify the committed baked map' .github/workflows/build.yml; then
+	pass "the APK workflow verifies the committed baked map before exporting"
+else
+	fail "the APK workflow must verify scenes/world/siran_island_baked.tscn before exporting"
 fi
 
 # --- Lint --------------------------------------------------------------------
@@ -307,10 +320,20 @@ fi
 # correct, it just was not in the pack. These checks pin the packaging side.
 head2 'Gate 11 — export packaging keeps the baked world and hides the logo'
 if grep -q '^include_filter=".*\*\.tscn' export_presets.cfg &&
-	grep -q '\*\.res' export_presets.cfg; then
-	pass 'include_filter lists *.tscn and *.res — disk walk, not the editor scan'
+	grep -q '\*\.res' export_presets.cfg &&
+	grep -q '\*\.scn' export_presets.cfg; then
+	pass 'include_filter lists *.tscn, *.res and *.scn — disk walk, not the editor scan'
 else
-	fail 'export_presets.cfg include_filter must list *.tscn and *.res: files created after the last import (the bake) can otherwise be left out of the APK'
+	fail 'export_presets.cfg include_filter must list *.tscn, *.res and *.scn: a resource the editor scan missed can otherwise be left out of the APK'
+fi
+# Comment lines are excluded: the scene's header explains where the map lives,
+# and a `;` line is not an [ext_resource].
+if grep -v '^[[:space:]]*;' scenes/world/siran_island.tscn \
+		| grep -q 'siran_island_baked.tscn' \
+		|| ! grep -q 'DEFAULT_BAKED_SCENE_PATH' scripts/world/chunk_manager.gd; then
+	fail 'the world scene must not hard-reference the baked map, and ChunkManager must load it by path'
+else
+	pass 'the baked map is loaded by ChunkManager, not referenced by the world scene'
 fi
 if grep -q '^boot_splash/show_image=false' project.godot; then
 	pass 'boot splash image disabled (no Godot logo over the boot screen)'

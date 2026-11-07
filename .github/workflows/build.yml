@@ -1,11 +1,18 @@
 name: Build APK
 
-# The map is baked here, not on a laptop: Godot generates the 64 terrain chunk
-# scenes, the collision height fields and the island preview, then the project is
-# exported to build/battle-horizons.apk and uploaded as an artifact.
+# CI builds the APK. It does **not** generate the map: Siran Island is baked
+# once by `TerrainGenerator` (editor: File > Run on
+# tools/bake/terrain_generator_editor.gd) into a committed scene,
+# scenes/world/siran_island_baked.tscn, and the build only packs what is in Git.
+#
+# That split is deliberate. Baking here meant the 64 chunk scenes were written
+# after the editor had scanned the filesystem, so they could be left out of the
+# pack: the APK installed, the boot screen worked, and the HUD said MISSING
+# BAKE. A committed scene cannot be "created too late" — if it is missing, the
+# self-check below fails the build before an APK is produced.
 #
 #   gates  -> static acceptance gates (no Godot needed, ~30 s)
-#   build  -> import, bake, verdict, export, verify, upload
+#   build  -> import, verify the committed map, export, verify the APK, upload
 #   publish-> tag pushes only: attach the APK to a GitHub Release
 
 on:
@@ -63,13 +70,13 @@ jobs:
       - name: Phase 1 gates (Unisoc budget, preset, main scene)
         run: bash tools/verify_phase1.sh
 
-      # Gate 7 (baked output) skips here by design — there is nothing baked yet.
-      # Everything else must hold on a fresh clone.
+      # Gate 7 now inspects the committed baked scene, so a fresh clone proves
+      # the map is real before Godot is even installed.
       - name: Phase 3 gates (fresh clone)
         run: bash tools/verify_phase3.sh
 
   build:
-    name: Bake, verify, export
+    name: Verify, export
     needs: gates
     # Pinned: `ubuntu-latest` starts migrating to Ubuntu 26 in Oct 2026, and a
     # preview image is not the place to discover an Android SDK regression.
@@ -158,46 +165,45 @@ jobs:
           fi
           bash tools/patch_keystore.sh
 
-      # Import + bake + self-check (--require-bake). This is the only place the
-      # 64 chunk scenes and their HeightMapShape3D collisions come from.
-      - name: Bake Siran Island
+      # The map is committed, so this is the gate that proves the committed
+      # scene is a real map: 64 chunk nodes, a mesh with a surface on every one,
+      # a HeightMapShape3D collider on every one, and rays that hit the collider
+      # at the height the mesh draws. A scene packed empty (the classic
+      # `owner`-not-set bug) fails here, before anything is exported.
+      - name: Verify the committed baked map
         run: |
           set -uo pipefail
-          if ! bash tools/bake_siran_island.sh 2>&1 | tee bake.log; then
-            # GitHub keeps at most 10 annotations per step, and a 60-line tail
-            # spends all of them before reaching the interesting part. Spend
-            # them on the verdict and the failing checks instead.
-            verdict="$(grep -E '^\[check\]' bake.log | tail -1)"
-            echo "::error::the bake failed${verdict:+ — $verdict}"
-            grep -E '^  FAIL|^\[bake\] FAILED|^\[bake\] .*failed' bake.log | head -6 \
-              | while IFS= read -r line; do echo "::error::$line"; done
-            grep -E '^(ERROR|SCRIPT ERROR|ERROR:)' bake.log | head -3 \
-              | while IFS= read -r line; do echo "::error::$line"; done
-            echo "::error::bake.log is $(wc -l < bake.log) lines; see the siran-island-bake artifact"
+          if [ ! -f scenes/world/siran_island_baked.tscn ]; then
+            echo "::error::scenes/world/siran_island_baked.tscn is not in Git — the APK would boot into an empty world"
+            echo "::error::fix it on a dev machine: bash tools/generate_siran_island.sh, then commit the scene"
             exit 1
           fi
-          grep -E '^\[bake\]|^\[check\]|baked terrain footprint' bake.log || true
 
-      # The export builds its file list from the editor's *scanned* filesystem
-      # (EditorExportPlatform::export_project_files), and the 64 chunk scenes plus
-      # their .res siblings were created after the last scan. Without this the
-      # pack can omit them: the APK installs, the boot screen works, and "Enter
-      # Siran Island" appears to do nothing. include_filter in
-      # export_presets.cfg also forces them in from disk — two independent
-      # defences, because the failure is invisible until it is on a phone.
-      - name: Refresh the import cache after the bake
-        run: |
-          set -uo pipefail
-          if ! "$GODOT_BIN" --headless --path "$PWD" --import 2>&1 | tee import-post-bake.log; then
-            echo "::error::re-import after the bake failed"
-            tail -10 import-post-bake.log | while IFS= read -r line; do echo "::error::$line"; done
+          # Structure first: seconds, no physics, names its own failures.
+          if ! timeout 300 "$GODOT_BIN" --headless --path "$PWD" \
+              --script res://tools/check_baked_scene.gd > structure.log 2>&1; then
+            echo "::error::the committed baked map is structurally broken"
+            grep -E 'FAIL|first problem|\[verify\]' structure.log | head -8 \
+              | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
-          echo "Re-import done; chunk scenes known to the editor: $(ls scenes/world/terrain/chunk_*.tscn | wc -l | tr -d ' ')"
+          grep -E '^\[verify\]' structure.log || true
 
-      # Now that the chunks exist, gate 7 checks them: 64 scenes, every one with
-      # a HeightMapShape3D and none with a trimesh collider.
-      - name: Phase 3 gates (with baked output)
+          # Then the physics: rays must hit the height field where the mesh draws.
+          if ! timeout 300 "$GODOT_BIN" --headless --path "$PWD" \
+              scenes/tests/phase3_selfcheck.tscn -- --require-bake > selfcheck.log 2>&1; then
+            verdict="$(grep -E '^\[check\]' selfcheck.log | tail -1)"
+            echo "::error::the committed baked map failed the self-check${verdict:+ — $verdict}"
+            grep -E '^  FAIL|SCRIPT ERROR' selfcheck.log | head -8 \
+              | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
+          grep -E '^\[check\]' selfcheck.log || true
+
+      # Gate 7 of verify_phase3.sh re-reads the committed scene with the engine
+      # gone: 64 `Chunk_*` nodes, HeightMapShape3D collision, no trimesh, and a
+      # summary whose generator_version matches the code.
+      - name: Phase 3 gates (committed map)
         run: bash tools/verify_phase3.sh
 
       - name: Export release APK
@@ -253,16 +259,15 @@ jobs:
                 echo "| \`$(basename "$f")\` | $(du -h "$f" | cut -f1) |"
               fi
             done
-            echo "| Chunk scenes baked | $(ls scenes/world/terrain/chunk_*.tscn 2>/dev/null | wc -l | tr -d ' ') |"
+            echo "| Baked map scene | \`scenes/world/siran_island_baked.tscn\` ($(du -h scenes/world/siran_island_baked.tscn 2>/dev/null | cut -f1)) |"
             if [ -f "build/$APK_NAME" ] && command -v unzip >/dev/null 2>&1; then
               packed=$(unzip -Z1 "build/$APK_NAME" 2>/dev/null \
-                | grep -cE '^assets/scenes/world/terrain/chunk_[0-9]+_[0-9]+\.tscn$' || true)
-              echo "| Chunk scenes **inside the APK** | ${packed:-0} |"
+                | grep -cE '^assets/scenes/world/siran_island_baked\.tscn(\.remap)?$' || true)
+              echo "| Baked map **inside the APK** | ${packed:-0} |"
             fi
-            echo "| Baked terrain on disk | $(du -ch scenes/world/terrain/*.tscn resources/world/terrain/*.res resources/world/baked/*.res 2>/dev/null | tail -1 | cut -f1) |"
             echo
             echo '```'
-            grep -E 'Summary:|PASS|FAIL|SKIP|baked terrain footprint' bake.log 2>/dev/null | tail -20 || echo "(no bake log)"
+            grep -E '^\[check\]|PASS|FAIL|SKIP' selfcheck.log 2>/dev/null | tail -20 || echo "(no self-check log)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -276,16 +281,18 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-      # `if: always()`: on a failed bake this artifact *is* the evidence.
-      - name: Upload bake output
+      # `if: always()`: on a failed self-check this log *is* the evidence.
+      - name: Upload self-check log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: siran-island-bake-${{ github.sha }}
+          name: siran-island-selfcheck-${{ github.sha }}
           path: |
-            docs/images/siran_island_preview.png
-            resources/world/baked/siran_island_summary.tres
-            bake.log
+            selfcheck.log
+            structure.log
+            config-check.log
+            import-cold.log
+            import-warm.log
           retention-days: 14
           if-no-files-found: warn
 

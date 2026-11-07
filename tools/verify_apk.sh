@@ -4,14 +4,14 @@
 #   Gate B: android.permission.WAKE_LOCK present (manifest not silently empty)
 #   Gate C: size <= APK_SIZE_LIMIT_MB (default 120)
 #   Gate D: arm64-v8a present (Unisoc T606); armeabi-v7a warn-only
-#   Gate E: the baked world is actually inside the package (chunk scenes and
-#           collision resources reachable at assets/…), so "it installs and the
-#           boot screen works" can never again pass for a playable build.
+#   Gate E: the baked world is actually inside the package (the committed map
+#           scene plus the river mesh, reachable at assets/…), so "it installs
+#           and the boot screen works" can never again pass for a playable build.
 #
 # Gate E is what catches the worst failure mode this project has hit: the APK
 # boots, the UI works, you tap "Enter Siran Island" and nothing happens, because
-# the baked files were created after the editor's last filesystem scan and never
-# made it into the pack. It can be skipped with APK_SKIP_PAYLOAD_GATE=1 for a
+# the map never made it into the pack. The map is now one committed scene, so
+# the check is simply "is that scene (or its .remap) in the APK". It can be skipped with APK_SKIP_PAYLOAD_GATE=1 for a
 # deliberately unbaked build.
 set -euo pipefail
 
@@ -170,8 +170,8 @@ else
     # the APK. Three earlier runs of this gate failed on exactly that distinction
     # and blamed the pack for it.
     world_scene=$(packed_count '^assets/scenes/world/siran_island\.tscn(\.remap)?$')
-    chunk_scenes=$(packed_count '^assets/scenes/world/terrain/chunk_[0-9]+_[0-9]+\.tscn(\.remap)?$')
-    chunk_collisions=$(packed_count '^assets/resources/world/terrain/chunk_[0-9]+_[0-9]+_collision\.res(\.remap)?$')
+    baked_map=$(packed_count '^assets/scenes/world/siran_island_baked\.tscn(\.remap)?$')
+    river_mesh=$(packed_count '^assets/resources/world/baked/siran_river_surface\.res(\.remap)?$')
     boot_script=$(packed_count '^assets/scripts/ui/boot_world_link\.(gd|gdc)(\.remap)?$')
     water_shader=$(packed_count '^assets/assets/shaders/water_surface\.gdshader(\.remap)?$')
     converted=$(packed_count '^assets/\.godot/exported/')
@@ -200,13 +200,13 @@ else
         echo "::error::assets/shaders/water_surface.gdshader is not in the APK" >&2
         payload_problems=$((payload_problems + 1))
     fi
-    if [[ "$chunk_scenes" -lt 64 ]]; then
-        echo "::error::$chunk_scenes baked chunk scenes in the APK, expected 64 — the bake is not in the pack" >&2
-        echo "::error::bake BEFORE exporting, then re-import so the editor file list includes the new files; export_presets.cfg include_filter must list *.tscn and *.res" >&2
+    if [[ "$baked_map" -lt 1 ]]; then
+        echo "::error::scenes/world/siran_island_baked.tscn (or its .remap) is not in the APK — the world would be empty" >&2
+        echo "::error::commit the scene, then re-import so the editor file list includes it; export_presets.cfg include_filter must list *.tscn, *.res and *.scn" >&2
         payload_problems=$((payload_problems + 1))
     fi
-    if [[ "$chunk_collisions" -lt 64 ]]; then
-        echo "::error::$chunk_collisions baked collision resources in the APK, expected 64" >&2
+    if [[ "$river_mesh" -lt 1 ]]; then
+        echo "::error::resources/world/baked/siran_river_surface.res is not in the APK" >&2
         payload_problems=$((payload_problems + 1))
     fi
 
@@ -218,6 +218,6 @@ else
             | sed -n '1,8p' >&2 || true
         exit 1
     fi
-    echo "Payload verified: $world_scene world scene, $chunk_scenes chunk scenes," \
-        "$chunk_collisions collision resources, water shader, button script"
+    echo "Payload verified: $world_scene world scene, $baked_map baked map scene," \
+        "$river_mesh river mesh, water shader, button script"
 fi

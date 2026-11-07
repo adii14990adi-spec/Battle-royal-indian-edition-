@@ -16,10 +16,10 @@ Device runbook: `docs/PHASE3_ACCEPTANCE.md`.
 | --- | --- | --- |
 | Layout data (zones, lake, river, moat, roads, seed) | `scripts/world/siran_map_config.gd` | The single source of truth. Code, not a `.tres`, so a bad merge cannot move the runway. |
 | Zone / water / road / channel resources | `scripts/world/island_*.gd` | Typed `Resource`s, usable from the inspector, serialisable later. |
-| Heightfield generator (FastNoiseLite) | `scripts/world/bake/island_heightmap.gd` | **Bake-time only.** |
-| Mesh + collision builders | `scripts/world/bake/terrain_mesh_builder.gd`, `surface_mesh_builder.gd` | **Bake-time only.** |
-| Baker that writes the files | `scripts/world/bake/island_baker.gd` | **Bake-time only.** |
-| `bash tools/bake_siran_island.sh` | `tools/` | Import → bake → self-check, one command. |
+| Heightfield generator (FastNoiseLite) | `scripts/world/bake/island_heightmap.gd` | **Generation-time only.** |
+| Mesh builder (`SurfaceTool`) + the one-scene writer | `scripts/world/bake/terrain_generator.gd` | **Generation-time only.** The `@tool` script the map comes from. |
+| Collision + winding assertions | `scripts/world/bake/terrain_mesh_builder.gd`, `surface_mesh_builder.gd` | **Generation-time only.** |
+| `bash tools/generate_siran_island.sh` | `tools/` | Import → generate → self-check, one command. |
 | Streaming | `scripts/world/chunk_manager.gd` | 500 m chunks, threaded loads, radius driven. |
 | World scene | `scenes/world/siran_island.tscn` | Ocean, lake, river, streamer, camera, HUD. |
 | Terrain / road materials | `resources/world/materials/*.tres` | Unshaded `ShaderMaterial`, no PBR. |
@@ -27,9 +27,10 @@ Device runbook: `docs/PHASE3_ACCEPTANCE.md`.
 | Self-check | `scenes/tests/phase3_selfcheck.tscn` | Layout maths + collision-vs-mesh raycasts. |
 | Static gates | `tools/verify_phase3.sh` | `bash tools/verify_phase3.sh` |
 
-The baked outputs (`scenes/world/terrain/*.tscn`, `resources/world/terrain/*.res`,
-`resources/world/baked/*`) **are committed** once produced — a fresh clone runs
-without baking. See §6.
+The baked output — `scenes/world/siran_island_baked.tscn`, plus
+`resources/world/baked/*` — **is committed**: one scene holding all 64 chunks,
+their meshes and their `HeightMapShape3D` collision. A fresh clone runs without
+generating anything, and the APK build only packs what is in Git. See §6.
 
 ---
 
@@ -57,7 +58,7 @@ cz\cx    0     1     2     3     4     5     6     7      (cx grows east)
 check that the pads land on land and the water bodies hold water. It is **not**
 the bake output and is not used at runtime — the authoritative picture is
 `docs/images/siran_island_preview.png`, written by
-`tools/bake_siran_island.sh` from the real FastNoiseLite heightfield.
+`tools/generate_siran_island.sh` from the real FastNoiseLite heightfield.
 
 Schematic only — every number below is the authoritative one.
 
@@ -93,7 +94,7 @@ Iron Mill ──────────────┘      └─────�
 
 ---
 
-## 3. Generation pipeline (bake time)
+## 3. Generation pipeline (generation time)
 
 `IslandHeightmap.generate()` runs seven passes, in this order, because the order
 is what makes the result predictable:
@@ -112,7 +113,7 @@ Then normals are computed with central differences on the global grid (not per
 chunk), so a normal on a chunk border is identical in both neighbours — no
 visible lighting seam.
 
-**Verify the shape without opening Godot:** the bake writes
+**Verify the shape without opening Godot:** the generator writes
 `docs/images/siran_island_preview.png`, a 512 × 512 top-down colourised
 hillshade with the 8 × 8 chunk grid drawn on top, plus the per-zone
 min/max/flat-deviation table printed to the console and stored in
@@ -159,15 +160,19 @@ height with the vertex height (tolerance 0.6 m for triangle-edge interpolation).
 
 * Rebuilds the desired set when the focus crosses a chunk border (not every
   frame): 64 rectangle tests, then sorted **nearest first**.
-* Starts at most `max_loads_in_flight = 2` `ResourceLoader.load_threaded_request(
-  path, "PackedScene", true)` at a time. `load_threaded_get_status()` is polled
-  on the same 5 Hz tick; `load_threaded_get()` runs on the main thread.
-* Frees at most `unloads_per_tick = 2` chunks outside the radius.
-* Loads the focus chunk synchronously on the first tick, so the player never
-  spawns into a hole.
-* If `scenes/world/terrain/chunk_x_y.tscn` is missing it says so **once**, with
-  the command that fixes it — a bake-less clone shows the ocean and a warning,
-  not a silent void.
+* Makes **one** `ResourceLoader.load_threaded_request("res://scenes/world/
+  siran_island_baked.tscn", "PackedScene", true)` — the whole island, off the
+  main thread. `load_threaded_get_status()` is polled on the same 5 Hz tick;
+  `load_threaded_get()` runs on the main thread.
+* Splits the instantiated scene into its 64 `Chunk_<x>_<z>` children and parks
+  them outside the tree. A resident chunk is `add_child()`-ed (one draw call, one
+  collider); a chunk outside the radius is `remove_child()`-ed and parked again,
+  so nothing is ever re-parsed or re-generated.
+* `max_loads_in_flight = 2` chunks enter the tree per tick, except on the first
+  pass after the map arrives, which fills the whole resident set at once — the
+  player must never spawn into a hole. `unloads_per_tick = 2` releases.
+* If the scene is not in the build it says so **once**, with the command that
+  fixes it — a map-less clone shows the ocean and a warning, not a silent void.
 
 ### The 50 m radius, honestly
 
@@ -201,12 +206,12 @@ one). The `keep_ring` floor is what keeps that from ever being a hole.
 
 ---
 
-## 6. Baking
+## 6. Generating the map
 
 ```bash
-bash tools/bake_siran_island.sh                  # 10 m samples, 500 m chunks
-bash tools/bake_siran_island.sh --spacing=5     # 4× the vertices, 4× the repo
-GODOT_BIN=~/Godot_v4.4-stable_linux.x86_64 bash tools/bake_siran_island.sh
+bash tools/generate_siran_island.sh              # 10 m samples, 500 m chunks
+bash tools/generate_siran_island.sh --spacing=5 # 4× the vertices, 4× the scene
+GODOT_BIN=~/Godot_v4.4-stable_linux.x86_64 bash tools/generate_siran_island.sh
 ```
 
 Needs a Godot **4.4+** binary with the project importable; there is no offline
@@ -219,30 +224,33 @@ The wrapper does three things and stops on the first failure:
    4.4 writes next to every script. **Commit both** after the first run (the
    `.import` file is the import contract — see `docs/ASSET_PIPELINE.md` §2 —
    and stable script UIDs keep scene references stable);
-2. `godot --headless --path . --script res://tools/bake/bake_siran_island.gd`;
+2. `godot --headless --path . --script res://tools/bake/generate_siran_island.gd`;
 3. `godot --headless --path . scenes/tests/phase3_selfcheck.tscn -- --require-bake`.
 
-Alternatively open `tools/bake/bake_siran_island_editor.gd` in the editor and
-press **File > Run** — same code, same output.
+Alternatively open `tools/bake/terrain_generator_editor.gd` in the editor and
+press **File > Run** — same code, same output, and it re-opens the scene so you
+can see the terrain you just made.
 
 Expected output (10 m samples):
 
-| Artefact | Count | Size each | Total |
-| --- | --- | --- | --- |
-| `scenes/world/terrain/chunk_<x>_<y>.tscn` | 64 | ~1.5 KB | ~100 KB |
-| `resources/world/terrain/chunk_<x>_<y>_mesh.res` | 64 | ~160 KB | ~10 MB |
-| `resources/world/terrain/chunk_<x>_<y>_collision.res` | 64 | ~10 KB | ~0.7 MB |
-| `resources/world/terrain/chunk_<x>_<y>_road.res` | ~20 | varies | < 0.1 MB |
+| Artefact | Count | Size |
+| --- | --- | --- |
+| `scenes/world/siran_island_baked.tscn` | 1 (64 chunk nodes + 64 meshes + 64 height fields) | ~9.2 MB |
+| `resources/world/baked/siran_river_surface.res` | 1 | ~10 KB |
+| `resources/world/baked/siran_island_summary.tres` | 1 | ~2 KB |
+| `docs/images/siran_island_preview.png` | 1 | ~175 KB (Git LFS) |
 
-The bake prints the real numbers and the per-zone integrity table. **Commit the
-outputs together with any change to the generator** — `siran_island_summary.tres`
-stores `generator_version`, and the HUD plus `verify_phase3.sh` both shout when
-the chunks on disk are older than the code (`docs/PHASE3_WORLD.md` §9).
+The generator prints the real numbers and the per-zone integrity table.
+**Commit the output together with any change to the generator** —
+`siran_island_summary.tres` stores `generator_version`, and the HUD plus
+`verify_phase3.sh` §9 both shout when the scene is older than the code.
 
-A `.res` mesh is a binary resource: reviewable diffs are for `.gd`/`.tscn`/`.tres`,
-not for 160 KB of float data. If the repo weight ever becomes a problem, the next
-step is Git LFS for `*.res` (`.gitattributes` currently LFS-tracks only
-`png/jpg/glb/ogg/wav/exr`), not committing less of the map.
+One big `.tscn` instead of 64 small ones is the whole point: the pack cannot end
+up with half a map, `ChunkManager` needs one threaded request instead of 64, and
+a reviewer can see the entire island as a single diffable artefact. The trade is
+text-encoded mesh data (Godot stores each surface as base64 buffers inside the
+scene), which is why `*.scn` is in `include_filter` as well — if a future pass
+saves it as a binary scene instead, the export still picks it up.
 
 ---
 
