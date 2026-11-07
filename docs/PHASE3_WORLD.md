@@ -160,15 +160,19 @@ height with the vertex height (tolerance 0.6 m for triangle-edge interpolation).
 
 * Rebuilds the desired set when the focus crosses a chunk border (not every
   frame): 64 rectangle tests, then sorted **nearest first**.
-* Starts at most `max_loads_in_flight = 2` `ResourceLoader.load_threaded_request(
-  path, "PackedScene", true)` at a time. `load_threaded_get_status()` is polled
-  on the same 5 Hz tick; `load_threaded_get()` runs on the main thread.
-* Frees at most `unloads_per_tick = 2` chunks outside the radius.
-* Loads the focus chunk synchronously on the first tick, so the player never
-  spawns into a hole.
-* If `scenes/world/terrain/chunk_x_y.tscn` is missing it says so **once**, with
-  the command that fixes it — a bake-less clone shows the ocean and a warning,
-  not a silent void.
+* Makes **one** `ResourceLoader.load_threaded_request("res://scenes/world/
+  siran_island_baked.tscn", "PackedScene", true)` — the whole island, off the
+  main thread. `load_threaded_get_status()` is polled on the same 5 Hz tick;
+  `load_threaded_get()` runs on the main thread.
+* Splits the instantiated scene into its 64 `Chunk_<x>_<z>` children and parks
+  them outside the tree. A resident chunk is `add_child()`-ed (one draw call, one
+  collider); a chunk outside the radius is `remove_child()`-ed and parked again,
+  so nothing is ever re-parsed or re-generated.
+* `max_loads_in_flight = 2` chunks enter the tree per tick, except on the first
+  pass after the map arrives, which fills the whole resident set at once — the
+  player must never spawn into a hole. `unloads_per_tick = 2` releases.
+* If the scene is not in the build it says so **once**, with the command that
+  fixes it — a map-less clone shows the ocean and a warning, not a silent void.
 
 ### The 50 m radius, honestly
 

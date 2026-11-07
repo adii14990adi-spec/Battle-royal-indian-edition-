@@ -58,11 +58,11 @@ Fixed on four layers:
    so cannot be fooled by a stale editor scan.
 4. `project.godot` — no boot splash image, so the boot screen appears at once.
 
-Gates: `verify_apk.sh` gate E lists the APK and requires 64 chunk scenes and 64
-collision resources (accepting either the file or its `.remap`, and either
-`.tscn`/`.scn`); `verify_phase3.sh` gate 11 pins the remap-aware check, the tap
-fallback and the packaging settings, and gate 12 parses both config files with
-Godot itself.
+Gates: `verify_apk.sh` gate E lists the APK and requires the baked map scene and
+the river mesh (accepting either the file or its `.remap`); `verify_phase3.sh`
+gate 7 checks the committed scene without Godot, gate 11 pins the remap-aware
+check, the tap fallback and the packaging settings, and gate 12 parses both
+config files with Godot itself.
 
 #### The first attempt died in the export step
 
