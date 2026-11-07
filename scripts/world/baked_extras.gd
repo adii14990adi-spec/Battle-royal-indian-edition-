@@ -1,7 +1,10 @@
 class_name BakedExtras
 extends MeshInstance3D
-## Loads the pieces of the world that are *baked but not chunked*: the river's
-## water ribbon and the bake summary.
+## Loads the pieces of the generated world that are not inside the baked scene:
+## the river's water ribbon and the generation summary.
+##
+## `TerrainGenerator` writes both next to `siran_island_baked.tscn`. The terrain
+## itself is streamed by `ChunkManager`; only the water ribbon belongs here.
 ##
 ## The world scene cannot reference these files directly, because they do not
 ## exist until the terrain has been baked — a `[ext_resource]` pointing at a
@@ -9,8 +12,8 @@ extends MeshInstance3D
 ## clone could not even launch the boot scene. So the scene ships with this
 ## loader node and an empty mesh, and the loader fills it in if the bake exists.
 
-const RIVER_MESH_PATH: String = "res://resources/world/baked/siran_river_surface.res"
-const SUMMARY_PATH: String = "res://resources/world/baked/siran_island_summary.tres"
+const RIVER_MESH_PATH: String = TerrainGenerator.RIVER_MESH_PATH
+const SUMMARY_PATH: String = TerrainGenerator.SUMMARY_PATH
 
 var summary: SiranBakeSummary
 
@@ -22,16 +25,17 @@ func _ready() -> void:
 
 func _load_summary() -> void:
 	if not ResourceLoader.exists(SUMMARY_PATH):
-		print("[world] no bake summary yet — run tools/bake_siran_island.sh")
+		print("[world] no generation summary — run TerrainGenerator "
+				+ "(tools/bake/terrain_generator_editor.gd) to write the map")
 		return
 	summary = ResourceLoader.load(SUMMARY_PATH) as SiranBakeSummary
 	if summary == null:
 		push_warning("[world] %s is not a SiranBakeSummary" % SUMMARY_PATH)
 		return
-	print("[world] bake v%d seed=%d %s"
+	print("[world] baked scene v%d seed=%d %s"
 			% [summary.generator_version, summary.noise_seed, summary.human_size()])
 	if summary.is_stale(SiranMapConfig.shared()):
-		push_warning("[world] baked chunks are stale (bake v%d, config v%d) — re-bake"
+		push_warning("[world] baked map is stale (scene v%d, config v%d) — regenerate"
 				% [summary.generator_version, SiranMapConfig.shared().generator_version])
 
 

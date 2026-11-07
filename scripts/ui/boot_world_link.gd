@@ -10,26 +10,24 @@ extends Button
 ## healthy, the button looks healthy, and there is no logcat on a phone in a
 ## tester's hand. So the button reports what it found before it is even pressed:
 ##
-##   ready:   world scene packed, baked terrain 64/64   (green)
-##   broken:  world scene packed: false | baked chunks: 0/64   (amber)
+##   ready:   world scene packed, baked map packed     (green)
+##   broken:  world scene packed: false | baked map: false   (amber)
 ##
 ## and every failure path puts plain text on screen instead of a silent `return`.
 ##
-## Those checks must go through `ResourceLoader.exists()`, never plain
+## Both checks must go through `ResourceLoader.exists()`, never plain
 ## `FileAccess.file_exists()`. At export time Godot converts text resources to
 ## binary and writes `<path>.remap` beside them (`_export_customize` in
-## editor_export_platform.cpp), so inside an APK `chunk_0_0.tscn` does not exist
-## as a file at all — it is `chunk_0_0.tscn.remap` plus a `.scn` under
-## `.godot/exported/`. `ResourceLoader.exists()` follows that remap
+## editor_export_platform.cpp), so inside an APK `siran_island_baked.tscn` does
+## not exist as a file at all — it is `siran_island_baked.tscn.remap` plus a
+## `.scn` under `.godot/exported/`. `ResourceLoader.exists()` follows that remap
 ## (`ResourceLoader::_path_remap`); `FileAccess` does not, which is precisely how
 ## a fully packed build can report itself as unbaked on a phone.
 
 const WORLD_SCENE: String = "res://scenes/world/siran_island.tscn"
-const TERRAIN_DIR: String = "res://scenes/world/terrain/"
-## SiranMapConfig.chunks_per_side() for the 4 km / 500 m map. Duplicated on
+## The one file the whole 4 km map is baked into. Duplicated as a literal on
 ## purpose: the boot screen must not break if the world scripts fail to load.
-const CHUNKS_PER_SIDE: int = 8
-const TOTAL_CHUNKS: int = CHUNKS_PER_SIDE * CHUNKS_PER_SIDE
+const BAKED_MAP_SCENE: String = "res://scenes/world/siran_island_baked.tscn"
 
 const STATUS_FONT_SIZE: int = 15
 const ERROR_FONT_SIZE: int = 16
@@ -77,17 +75,17 @@ func _make_label(font_size: int, colour: Color) -> Label:
 
 func _refresh_status() -> void:
 	var world_packed: bool = resource_in_build(WORLD_SCENE)
-	var chunks: int = count_baked_chunks()
-	if world_packed and chunks == TOTAL_CHUNKS:
+	var map_packed: bool = resource_in_build(BAKED_MAP_SCENE)
+	if world_packed and map_packed:
 		text = "ENTER SIRAN ISLAND — PHASE 3 GREYBOX"
 		tooltip_text = "Fly the baked 4 km map and watch chunks stream"
-		_status.text = "Ready — world scene packed, baked terrain %d/%d" % [chunks, TOTAL_CHUNKS]
+		_status.text = "Ready — world scene packed, baked map packed"
 		_status.add_theme_color_override("font_color", STATUS_COLOR_OK)
 	else:
 		text = "ENTER SIRAN ISLAND — INCOMPLETE BUILD"
 		tooltip_text = "The export is missing files; the status line names them"
-		_status.text = "world scene packed: %s  |  baked chunks: %d/%d" % [
-			str(world_packed), chunks, TOTAL_CHUNKS,
+		_status.text = "world scene packed: %s  |  baked map: %s" % [
+			str(world_packed), str(map_packed),
 		]
 		_status.add_theme_color_override("font_color", STATUS_COLOR_BAD)
 	print("[boot] %s" % _status.text)
@@ -101,34 +99,19 @@ func resource_in_build(path: String) -> bool:
 	return ResourceLoader.exists(path)
 
 
-func count_baked_chunks() -> int:
-	## Probed by path instead of listing the directory, and through
-	## resource_in_build() so a packed-and-converted chunk still counts.
-	var found: int = 0
-	for cz in range(CHUNKS_PER_SIDE):
-		for cx in range(CHUNKS_PER_SIDE):
-			if resource_in_build("%schunk_%d_%d.tscn" % [TERRAIN_DIR, cx, cz]):
-				found += 1
-	return found
-
-
 func _on_pressed() -> void:
 	# Both checks exist because the export, not the code, is what usually breaks:
-	# a file created after the editor's last import can be left out of the pack
-	# and every loader below then fails with nothing visible on screen.
+	# a file left out of the pack makes every loader below fail with nothing
+	# visible on screen.
 	if not resource_in_build(WORLD_SCENE):
 		_show_error("Missing %s — the world scene is not in this build." % WORLD_SCENE)
 		return
-	var chunks: int = count_baked_chunks()
-	if chunks < TOTAL_CHUNKS:
-		var incomplete := "Baked terrain incomplete: %d/%d chunks in this build." % [
-			chunks, TOTAL_CHUNKS,
-		]
-		_show_error(incomplete + " The map was not exported — check include_filter.")
+	if not resource_in_build(BAKED_MAP_SCENE):
+		_show_error("Missing %s — the baked map is not in this build. "
+				% BAKED_MAP_SCENE
+				+ "Run TerrainGenerator in the editor, then check include_filter.")
 		return
-	print("[boot] change_scene_to_file(%s) — %d/%d chunks packed" % [
-		WORLD_SCENE, chunks, TOTAL_CHUNKS,
-	])
+	print("[boot] change_scene_to_file(%s) — baked map packed" % WORLD_SCENE)
 	var error: int = get_tree().change_scene_to_file(WORLD_SCENE)
 	if error != OK:
 		_show_error("change_scene_to_file failed for %s: %s (error %d)" % [

@@ -7,9 +7,10 @@
 ; Phase 3 is terrain + water + roads + zone markers only, so that streaming and
 ; frame time can be measured without geometry in the way.
 ;
-; The chunk terrain itself is *not* in this scene: ChunkManager instantiates
-; scenes/world/terrain/chunk_<x>_<y>.tscn at runtime (baked by tools/bake). The
-; river ribbon is a separate baked resource loaded by `RiverSurface`, because a
+; The terrain itself is *not* in this scene: ChunkManager loads the committed
+; baked map (scenes/world/siran_island_baked.tscn, generated once by
+; TerrainGenerator) and streams its 64 chunk children in and out. The river
+; ribbon is a separate generated resource loaded by `RiverSurface`, because a
 ; missing [ext_resource] would stop this scene from opening at all.
 
 [ext_resource type="Shader" path="res://assets/shaders/water_surface.gdshader" id="1_water_shader"]

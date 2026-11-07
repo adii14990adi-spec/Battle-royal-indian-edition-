@@ -149,7 +149,10 @@ func _build_lines() -> Array[String]:
 		lines.append("%s  |  focus chunk %s"
 				% [_manager.describe(), str(_manager.get_focus_chunk())])
 		if _manager.get_missing_count() > 0:
-			lines.append("NO BAKED CHUNKS — run tools/bake_siran_island.sh")
+			lines.append("NO BAKED MAP — generate scenes/world/siran_island_baked.tscn "
+					+ "(File > Run on tools/bake/terrain_generator_editor.gd)")
+		elif not _manager.is_map_loaded():
+			lines.append("LOADING %s …" % ChunkManager.DEFAULT_BAKED_SCENE_PATH)
 	if _extras != null and _extras.get_summary() != null:
 		var summary: SiranBakeSummary = _extras.get_summary()
 		lines.append("bake v%d seed %d  |  %d chunks  |  %.0f..%.0f m  |  %s" % [

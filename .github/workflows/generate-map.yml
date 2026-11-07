@@ -1,0 +1,78 @@
+name: Generate Siran Island map
+
+# One-off job: run TerrainGenerator on a machine that has Godot and upload the
+# committed-map candidate. The APK workflow no longer bakes anything, so this is
+# how the scene is produced when it needs regenerating by CI rather than by a
+# developer's editor. Delete this file once the scene in Git is current.
+#
+# Trigger it from the Actions tab (Run workflow) or by pushing to a branch.
+
+on:
+  push:
+    branches: ['arena/7dcd0563-battle-royal-indian-edition']
+  workflow_dispatch:
+
+concurrency:
+  group: generate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    name: Generate scenes/world/siran_island_baked.tscn
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Editor binary only — no Android SDK, no export templates: this job never
+      # exports anything, it just runs the generator.
+      - name: Install Godot
+        run: |
+          set -euo pipefail
+          VERSION="4.4.1"
+          NAME="Godot_v${VERSION}-stable_linux.x86_64"
+          curl -sSfL -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot-builds/releases/download/${VERSION}-stable/${NAME}.zip"
+          mkdir -p "$HOME/godot-bin"
+          unzip -qo /tmp/godot.zip -d "$HOME/godot-bin"
+          chmod +x "$HOME/godot-bin/$NAME"
+          echo "GODOT_BIN=$HOME/godot-bin/$NAME" >> "$GITHUB_ENV"
+          "$HOME/godot-bin/$NAME" --version
+
+      - name: Import project
+        run: |
+          set -uo pipefail
+          "$GODOT_BIN" --headless --path "$PWD" --import 2>&1 | tail -5 || true
+
+      - name: Generate the map
+        run: |
+          set -uo pipefail
+          "$GODOT_BIN" --headless --path "$PWD" \
+            --script res://tools/bake/generate_siran_island.gd 2>&1 | tee generate.log
+          grep -E '^\[gen\]' generate.log | tail -25 || true
+          ls -l scenes/world/siran_island_baked.tscn
+
+      - name: Sanity check the generated scene
+        run: |
+          set -uo pipefail
+          "$GODOT_BIN" --headless --path "$PWD" scenes/tests/phase3_selfcheck.tscn \
+            -- --require-bake 2>&1 | tee selfcheck.log
+          grep -E '^\[check\]' selfcheck.log || true
+
+      - name: Upload the generated map
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: siran-island-generated-${{ github.sha }}
+          path: |
+            scenes/world/siran_island_baked.tscn
+            resources/world/baked/siran_river_surface.res
+            resources/world/baked/siran_island_summary.tres
+            docs/images/siran_island_preview.png
+            generate.log
+            selfcheck.log
+          retention-days: 7
+          if-no-files-found: warn

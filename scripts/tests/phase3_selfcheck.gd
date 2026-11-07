@@ -8,15 +8,19 @@ extends Node
 ##
 ##   1. **Is the layout coherent?** chunk grid maths, 50 m streaming radius,
 ##      zone footprints, river/road topology — all pure data, no assets needed.
-##   2. **Does the collision match the picture?** It instantiates a baked chunk
-##      and fires rays straight down at 25 known mesh vertices, then compares the
-##      hit height with the vertex height. That is the test that catches a
-##      HeightMapShape3D scale/offset mistake — the failure mode where you walk
-##      2 m above or below the ground and only notice on a phone.
+##   2. **Does the collision match the picture?** It instantiates the committed
+##      baked scene and fires rays straight down at 25 known mesh vertices, then
+##      compares the hit height with the vertex height. That is the test that
+##      catches a HeightMapShape3D scale/offset mistake — the failure mode where
+##      you walk 2 m above or below the ground and only notice on a phone.
 ##
 ## Exit code: 0 all gates passed (or bake skipped), 1 failures.
 
-const CHUNK_SCENE_PATTERN: String = "res://scenes/world/terrain/chunk_%d_%d.tscn"
+## The committed single-file map. `TerrainGenerator` writes it, `ChunkManager`
+## streams it — this check is what proves the file in Git is a real map (64
+## chunk nodes, meshes with surfaces, HeightMapShape3D collision) before CI
+## spends four minutes exporting an APK around it.
+const BAKED_SCENE: String = TerrainGenerator.BAKED_SCENE_PATH
 ## Collision may differ from the rendered vertex by this much (metres) and still
 ## be correct: a ray landing on a triangle edge hits the interpolated surface.
 const COLLISION_TOLERANCE_M: float = 0.6
@@ -42,14 +46,14 @@ func _ready() -> void:
 	_check_streaming_radius()
 	_check_bake_summary()
 
-	var baked: bool = _count_baked_chunks() == _config.chunk_count()
-	if baked:
+	var baked: int = _count_baked_chunks()
+	if baked == _config.chunk_count():
 		await _check_baked_chunks()
 	else:
-		_skip_line("baked chunks", "only %d/%d on disk; run tools/bake_siran_island.sh"
-				% [_count_baked_chunks(), _config.chunk_count()])
+		_skip_line("baked map", "%d/%d chunks in %s; run TerrainGenerator"
+				% [baked, _config.chunk_count(), BAKED_SCENE])
 		if _require_bake:
-			_fail_line("--require-bake was passed but the bake is incomplete")
+			_fail_line("--require-bake was passed but the baked map is incomplete")
 
 	print("[check] %d checks, %d failed, %d skipped" % [_checks, _failures, _skips])
 	if _failures > 0:
@@ -175,15 +179,15 @@ func _check_streaming_radius() -> void:
 
 
 func _check_bake_summary() -> void:
-	var path: String = IslandBaker.SUMMARY_PATH
+	var path: String = TerrainGenerator.SUMMARY_PATH
 	if not ResourceLoader.exists(path):
-		_skip_line("bake summary", "not baked yet")
+		_skip_line("generation summary", "no map generated yet")
 		return
 	var summary: SiranBakeSummary = ResourceLoader.load(path) as SiranBakeSummary
 	if summary == null:
-		_fail_line("bake summary loads as SiranBakeSummary")
+		_fail_line("generation summary loads as SiranBakeSummary")
 		return
-	_expect(not summary.is_stale(_config), "bake is not stale",
+	_expect(not summary.is_stale(_config), "baked map is not stale",
 			"bake v%d vs config v%d" % [summary.generator_version, _config.generator_version])
 	_expect(summary.chunks_written == _config.chunk_count(), "summary counts 64 chunks",
 			"%d" % summary.chunks_written)
@@ -198,47 +202,84 @@ func _check_bake_summary() -> void:
 # --- Group 2: baked chunk structure + physics --------------------------------
 
 func _check_baked_chunks() -> void:
+	## Structure first (cheap, catches an empty pack), then the physics test that
+	## only a real mesh + real height field can pass.
+	var packed: PackedScene = ResourceLoader.load(BAKED_SCENE, "PackedScene") as PackedScene
+	if packed == null:
+		_fail_line("%s loads as a PackedScene" % BAKED_SCENE)
+		return
+	var root: Node3D = packed.instantiate() as Node3D
+	if root == null:
+		_fail_line("%s instantiates as a Node3D" % BAKED_SCENE)
+		return
+	add_child(root)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+
+	var missing: int = 0
+	var without_mesh: int = 0
+	var without_heightmap: int = 0
+	var trimeshes: int = 0
+	for cz in range(_config.chunks_per_side()):
+		for cx in range(_config.chunks_per_side()):
+			var chunk: Vector2i = Vector2i(cx, cz)
+			var node: Node3D = root.get_node_or_null(
+					TerrainGenerator.CHUNK_NODE_PATTERN % [cx, cz]) as Node3D
+			if node == null:
+				missing += 1
+				continue
+			var terrain: MeshInstance3D = node.get_node_or_null("Terrain") as MeshInstance3D
+			if terrain == null or terrain.mesh == null \
+					or terrain.mesh.get_surface_count() == 0:
+				without_mesh += 1
+			if _chunk_heightmap(node) == null:
+				without_heightmap += 1
+			trimeshes += _count_trimeshes(node)
+	_expect(missing == 0, "all %d chunk nodes are in the baked scene"
+			% _config.chunk_count(), "%d missing" % missing)
+	_expect(without_mesh == 0, "every chunk has a Terrain mesh with a surface",
+			"%d without" % without_mesh)
+	_expect(without_heightmap == 0, "every chunk has a HeightMapShape3D collider",
+			"%d without" % without_heightmap)
+	_expect(trimeshes == 0, "no ConcavePolygonShape3D anywhere in the map",
+			"found %d" % trimeshes)
+
 	var airfield: IslandZone = _config.get_zone_by_id(&"aircraft_industry")
 	var chunk: Vector2i = _config.world_to_chunk(airfield.center.x, airfield.center.y)
-	var path: String = CHUNK_SCENE_PATTERN % [chunk.x, chunk.y]
-	_expect(FileAccess.file_exists(path), "runway chunk %s exists on disk" % str(chunk), path)
-
-	var packed: PackedScene = ResourceLoader.load(path, "PackedScene") as PackedScene
-	if packed == null:
-		_fail_line("chunk scene loads")
+	var instance: Node3D = root.get_node_or_null(
+			TerrainGenerator.CHUNK_NODE_PATTERN % [chunk.x, chunk.y]) as Node3D
+	_expect(instance != null, "runway chunk %s exists" % str(chunk), "missing")
+	if instance == null:
+		root.queue_free()
 		return
-	var instance: Node3D = packed.instantiate() as Node3D
-	add_child(instance)
-	await get_tree().physics_frame
-	await get_tree().physics_frame
 
 	var terrain: MeshInstance3D = instance.get_node_or_null("Terrain") as MeshInstance3D
 	_expect(terrain != null, "chunk has a 'Terrain' MeshInstance3D", "missing")
 	var body: StaticBody3D = instance.get_node_or_null("Collision") as StaticBody3D
 	_expect(body != null, "chunk has a 'Collision' StaticBody3D", "missing")
 	if terrain == null or body == null:
-		instance.queue_free()
+		root.queue_free()
 		return
 
 	_expect(terrain.mesh != null and terrain.mesh.get_surface_count() == 1,
 			"terrain mesh has exactly one surface (one draw call per chunk)",
 			"%d surfaces" % (0 if terrain.mesh == null else terrain.mesh.get_surface_count()))
-	_expect(terrain.material_override != null, "terrain mesh has a material override", "none")
+	_expect(terrain.material_override != null, "terrain mesh has a material override",
+			"none")
 	_expect(TerrainMeshBuilder.verify_winding(terrain.mesh),
 			"terrain triangles wind clockwise (visible with cull_back)", "flipped winding")
-	_expect(_count_trimeshes(instance) == 0,
-			"no ConcavePolygonShape3D anywhere in the chunk (HeightMapShape3D only)",
-			"found %d" % _count_trimeshes(instance))
+	_expect(instance.position.is_equal_approx(_config.chunk_center(chunk)),
+			"chunk node sits at the chunk centre", str(instance.position))
 
 	var shape_node: CollisionShape3D = body.get_node_or_null("Ground") as CollisionShape3D
 	_expect(shape_node != null, "collision body has a 'Ground' CollisionShape3D", "missing")
 	if shape_node == null:
-		instance.queue_free()
+		root.queue_free()
 		return
 	var shape: HeightMapShape3D = shape_node.shape as HeightMapShape3D
 	_expect(shape != null, "ground collision uses HeightMapShape3D", "wrong shape type")
 	if shape == null:
-		instance.queue_free()
+		root.queue_free()
 		return
 	var wanted: int = _config.chunk_vertices_per_side()
 	_expect(shape.map_width == wanted and shape.map_depth == wanted,
@@ -249,15 +290,39 @@ func _check_baked_chunks() -> void:
 	_expect(shape_node.scale.is_equal_approx(Vector3(_config.vertex_spacing_m, 1.0,
 			_config.vertex_spacing_m)), "collision shape scales cells to 10 m",
 			str(shape_node.scale))
-	_expect(is_equal_approx(instance.global_position.x,
-			_config.chunk_center(chunk).x), "chunk root sits at the chunk centre",
-			str(instance.global_position))
 
+	_check_mesh_matches_heightmap(terrain, shape)
 	_check_collision_alignment(instance, terrain)
 	_check_zone_flatness(terrain, airfield)
 
-	instance.queue_free()
+	root.queue_free()
 	await get_tree().process_frame
+
+
+func _chunk_heightmap(node: Node3D) -> HeightMapShape3D:
+	var shape_node: CollisionShape3D = node.get_node_or_null("Collision/Ground") \
+			as CollisionShape3D
+	if shape_node == null:
+		return null
+	return shape_node.shape as HeightMapShape3D
+
+
+func _check_mesh_matches_heightmap(terrain: MeshInstance3D, shape: HeightMapShape3D) -> void:
+	## The saved mesh and the saved collider come from the same heightfield; if
+	## they ever disagree the ground you see is not the ground you walk on, which
+	## no screenshot can show.
+	var arrays: Array = terrain.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var per_side: int = _config.chunk_vertices_per_side()
+	_expect(vertices.size() == per_side * per_side,
+			"mesh has %d vertices (%dx%d grid)" % [per_side * per_side, per_side, per_side],
+			"%d" % vertices.size())
+	var worst: float = 0.0
+	var count: int = mini(vertices.size(), shape.map_data.size())
+	for i in range(count):
+		worst = maxf(worst, absf(vertices[i].y - shape.map_data[i]))
+	_expect(worst <= 0.01, "mesh vertices sit on the collision height field "
+			+ "(worst %.3f m)" % worst, "worst %.3f m" % worst)
 
 
 func _check_collision_alignment(instance: Node3D, terrain: MeshInstance3D) -> void:
@@ -269,6 +334,9 @@ func _check_collision_alignment(instance: Node3D, terrain: MeshInstance3D) -> vo
 	var arrays: Array = terrain.mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var per_side: int = _config.chunk_vertices_per_side()
+	if vertices.size() < per_side * per_side:
+		_fail_line("mesh has enough vertices for the raycast test")
+		return
 	var worst_error: float = 0.0
 	var hits: int = 0
 	var expected_hits: int = RAY_SAMPLES_PER_AXIS * RAY_SAMPLES_PER_AXIS
@@ -296,50 +364,19 @@ func _check_collision_alignment(instance: Node3D, terrain: MeshInstance3D) -> vo
 			"worst error %.2f m" % worst_error)
 
 
-func _check_zone_flatness(terrain: MeshInstance3D, zone: IslandZone) -> void:
-	## Vertex colours are the zone markers, so the *mesh* must be flat where the
-	## runway is — this catches a road or a noise pass flattening the wrong way.
-	var arrays: Array = terrain.mesh.surface_get_arrays(0)
-	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	var lowest: float = INF
-	var highest: float = -INF
-	var samples: int = 0
-	for vertex in vertices:
-		var world: Vector3 = terrain.global_transform * vertex
-		if zone.signed_distance(world.x, world.z) > -30.0:
-			continue
-		lowest = minf(lowest, world.y)
-		highest = maxf(highest, world.y)
-		samples += 1
-	_expect(samples > 0, "the airfield chunk contains airfield vertices",
-			"no vertices inside the runway pad")
-	if samples == 0:
-		return
-	_expect(highest - lowest <= FLATNESS_TOLERANCE_M,
-			"aircraft industry is perfectly flat (spread %.3f m)" % (highest - lowest),
-			"spread %.3f m over %d vertices" % [highest - lowest, samples])
-	_expect(absf(highest - zone.flat_height) <= 0.2,
-			"aircraft industry sits at its bake height (%.1f m)" % zone.flat_height,
-			"%.1f m" % highest)
-
-
-func _count_trimeshes(root: Node) -> int:
-	var count: int = 0
-	for child in root.get_children():
-		count += _count_trimeshes(child)
-	var shape_node: CollisionShape3D = root as CollisionShape3D
-	if shape_node != null and shape_node.shape is ConcavePolygonShape3D:
-		count += 1
-	return count
-
-
 func _count_baked_chunks() -> int:
+	## Counts `Chunk_<x>_<z>` nodes inside the committed baked scene, without
+	## instantiating it: this runs before anything is added to the tree.
+	if not ResourceLoader.exists(BAKED_SCENE):
+		return 0
+	var packed: PackedScene = ResourceLoader.load(BAKED_SCENE, "PackedScene") as PackedScene
+	if packed == null:
+		return 0
+	var state: SceneState = packed.get_state()
 	var found: int = 0
-	var side: int = _config.chunks_per_side()
-	for cz in range(side):
-		for cx in range(side):
-			if FileAccess.file_exists(CHUNK_SCENE_PATTERN % [cx, cz]):
-				found += 1
+	for i in range(state.get_node_count()):
+		if String(state.get_node_name(i)).begins_with("Chunk_"):
+			found += 1
 	return found
 
 

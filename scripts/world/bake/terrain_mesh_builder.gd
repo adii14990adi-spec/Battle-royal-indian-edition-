@@ -1,6 +1,11 @@
 class_name TerrainMeshBuilder
 extends RefCounted
-## Builds one chunk's greybox terrain mesh and its HeightMapShape3D.
+## Builds one chunk's `HeightMapShape3D` collision, and re-checks the mesh
+## winding that `TerrainGenerator` produced.
+##
+## The terrain *mesh* is built by `TerrainGenerator` with `SurfaceTool`; only the
+## collision and the winding assertion live here, so there is exactly one place
+## per concern.
 ##
 ## Why HeightMapShape3D and not a trimesh: a `ConcavePolygonShape3D` built from
 ## the same ~5 000 triangles would cost a BVH build per chunk, ~90 KB of physics
@@ -14,70 +19,11 @@ extends RefCounted
 ##
 ## Winding: Godot treats clockwise-when-seen-from-the-front as front-facing, so a
 ## top face needs (a, a+1, a+w) in that order. `verify_winding()` reconstructs a
-## triangle from the finished mesh and fails the bake if that ever regresses
-## (invisible terrain is a very expensive thing to debug on a phone).
+## triangle from the generated mesh and fails the generation if that ever
+## regresses (invisible terrain is a very expensive thing to debug on a phone).
 
 ## Minimum vertices per side that still yields a Jolt height field (not a mesh).
 const JOLT_MIN_WIDTH: int = 4
-
-
-static func build_chunk_mesh(config: SiranMapConfig, heightmap: IslandHeightmap,
-		chunk: Vector2i) -> ArrayMesh:
-	var vertices: PackedVector3Array = PackedVector3Array()
-	var normals: PackedVector3Array = PackedVector3Array()
-	var colors: PackedColorArray = PackedColorArray()
-	var indices: PackedInt32Array = PackedInt32Array()
-
-	var verts_per_side: int = config.chunk_vertices_per_side()
-	var cells: int = verts_per_side - 1
-	var spacing: float = config.vertex_spacing_m
-	var half_chunk: float = config.chunk_size_m * 0.5
-	var ix0: int = chunk.x * cells
-	var iz0: int = chunk.y * cells
-	var vertex_count: int = verts_per_side * verts_per_side
-	vertices.resize(vertex_count)
-	normals.resize(vertex_count)
-	colors.resize(vertex_count)
-
-	for lz in range(verts_per_side):
-		var world_z: float = heightmap.grid_z(iz0 + lz)
-		var local_z: float = float(lz) * spacing - half_chunk
-		for lx in range(verts_per_side):
-			var world_x: float = heightmap.grid_x(ix0 + lx)
-			var index: int = lz * verts_per_side + lx
-			var height: float = heightmap.height_at_index(ix0 + lx, iz0 + lz)
-			var normal: Vector3 = heightmap.normal_at_index(ix0 + lx, iz0 + lz)
-			vertices[index] = Vector3(float(lx) * spacing - half_chunk, height, local_z)
-			normals[index] = normal
-			colors[index] = heightmap.color_at(world_x, world_z, height, normal)
-
-	indices.resize(cells * cells * 6)
-	var cursor: int = 0
-	for lz in range(cells):
-		for lx in range(cells):
-			var top_left: int = lz * verts_per_side + lx
-			var top_right: int = top_left + 1
-			var bottom_left: int = top_left + verts_per_side
-			var bottom_right: int = bottom_left + 1
-			indices[cursor] = top_left
-			indices[cursor + 1] = top_right
-			indices[cursor + 2] = bottom_left
-			indices[cursor + 3] = top_right
-			indices[cursor + 4] = bottom_right
-			indices[cursor + 5] = bottom_left
-			cursor += 6
-
-	var arrays: Array = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_COLOR] = colors
-	arrays[Mesh.ARRAY_INDEX] = indices
-
-	var mesh := ArrayMesh.new()
-	mesh.resource_name = "terrain_chunk_%d_%d" % [chunk.x, chunk.y]
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return mesh
 
 
 static func build_chunk_collision(config: SiranMapConfig,
