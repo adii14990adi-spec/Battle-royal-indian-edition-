@@ -231,10 +231,10 @@ Expected output (10 m samples):
 
 | Artefact | Count | Size |
 | --- | --- | --- |
-| `scenes/world/siran_island_baked.tscn` | 1 (64 chunk nodes + 64 meshes + 64 height fields) | ~12–15 MB |
+| `scenes/world/siran_island_baked.tscn` | 1 (64 chunk nodes + 64 meshes + 64 height fields) | ~9.2 MB |
 | `resources/world/baked/siran_river_surface.res` | 1 | ~10 KB |
 | `resources/world/baked/siran_island_summary.tres` | 1 | ~2 KB |
-| `docs/images/siran_island_preview.png` | 1 | ~250 KB |
+| `docs/images/siran_island_preview.png` | 1 | ~175 KB (Git LFS) |
 
 The generator prints the real numbers and the per-zone integrity table.
 **Commit the output together with any change to the generator** —

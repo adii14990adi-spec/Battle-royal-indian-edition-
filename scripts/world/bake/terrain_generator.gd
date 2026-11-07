@@ -5,6 +5,10 @@ extends RefCounted
 ##
 ##     res://scenes/world/siran_island_baked.tscn
 ##
+## File name note: this is **TerrainGenerator.gd** in class terms — the repo keeps
+## GDScript files in snake_case (`scripts/world/bake/terrain_generator.gd`), the
+## class it defines is `TerrainGenerator`.
+##
 ## This replaces the old "64 chunk scenes written by a CI bake" pipeline. The
 ## map now lives in the project as a normal, committed Godot scene, so the APK
 ## build never has to generate anything: `ChunkManager` loads this one
