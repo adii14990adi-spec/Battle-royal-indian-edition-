@@ -45,7 +45,9 @@ code_hits() { # $1 = regex
 
 # --- Gate 1: terrain collision is a height field, never a trimesh -------------
 head2 'Gate 1 — terrain collision uses HeightMapShape3D, never ConcavePolygonShape3D'
-trimesh_hits=$(code_hits 'ConcavePolygonShape3D' | grep -v '^scripts/tests/')
+# The self-check and tools/check_baked_scene.gd name the class *in order to forbid
+# it*; everything that builds or streams terrain must not mention it at all.
+trimesh_hits=$(code_hits 'ConcavePolygonShape3D' | grep -vE '^(scripts/tests/|tools/)')
 if [ -z "$trimesh_hits" ]; then
 	pass "no ConcavePolygonShape3D in terrain code (comments and the self-check aside)"
 else
