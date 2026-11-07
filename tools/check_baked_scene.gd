@@ -10,7 +10,9 @@ extends SceneTree
 ## needs a real scene tree and a Jolt space; this script proves the *content* —
 ## 64 chunk nodes, a mesh with a surface and the expected vertex count on every
 ## one, a square `HeightMapShape3D` per chunk, vertex colours present, mesh height
-## equal to collision height, and no trimesh anywhere.
+## equal to collision height, every vertex finite **and on its row-major grid slot**
+## (a NaN vertex would slip through a plain `absf(a - b) > tol` comparison, and a
+## reordered vertex list would compare the wrong samples), and no trimesh anywhere.
 ##
 ## CI runs it before the export so a broken map fails in seconds, with its own
 ## `FAIL` lines, instead of inside a four-minute APK build.
@@ -19,6 +21,11 @@ const BAKED_SCENE: String = TerrainGenerator.BAKED_SCENE_PATH
 ## Mesh vertex height vs collision height, metres. They are generated from the
 ## same samples, so anything above rounding is a real bug.
 const HEIGHT_TOLERANCE_M: float = 0.01
+## Mesh vertex x/z vs the index-implied grid position, metres. The mesh is built
+## row-major (`index = z * verts_per_side + x`); if that ever stops being true,
+## `surface_get_arrays()` height comparison would silently compare the wrong
+## samples, so the layout is checked on its own.
+const GRID_TOLERANCE_M: float = 0.05
 
 var _checks: int = 0
 var _failures: int = 0
@@ -53,6 +60,8 @@ func _init() -> void:
 	var bad_collision: int = 0
 	var bad_heights: int = 0
 	var no_colors: int = 0
+	var non_finite: int = 0
+	var bad_grid: int = 0
 	var trimeshes: int = 0
 	var first_problem: String = ""
 
@@ -92,12 +101,30 @@ func _init() -> void:
 				first_problem = "%s heightmap is %dx%d (%d samples)" % [
 					child.name, shape.map_width, shape.map_depth, shape.map_data.size()]
 			continue
+		var spacing: float = config.vertex_spacing_m
+		var half_span: float = float(verts_per_side - 1) * spacing * 0.5
 		for i in range(vertices.size()):
+			var vertex: Vector3 = vertices[i]
+			if not vertex.is_finite():
+				non_finite += 1
+				if first_problem.is_empty():
+					first_problem = "%s vertex %d is not a finite position" % [
+						child.name, i]
+				break
 			if absf(vertices[i].y - shape.map_data[i]) > HEIGHT_TOLERANCE_M:
 				bad_heights += 1
 				if first_problem.is_empty():
 					first_problem = "%s mesh height differs from collision at vertex %d" % [
 						child.name, i]
+				break
+			var column: int = i % verts_per_side
+			var row: int = floori(float(i) / float(verts_per_side))
+			if absf(vertex.x - (float(column) * spacing - half_span)) > GRID_TOLERANCE_M \
+					or absf(vertex.z - (float(row) * spacing - half_span)) > GRID_TOLERANCE_M:
+				bad_grid += 1
+				if first_problem.is_empty():
+					first_problem = "%s vertex %d is off the %dx%d grid" % [
+						child.name, i, verts_per_side, verts_per_side]
 				break
 		trimeshes += _count_trimeshes(child)
 
@@ -109,6 +136,10 @@ func _init() -> void:
 			% [verts_per_side, verts_per_side], "%d bad" % bad_collision)
 	_expect(bad_heights == 0, "mesh height matches collision height on every vertex",
 			"%d chunk(s) differ" % bad_heights)
+	_expect(non_finite == 0, "every vertex is a finite position", "%d chunk(s) with NaN/INF"
+			% non_finite)
+	_expect(bad_grid == 0, "every vertex sits on its %dx%d grid slot"
+			% [verts_per_side, verts_per_side], "%d chunk(s) off grid" % bad_grid)
 	_expect(no_colors == 0, "every vertex carries a colour (the greybox material)",
 			"%d chunk(s) without" % no_colors)
 	_expect(trimeshes == 0, "no ConcavePolygonShape3D anywhere", "found %d" % trimeshes)
