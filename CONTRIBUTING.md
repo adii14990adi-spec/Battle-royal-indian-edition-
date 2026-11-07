@@ -99,7 +99,7 @@ PR checklist:
 - [ ] Budget impact noted in the PR description (PSS, VRAM, draw calls).
 - [ ] Device smoke test on a Unisoc-class phone, or an explicit note that only
       the desktop GLES3 run was done.
-- [ ] CI is green: **Static gates** and **Bake, verify, export** both passed,
+- [ ] CI is green: **Static gates** and **Verify, export** both passed,
       and all four APK gates held (see §7).
 
 ## 6. Phase tags
@@ -123,16 +123,21 @@ Godot/SDK/keystore installation so the two jobs cannot drift apart:
 | Job (display name) | Trigger | Gate |
 | --- | --- | --- |
 | `gates` (Static gates) | push to `main`/`develop`/`arena/**`, PR to `main`/`develop`, manual run | required before merge |
-| `build` (Bake, verify, export) | same, after `gates` | required before merge |
+| `build` (Verify, export) | same, after `gates` | required before merge |
 | `publish` (Publish GitHub Release) | tag `v*` | creates the GitHub Release |
 
-**The map is baked here.** `build` runs `bash tools/bake_siran_island.sh`, so
-every APK — and the `siran-island-bake-<sha>` artifact next to it — carries
-freshly generated terrain. Nothing baked is committed.
+**The map is not generated here.** CI builds the APK from a map that is
+committed: `scenes/world/siran_island_baked.tscn`, written once by
+`TerrainGenerator` (`bash tools/generate_siran_island.sh`, or File > Run on
+`tools/bake/terrain_generator_editor.gd`). `build` proves that scene is a real
+map — 64 chunk nodes, a mesh surface and a `HeightMapShape3D` per chunk, rays
+hitting the collider where the mesh draws — and then exports it. Regenerate and
+commit when the terrain math changes; the scene is the artefact reviewers look
+at.
 
 ### Required status checks
 
-Mark **Static gates** and **Bake, verify, export** as required status checks on
+Mark **Static gates** and **Verify, export** as required status checks on
 `develop` (and on `main`, if you protect it too). Repository settings →
 **Branches → Branch protection rule** → **Require status checks to pass before
 merging** → add both.
@@ -150,12 +155,16 @@ waiting for a check that will never arrive.
 
 1. `--import` twice — a cold pass may print `ERROR` lines while it fills
    `.godot/`, a warm pass may not.
-2. `bash tools/bake_siran_island.sh` — import → bake → self-check with
-   `--require-bake`.
-3. `bash tools/verify_phase3.sh` — now with all 64 chunk scenes on disk.
-4. `--export-release` to `build/battle-horizons.apk`, then `--export-debug` to
+2. `tools/check_project_config.gd` — both config files parse in Godot, and the
+   baked map scene is present.
+3. `scenes/tests/phase3_selfcheck.tscn -- --require-bake` — the committed map is
+   complete: chunk nodes, mesh surfaces, `HeightMapShape3D` collision, collision
+   aligned with the mesh, runway flat.
+4. `bash tools/verify_phase3.sh` — including gate 7, which inspects the committed
+   scene without a Godot binary.
+5. `--export-release` to `build/battle-horizons.apk`, then `--export-debug` to
    `build/battle-horizons-debug.apk`.
-5. `tools/verify_apk.sh` against both APKs; it fails the build unless all four
+6. `tools/verify_apk.sh` against both APKs; it fails the build unless all five
    gates hold:
 
 - **A** — no `android.permission.INTERNET` (the game is fully offline)
@@ -195,7 +204,7 @@ must have the three secrets set; the warning is the tripwire.
 ### Local equivalents
 
 ```bash
-bash tools/bake_siran_island.sh   # needs Godot 4.4+; writes the 64 chunks
+bash tools/generate_siran_island.sh  # needs Godot 4.4+; writes the baked scene
 bash tools/verify_phase1.sh       # Unisoc budget + preset + identity gates
 bash tools/verify_phase3.sh       # Phase 3 gates, incl. the baked output
 bash tools/patch_keystore.sh      # needs KEYSTORE_* env vars; safe to run — it only rewrites export_presets.cfg

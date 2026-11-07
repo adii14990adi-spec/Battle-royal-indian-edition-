@@ -28,12 +28,18 @@ const COLLISION_TOLERANCE_M: float = 0.6
 const RAY_SAMPLES_PER_AXIS: int = 5
 ## Flat zones must not vary by more than this (metres).
 const FLATNESS_TOLERANCE_M: float = 0.05
+## Hard limit on the whole run. A runtime error inside an awaited check kills the
+## coroutine, and without this the scene would sit there until the CI job times
+## out with no verdict at all — which is exactly how this check first failed.
+const WATCHDOG_SECONDS: float = 180.0
 
 var _config: SiranMapConfig
 var _checks: int = 0
 var _failures: int = 0
 var _skips: int = 0
 var _require_bake: bool = false
+var _elapsed: float = 0.0
+var _finished: bool = false
 
 
 func _ready() -> void:
@@ -58,10 +64,25 @@ func _ready() -> void:
 	print("[check] %d checks, %d failed, %d skipped" % [_checks, _failures, _skips])
 	if _failures > 0:
 		print("[check] PHASE 3 SELF-CHECK FAILED")
-		get_tree().quit(1)
+		_finish(1)
 	else:
 		print("[check] Phase 3 self-check passed")
-		get_tree().quit(0)
+		_finish(0)
+
+
+func _process(delta: float) -> void:
+	_elapsed += delta
+	if _finished or _elapsed < WATCHDOG_SECONDS:
+		return
+	_finished = true
+	print("  FAIL  the self-check did not finish in %.0f s — a check above died"
+			% WATCHDOG_SECONDS)
+	get_tree().quit(1)
+
+
+func _finish(code: int) -> void:
+	_finished = true
+	get_tree().quit(code)
 
 
 # --- Group 1: data only -------------------------------------------------------
@@ -212,9 +233,9 @@ func _check_baked_chunks() -> void:
 	if root == null:
 		_fail_line("%s instantiates as a Node3D" % BAKED_SCENE)
 		return
-	add_child(root)
-	await get_tree().physics_frame
-	await get_tree().physics_frame
+	# The scene is *not* added to the tree: 63 unnecessary height-field colliders
+	# would only slow Jolt down. The one chunk that gets raycast is pulled out and
+	# parented below.
 
 	var missing: int = 0
 	var without_mesh: int = 0
@@ -250,15 +271,19 @@ func _check_baked_chunks() -> void:
 			TerrainGenerator.CHUNK_NODE_PATTERN % [chunk.x, chunk.y]) as Node3D
 	_expect(instance != null, "runway chunk %s exists" % str(chunk), "missing")
 	if instance == null:
-		root.queue_free()
+		root.free()
 		return
+	root.remove_child(instance)
+	add_child(instance)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 
 	var terrain: MeshInstance3D = instance.get_node_or_null("Terrain") as MeshInstance3D
 	_expect(terrain != null, "chunk has a 'Terrain' MeshInstance3D", "missing")
 	var body: StaticBody3D = instance.get_node_or_null("Collision") as StaticBody3D
 	_expect(body != null, "chunk has a 'Collision' StaticBody3D", "missing")
 	if terrain == null or body == null:
-		root.queue_free()
+		_release(instance, root)
 		return
 
 	_expect(terrain.mesh != null and terrain.mesh.get_surface_count() == 1,
@@ -274,12 +299,12 @@ func _check_baked_chunks() -> void:
 	var shape_node: CollisionShape3D = body.get_node_or_null("Ground") as CollisionShape3D
 	_expect(shape_node != null, "collision body has a 'Ground' CollisionShape3D", "missing")
 	if shape_node == null:
-		root.queue_free()
+		_release(instance, root)
 		return
 	var shape: HeightMapShape3D = shape_node.shape as HeightMapShape3D
 	_expect(shape != null, "ground collision uses HeightMapShape3D", "wrong shape type")
 	if shape == null:
-		root.queue_free()
+		_release(instance, root)
 		return
 	var wanted: int = _config.chunk_vertices_per_side()
 	_expect(shape.map_width == wanted and shape.map_depth == wanted,
@@ -295,8 +320,15 @@ func _check_baked_chunks() -> void:
 	_check_collision_alignment(instance, terrain)
 	_check_zone_flatness(terrain, airfield)
 
-	root.queue_free()
+	_release(instance, root)
 	await get_tree().process_frame
+
+
+func _release(instance: Node3D, root: Node3D) -> void:
+	remove_child(instance)
+	instance.queue_free()
+	if is_instance_valid(root):
+		root.free()
 
 
 func _chunk_heightmap(node: Node3D) -> HeightMapShape3D:

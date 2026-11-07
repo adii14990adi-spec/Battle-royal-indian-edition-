@@ -5,8 +5,8 @@ Phase 3 is "done" when the 4 km greybox island streams, collides and holds
 Nine of the gates below are machine-checkable; four need a device.
 
 ```bash
-bash tools/verify_phase3.sh        # static gates (source, scenes, baked output)
-bash tools/bake_siran_island.sh    # re-bake + in-engine self-check
+bash tools/verify_phase3.sh          # static gates (source, scenes, committed map)
+bash tools/generate_siran_island.sh  # regenerate + in-engine self-check
 ```
 
 | # | Gate | Status | Where it is proven |
@@ -15,10 +15,10 @@ bash tools/bake_siran_island.sh    # re-bake + in-engine self-check
 | 2 | Terrain collision is `HeightMapShape3D`, no trimesh | **PASS** | `verify_phase3.sh` gate 1 + self-check raycasts |
 | 3 | Terrain is baked to disk, not generated at runtime | **PASS** | `verify_phase3.sh` gate 2 (FastNoiseLite confined to `scripts/world/bake/`) |
 | 4 | Five zones with flat-coloured markers, correct heights | **PASS (data)** | `verify_phase3.sh` gate 4 + selftest flatness assertion |
-| 5 | Lake (north-middle) + river through the map | **PASS (data)** | config + bake summary; visible in preview PNG |
+| 5 | Lake (north-middle) + river through the map | **PASS (data)** | config + generation summary; visible in preview PNG |
 | 6 | Water is unshaded/vertex-lit with a scrolling normal map | **PASS** | `verify_phase3.sh` gate 5 |
 | 7 | Chunks of 500 m, threaded loads inside a 50 m radius | **PASS** | `verify_phase3.sh` gate 3 + `compute_desired_for()` self-check |
-| 8 | Roads connect the main zones | **PASS (data)** | 5 roads in config, baked per chunk |
+| 8 | Roads connect the main zones | **PASS (data)** | 5 roads in config, baked into the chunk meshes |
 | 9 | A fresh clone can open the world scene (no broken `[ext_resource]`) | **PASS** | `verify_phase3.sh` gate 6 |
 | 10 | 30 FPS sustained over 10 minutes on a T606 | **PENDING — needs hardware** | runbook §3 |
 | 11 | Draw calls ≤ 60, VRAM ≤ 180 MB, PSS ≤ 800 MB with 9 chunks resident | **PENDING — needs hardware** | runbook §4 |
@@ -47,14 +47,13 @@ phone.
 Fixed on four layers:
 
 1. `scripts/ui/boot_world_link.gd` — `resource_in_build()` = `FileAccess.file_exists() or ResourceLoader.exists()`,
-   used for the world scene and all 64 chunk probes; the boot screen prints
-   `Ready — world scene packed, baked terrain 64/64` or the exact problem, and a
+   used for the world scene and the baked map; the boot screen prints
+   `Ready — world scene packed, baked map packed` or the exact problem, and a
    failed `change_scene_to_file` becomes on-screen text.
 2. `scripts/ui/boot_screen.gd` — a tap no control consumed enters the world
    (`_unhandled_input`), and if the button's script ever fails to load it gets a
    fallback handler.
-3. `export_presets.cfg` — `include_filter="*.tscn,*.res,*.tres,*.gd,scenes/world/*,resources/world/*"`
-   plus a post-bake re-import in CI. Defensive: the pack was fine this time, but
+3. `export_presets.cfg` — `include_filter="*.tscn,*.res,*.scn,*.tres,*.gd,scenes/world/*,resources/world/*"`.
    `include_filter` walks the disk (`_edit_files_with_filter` → `DirAccess`) and
    so cannot be fooled by a stale editor scan.
 4. `project.godot` — no boot splash image, so the boot screen appears at once.
@@ -83,19 +82,20 @@ no longer something a grep can miss.
 
 ---
 
-## 1. Before the bake
+## 1. Before generating
 
 ```bash
 pip install gdtoolkit            # gdparse/gdlint gates in verify_phase3.sh
 bash tools/verify_phase3.sh      # static gates — green before introducing assets
 ```
 
-## 2. Bake and self-check
+## 2. Generate and self-check
 
 ```bash
-bash tools/bake_siran_island.sh
-echo $?                          # 0 = baked + self-check green
+bash tools/generate_siran_island.sh
+echo $?                          # 0 = generated + self-check green
 ls docs/images/siran_island_preview.png
+git status --short scenes/world/siran_island_baked.tscn   # commit it
 ```
 
 The self-check prints one line per gate. The two that matter most:
@@ -106,13 +106,13 @@ The self-check prints one line per gate. The two that matter most:
   PASS  aircraft industry is perfectly flat (spread 0.000 m)
 ```
 
-Anything that fails here fails in the *bake*, not on the phone. Fix it there.
+Anything that fails here fails in the *generator*, not on the phone. Fix it there.
 
 ## 3. Device run — build, install, enter the world
 
-You do not have to build it yourself: every push runs the bake and uploads
-`battle-horizons.apk` (plus the generated island preview) as the
-`battle-horizons-apk-<sha>` artifact of the `Build APK` workflow. Use the local
+You do not have to build it yourself: every push builds and uploads
+`battle-horizons.apk` as the `battle-horizons-apk-<sha>` artifact of the
+`Build APK` workflow (it verifies the committed map, it does not regenerate it). Use the local
 commands below when you want to iterate on the phone without a CI round-trip.
 
 Same toolchain as Phase 1 (`docs/PHASE1_ACCEPTANCE.md` §2):
@@ -169,8 +169,9 @@ adb shell dumpsys gfxinfo com.aurastudios.battlehorizons framestats | head -40
 | Fly to the map edge | ocean beyond the shore, no missing chunk, no crash |
 | Esc / EXIT | returns to the boot screen, PerfManager keeps logging |
 
-If the HUD says `NO BAKED CHUNKS`, the APK was built from a tree without the
-bake: re-run `tools/bake_siran_island.sh` and rebuild.
+If the HUD says `NO BAKED MAP`, the APK was built from a tree without
+`scenes/world/siran_island_baked.tscn`: regenerate it with
+`tools/generate_siran_island.sh`, commit it and rebuild.
 
 ## 6. What is explicitly out of scope for Phase 3
 

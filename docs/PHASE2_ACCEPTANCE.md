@@ -73,7 +73,7 @@ In every failure case the preset was left unmodified and no partial
 | Gate B — `WAKE_LOCK` absent | exit 1, `::error::WAKE_LOCK missing — manifest likely corrupted or export failed silently` |
 | Gate D — `arm64-v8a` absent | exit 1, `::error::arm64-v8a ABI missing` |
 | happy path, both ABIs | exit 0, **no** spurious `armeabi-v7a` warning, `arches=[arm64-v8a armeabi-v7a]` |
-| Gate E — payload without the bake (synthetic APK) | exit 1, `::error::0 baked chunk scenes in the APK, expected 64` + `::error::0 baked collision resources in the APK, expected 64` |
+| Gate E — payload without the baked map (synthetic APK) | exit 1, `::error::scenes/world/siran_island_baked.tscn (or its .remap) is not in the APK — the world would be empty` |
 | Gate E — payload with 64 + 64 (synthetic APK) | exit 0, `Payload verified: 64 chunk scenes, 64 collision resources, world scene and button script present` |
 | Gate E — `APK_SKIP_PAYLOAD_GATE=1` | gate skipped with `::warning::`, post-export check abandoned deliberately |
 | `aapt2`/`aapt` both absent | exit 1, `::error::neither aapt2 nor aapt found on PATH` |

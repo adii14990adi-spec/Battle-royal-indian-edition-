@@ -15,7 +15,8 @@
 #   1. import the project headlessly (creates .godot/ + .import files for any new
 #      asset — the water normal map, for instance)
 #   2. run TerrainGenerator, which writes the single baked scene + river + summary
-#   3. run the Phase 3 self-check with --require-bake, so a broken map fails here
+#   3. check the result structurally, then run the Phase 3 self-check with
+#      --require-bake, so a broken map fails here
 #
 # Exit codes: 0 ok, 1 generation/self-check failed, 2 no Godot binary found.
 
@@ -47,13 +48,16 @@ fi
 printf '\033[1m[gen] Godot:\033[0m %s\n' "$GODOT"
 "$GODOT" --version || exit 2
 
-printf '\n\033[1m[gen] 1/3 importing project…\033[0m\n'
+printf '\n\033[1m[gen] 1/4 importing project…\033[0m\n'
 "$GODOT" --headless --path . --import || exit 1
 
-printf '\n\033[1m[gen] 2/3 generating scenes/world/siran_island_baked.tscn…\033[0m\n'
+printf '\n\033[1m[gen] 2/4 generating scenes/world/siran_island_baked.tscn…\033[0m\n'
 "$GODOT" --headless --path . --script res://tools/bake/generate_siran_island.gd -- "$@" || exit 1
 
-printf '\n\033[1m[gen] 3/3 self-check…\033[0m\n'
+printf '\n\033[1m[gen] 3/4 structural check…\033[0m\n'
+"$GODOT" --headless --path . --script res://tools/check_baked_scene.gd || exit 1
+
+printf '\n\033[1m[gen] 4/4 self-check…\033[0m\n'
 "$GODOT" --headless --path . scenes/tests/phase3_selfcheck.tscn -- --require-bake || exit 1
 
 printf '\n\033[32m[gen] Siran Island generated and verified.\033[0m\n'
