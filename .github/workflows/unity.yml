@@ -209,7 +209,7 @@ jobs:
       - name: Configure the project (URP, Android, scenes, materials)
         if: steps.licence.outputs.available == 'true'
         uses: game-ci/unity-builder@v4
-        env: &unity_env
+        env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
@@ -226,7 +226,10 @@ jobs:
       - name: Edit-mode tests
         if: steps.licence.outputs.available == 'true'
         uses: game-ci/unity-test-runner@v4
-        env: *unity_env
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -237,7 +240,10 @@ jobs:
       - name: Play-mode tests
         if: steps.licence.outputs.available == 'true'
         uses: game-ci/unity-test-runner@v4
-        env: *unity_env
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -248,7 +254,10 @@ jobs:
       - name: Project validation (batch mode)
         if: steps.licence.outputs.available == 'true'
         uses: game-ci/unity-builder@v4
-        env: *unity_env
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -263,7 +272,9 @@ jobs:
         if: steps.licence.outputs.available == 'true' && (github.event_name == 'workflow_dispatch' && inputs.build_apk || startsWith(github.ref, 'refs/tags/v'))
         uses: game-ci/unity-builder@v4
         env:
-          <<: *unity_env
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           BH_BUILD_OUTPUT: ${{ github.workspace }}/build/battle-horizons.apk
           BH_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'ci-keystore.jks' || '' }}
           BH_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
