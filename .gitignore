@@ -34,3 +34,44 @@ user://
 # Godot log files
 *.log
 godot.log
+
+# --- Unity project (unity-project/) -----------------------------------------
+# Unity regenerates everything below. Only Assets/, Packages/ and
+# ProjectSettings/ are source of truth. See docs/architecture/UNITY_ARCHITECTURE.md.
+unity-project/[Ll]ibrary/
+unity-project/[Tt]emp/
+unity-project/[Oo]bj/
+unity-project/[Bb]uild/
+unity-project/[Bb]uilds/
+unity-project/[Ll]ogs/
+unity-project/[Uu]ser[Ss]ettings/
+unity-project/[Mm]emoryCaptures/
+unity-project/[Rr]ecordings/
+unity-project/[Cc]rashlytics/
+unity-project/Assets/AssetStoreTools*
+unity-project/*.csproj
+unity-project/*.sln
+unity-project/*.unityproj
+unity-project/*.suo
+unity-project/*.user
+unity-project/*.userprefs
+unity-project/.vs/
+unity-project/.vsconfig
+unity-project/.idea/
+unity-project/.gradle/
+unity-project/**/*.apk
+unity-project/**/*.aab
+unity-project/**/*.keystore
+unity-project/**/*.jks
+unity-project/ProjectSettings/UnityConnectSettings.asset
+
+# --- Blender pipeline output ------------------------------------------------
+# Generated, reproducible from processing/blender/generators/*.py:
+#   blender --background --python processing/blender/generators/generate_environment_kit.py
+processing/blender/output/
+processing/blender/.blender-cache/
+
+# --- Python tooling ---------------------------------------------------------
+__pycache__/
+*.pyc
+.pytest_cache/

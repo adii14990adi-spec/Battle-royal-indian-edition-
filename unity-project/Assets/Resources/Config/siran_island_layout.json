@@ -1,0 +1,455 @@
+{
+  "display_name": "Siran Island",
+  "map_size_m": 4000.0,
+  "chunk_size_m": 500.0,
+  "vertex_spacing_m": 10.0,
+  "sea_level": 0.0,
+  "island_radius_m": 1950.0,
+  "coastline_noise_m": 170.0,
+  "min_height_m": -38.0,
+  "max_height_m": 132.0,
+  "generator_version": 3,
+  "noise_seed": 20261106,
+  "spawn_point": [
+    40.0,
+    28.0,
+    -30.0
+  ],
+  "zones": [
+    {
+      "id": "factory_island",
+      "display_name": "Factory Island \u2014 Iron Mill",
+      "kind": "INDUSTRIAL",
+      "center": [
+        -1250.0,
+        -1300.0
+      ],
+      "size": [
+        760.0,
+        640.0
+      ],
+      "rotation_deg": -12.0,
+      "shape": "ELLIPSE",
+      "flat_height": 26.0,
+      "flatness": 1.0,
+      "feather_m": 90.0,
+      "tint": [
+        0.41,
+        0.39,
+        0.35
+      ],
+      "corner_radius_m": 140.8
+    },
+    {
+      "id": "konkan_docks",
+      "display_name": "Dock Island \u2014 Konkan Docks",
+      "kind": "DOCK",
+      "center": [
+        -1470.0,
+        130.0
+      ],
+      "size": [
+        780.0,
+        540.0
+      ],
+      "rotation_deg": 6.0,
+      "shape": "ELLIPSE",
+      "flat_height": 4.5,
+      "flatness": 1.0,
+      "feather_m": 110.0,
+      "tint": [
+        0.38,
+        0.4,
+        0.43
+      ],
+      "corner_radius_m": 118.8
+    },
+    {
+      "id": "central_state",
+      "display_name": "Central State \u2014 Urban",
+      "kind": "URBAN",
+      "center": [
+        40.0,
+        -30.0
+      ],
+      "size": [
+        1150.0,
+        1150.0
+      ],
+      "rotation_deg": 0.0,
+      "shape": "ROUNDED_RECT",
+      "flat_height": 16.0,
+      "flatness": 0.72,
+      "feather_m": 170.0,
+      "tint": [
+        0.52,
+        0.5,
+        0.45
+      ],
+      "corner_radius_m": 253.0
+    },
+    {
+      "id": "graveyard_center",
+      "display_name": "Graveyard Center \u2014 Foggy Hills",
+      "kind": "GRAVEYARD",
+      "center": [
+        1350.0,
+        -80.0
+      ],
+      "size": [
+        820.0,
+        900.0
+      ],
+      "rotation_deg": 12.0,
+      "shape": "ELLIPSE",
+      "flat_height": 42.0,
+      "flatness": 0.55,
+      "feather_m": 190.0,
+      "tint": [
+        0.33,
+        0.36,
+        0.32
+      ],
+      "corner_radius_m": 180.4
+    },
+    {
+      "id": "aircraft_industry",
+      "display_name": "Aircraft Industry \u2014 Hangars & Runway",
+      "kind": "AIRFIELD",
+      "center": [
+        120.0,
+        1480.0
+      ],
+      "size": [
+        1020.0,
+        740.0
+      ],
+      "rotation_deg": 0.0,
+      "shape": "ROUNDED_RECT",
+      "flat_height": 12.0,
+      "flatness": 1.0,
+      "feather_m": 90.0,
+      "tint": [
+        0.61,
+        0.6,
+        0.56
+      ],
+      "corner_radius_m": 162.8
+    }
+  ],
+  "lake": {
+    "id": "siran_lake",
+    "display_name": "Siran Lake",
+    "center": [
+      250.0,
+      -1150.0
+    ],
+    "radius": [
+      520.0,
+      380.0
+    ],
+    "surface_height": 9.0,
+    "depth": 11.0,
+    "shore_feather_m": 80.0
+  },
+  "river": {
+    "id": "siran_river",
+    "display_name": "Siran River",
+    "points": [
+      [
+        250.0,
+        -790.0
+      ],
+      [
+        500.0,
+        -520.0
+      ],
+      [
+        760.0,
+        -300.0
+      ],
+      [
+        880.0,
+        -40.0
+      ],
+      [
+        900.0,
+        420.0
+      ],
+      [
+        960.0,
+        900.0
+      ],
+      [
+        1080.0,
+        1380.0
+      ],
+      [
+        1160.0,
+        1750.0
+      ],
+      [
+        1200.0,
+        2060.0
+      ]
+    ],
+    "widths": [
+      70.0,
+      72.0,
+      76.0,
+      80.0,
+      86.0,
+      92.0,
+      100.0,
+      110.0,
+      110.0
+    ],
+    "surface_start": 9.0,
+    "surface_end": -0.5,
+    "depth": 2.8,
+    "bank_width_m": 24.0,
+    "source_blend_m": 90.0
+  },
+  "channels": [
+    {
+      "id": "iron_mill_moat",
+      "display_name": "Iron Mill Channel",
+      "points": [
+        [
+          -754.8910289365697,
+          -1405.2386605412253
+        ],
+        [
+          -745.0271243226825,
+          -1265.4448437467993
+        ],
+        [
+          -801.1937179335904,
+          -1132.0134255859016
+        ],
+        [
+          -889.9338920825003,
+          -1014.8407315330746
+        ],
+        [
+          -1016.7075228419385,
+          -931.216384516442
+        ],
+        [
+          -1165.5150844362036,
+          -902.5297224418181
+        ],
+        [
+          -1308.9619888819923,
+          -896.6897586517598
+        ],
+        [
+          -1462.9520337408942,
+          -893.0419655676208
+        ],
+        [
+          -1613.802270199426,
+          -942.2341290918339
+        ],
+        [
+          -1697.2608285523486,
+          -1063.0413216694326
+        ],
+        [
+          -1713.4756776556992,
+          -1201.485203539821
+        ],
+        [
+          -1711.9487922885603,
+          -1331.61102995304
+        ],
+        [
+          -1681.8033753463149,
+          -1461.622447686994
+        ],
+        [
+          -1598.031330106251,
+          -1575.628161924668
+        ],
+        [
+          -1482.9792306379977,
+          -1668.288442276029
+        ],
+        [
+          -1344.3191385394766,
+          -1743.736659072891
+        ],
+        [
+          -1182.7958026757512,
+          -1759.688378163505
+        ],
+        [
+          -1044.1656325825143,
+          -1693.355950217282
+        ],
+        [
+          -943.3893848907205,
+          -1601.5231699464885
+        ],
+        [
+          -840.8461433485686,
+          -1516.7696138733734
+        ]
+      ],
+      "half_width_m": 34.0,
+      "depth_m": 4.5,
+      "bank_width_m": 30.0
+    }
+  ],
+  "roads": [
+    {
+      "id": "docks_central",
+      "display_name": "Konkan Docks \u2192 Central State",
+      "points": [
+        [
+          -1470.0,
+          130.0
+        ],
+        [
+          -1180.0,
+          110.0
+        ],
+        [
+          -820.0,
+          70.0
+        ],
+        [
+          -430.0,
+          20.0
+        ],
+        [
+          40.0,
+          -30.0
+        ]
+      ],
+      "width": 16.0,
+      "shoulder_width": 7.0
+    },
+    {
+      "id": "factory_central",
+      "display_name": "Iron Mill \u2192 Central State",
+      "points": [
+        [
+          -1250.0,
+          -1300.0
+        ],
+        [
+          -1080.0,
+          -980.0
+        ],
+        [
+          -880.0,
+          -700.0
+        ],
+        [
+          -560.0,
+          -420.0
+        ],
+        [
+          -160.0,
+          -160.0
+        ],
+        [
+          40.0,
+          -30.0
+        ]
+      ],
+      "width": 16.0,
+      "shoulder_width": 7.0
+    },
+    {
+      "id": "central_airbase",
+      "display_name": "Central State \u2192 Aircraft Industry",
+      "points": [
+        [
+          40.0,
+          -30.0
+        ],
+        [
+          60.0,
+          320.0
+        ],
+        [
+          80.0,
+          760.0
+        ],
+        [
+          110.0,
+          1120.0
+        ],
+        [
+          120.0,
+          1480.0
+        ]
+      ],
+      "width": 16.0,
+      "shoulder_width": 7.0
+    },
+    {
+      "id": "central_graveyard",
+      "display_name": "Central State \u2192 Graveyard Center",
+      "points": [
+        [
+          40.0,
+          -30.0
+        ],
+        [
+          380.0,
+          -140.0
+        ],
+        [
+          700.0,
+          -160.0
+        ],
+        [
+          1000.0,
+          -120.0
+        ],
+        [
+          1350.0,
+          -80.0
+        ]
+      ],
+      "width": 16.0,
+      "shoulder_width": 7.0
+    },
+    {
+      "id": "coast_highway",
+      "display_name": "Coast Highway \u2014 Aircraft Industry \u2192 Konkan Docks",
+      "points": [
+        [
+          120.0,
+          1480.0
+        ],
+        [
+          -350.0,
+          1330.0
+        ],
+        [
+          -900.0,
+          940.0
+        ],
+        [
+          -1280.0,
+          560.0
+        ],
+        [
+          -1470.0,
+          130.0
+        ]
+      ],
+      "width": 16.0,
+      "shoulder_width": 7.0
+    }
+  ],
+  "provenance": {
+    "generated_by": "processing/unity/port_siran_config.py",
+    "source": "scripts/world/siran_map_config.gd",
+    "note": "Read-only port of the Godot layout. Do not hand-edit: edit the GDScript and re-run the porter, or the two maps will diverge."
+  }
+}
