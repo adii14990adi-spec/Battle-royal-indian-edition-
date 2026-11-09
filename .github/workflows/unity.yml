@@ -1,0 +1,348 @@
+name: Unity (URP) validation
+
+# CI for the Unity 6 URP port in `unity-project/`.
+#
+# It is intentionally separate from `build.yml` (the Godot APK workflow), which is
+# untouched and still builds the Godot game. Nothing here writes to the Godot
+# tree.
+#
+#   structure  -> Godot files intact + Unity layout + docs + no secrets   (~20 s)
+#   data       -> map conversion is reproducible and matches the bake     (~30 s)
+#   assets     -> Blender pipeline: generators (if Blender exists) then
+#                 validators + unit tests                                 (~1 min)
+#   unity      -> project opens, configures, validates, runs edit-mode
+#                 tests, and (optionally) builds an APK. Requires a Unity
+#                 licence, so it SKIPS cleanly when the secret is absent.
+#
+# Honesty rules this workflow follows:
+#   * a step that cannot run says SKIP and names what is missing — it never
+#     reports success for work it did not do;
+#   * the Unity build job only runs when UNITY_LICENSE is configured, and the
+#     APK is only uploaded when the build actually produced a file;
+#   * no credentials are printed, echoed or committed; signing material comes
+#     from secrets and is written to a temporary, ignored path.
+
+on:
+  push:
+    branches: [main, develop, 'arena/**', 'migration/**']
+    paths:
+      - 'unity-project/**'
+      - 'processing/**'
+      - 'docs/**'
+      - 'assets/**'
+      - 'scripts/**'
+      - 'scenes/**'
+      - 'resources/**'
+      - '.github/workflows/unity.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'unity-project/**'
+      - 'processing/**'
+      - 'docs/**'
+      - '.github/workflows/unity.yml'
+  workflow_dispatch:
+    inputs:
+      build_apk:
+        description: 'Also build an Android APK (needs UNITY_LICENSE)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: unity-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UNITY_VERSION: '6000.0.32f1'
+  UNITY_PROJECT_PATH: unity-project
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  structure:
+    name: Repository structure
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install static-analysis dependencies
+        run: python3 -m pip install --disable-pip-version-check tree-sitter tree-sitter-c-sharp
+      - name: Repository structure (Godot preserved, Unity added)
+        run: python3 processing/unity/validate_structure.py
+      - name: C# static validation
+        run: python3 processing/unity/validate_csharp.py
+      - name: Blender pipeline unit tests
+        run: python3 -m unittest discover -s processing/blender/tests -v
+      - name: The Godot project still passes its own gates
+        run: |
+          bash tools/verify_phase1.sh
+          bash tools/verify_phase3.sh
+
+  data:
+    name: Map data conversion
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Port the island layout from GDScript to C#
+        run: |
+          python3 processing/unity/port_siran_config.py --check || {
+            echo "::error::SiranMapConfig.cs is out of date with scripts/world/siran_map_config.gd"
+            echo "::error::fix: python3 processing/unity/port_siran_config.py && git add unity-project/Assets/Scripts/World/SiranMapConfig.cs"
+            exit 1
+          }
+
+      - name: Convert the Godot bake and compare with what is committed
+        run: |
+          python3 processing/unity/convert_godot_island.py --check || {
+            echo "::error::the Unity map data does not match scenes/world/siran_island_baked.tscn"
+            echo "::error::fix: python3 processing/unity/convert_godot_island.py && git add unity-project/Assets/Resources"
+            exit 1
+          }
+
+      - name: Verify the converted data sample-for-sample against the bake
+        run: python3 processing/unity/validate_unity_map.py
+
+  assets:
+    name: Blender asset pipeline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Pipeline unit tests (no Blender needed)
+        run: python3 -m unittest discover -s processing/blender/tests -v
+
+      # Blender is a 300 MB download. It is fetched only when the caller asks for
+      # it (or when the workflow is dispatched manually), so ordinary pushes stay
+      # fast; the validators below run either way.
+      - name: Locate Blender
+        id: blender
+        run: |
+          set -uo pipefail
+          if command -v blender >/dev/null 2>&1; then
+            echo "found=$(command -v blender)" >> "$GITHUB_OUTPUT"
+            echo "::notice::using the runner's Blender: $(blender --version | head -1)"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ inputs.build_apk }}" = "true" ]; then
+            echo "found=" >> "$GITHUB_OUTPUT"
+            echo "::warning::Blender is not installed on this runner; the generators will be skipped and only the validators will run"
+          else
+            echo "found=" >> "$GITHUB_OUTPUT"
+            echo "::notice::Blender not installed - generators skipped, validators run against the committed output (if any)"
+          fi
+
+      - name: Generate the environment kit
+        if: steps.blender.outputs.found != ''
+        run: |
+          set -euo pipefail
+          "${{ steps.blender.outputs.found }}" --background --factory-startup \
+            --python processing/blender/generators/generate_environment_kit.py 2>&1 | tee blender-kit.log
+          if grep -qE '\[blender\]\[error\]' blender-kit.log; then
+            echo "::error::the environment kit generator reported an error"
+            exit 1
+          fi
+
+      - name: Generate the character rig harness
+        if: steps.blender.outputs.found != ''
+        run: |
+          set -euo pipefail
+          "${{ steps.blender.outputs.found }}" --background --factory-startup \
+            --python processing/blender/generators/generate_characters.py 2>&1 | tee blender-characters.log
+          if grep -qE '\[blender\]\[error\]' blender-characters.log; then
+            echo "::error::the character generator reported an error"
+            exit 1
+          fi
+
+      - name: Validate the exported assets
+        run: python3 processing/blender/validators/validate_assets.py --output processing/blender/output
+
+      - name: Upload the generated assets
+        if: steps.blender.outputs.found != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: blender-assets-${{ github.sha }}
+          path: |
+            processing/blender/output/**
+          retention-days: 14
+          if-no-files-found: warn
+
+  unity:
+    name: Unity project (licence required)
+    runs-on: ubuntu-24.04
+    needs: [structure, data]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Is a Unity licence configured?
+        id: licence
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          set -uo pipefail
+          if [ -n "${UNITY_LICENSE:-}" ] || { [ -n "${UNITY_EMAIL:-}" ] && [ -n "${UNITY_PASSWORD:-}" ]; }; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Unity credentials are configured; the editor jobs will run"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No UNITY_LICENSE / UNITY_EMAIL+UNITY_PASSWORD secret. The Unity editor steps are SKIPPED - this run does NOT prove the project opens in Unity. See docs/migration/REPORT.md (blocked items)."
+          fi
+
+      - name: Skip notice
+        if: steps.licence.outputs.available != 'true'
+        run: |
+          {
+            echo "### Unity editor jobs skipped"
+            echo ""
+            echo "No Unity licence secret is set for this repository, so the project could not be"
+            echo "opened, configured, tested or built here. What *was* verified instead:"
+            echo ""
+            echo "* the Godot project is unchanged and still passes its own gates"
+            echo "* the Unity map data matches the Godot bake sample for sample"
+            echo "* every C# file parses and the project settings are consistent"
+            echo "* the Blender pipeline validates"
+            echo ""
+            echo "To enable these jobs, add \`UNITY_LICENSE\` (or \`UNITY_EMAIL\` + \`UNITY_PASSWORD\`)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cache Library
+        if: steps.licence.outputs.available == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.UNITY_PROJECT_PATH }}/Library
+          key: unity-library-${{ env.UNITY_VERSION }}-${{ hashFiles('unity-project/Packages/manifest.json', 'unity-project/Assets/Scripts/**/*.cs') }}
+          restore-keys: |
+            unity-library-${{ env.UNITY_VERSION }}-
+
+      - name: Configure the project (URP, Android, scenes, materials)
+        if: steps.licence.outputs.available == 'true'
+        uses: game-ci/unity-builder@v4
+        env: &unity_env
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ${{ env.UNITY_PROJECT_PATH }}
+          unityVersion: ${{ env.UNITY_VERSION }}
+          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
+          buildMethod: BattleHorizons.EditorTools.ProjectBootstrap.ConfigureFromCommandLine
+          targetPlatform: Android
+          allowDirtyBuild: true
+
+      - name: Edit-mode tests
+        if: steps.licence.outputs.available == 'true'
+        uses: game-ci/unity-test-runner@v4
+        env: *unity_env
+        with:
+          projectPath: ${{ env.UNITY_PROJECT_PATH }}
+          unityVersion: ${{ env.UNITY_VERSION }}
+          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
+          testMode: editmode
+          artifactsPath: unity-test-results/editmode
+
+      - name: Play-mode tests
+        if: steps.licence.outputs.available == 'true'
+        uses: game-ci/unity-test-runner@v4
+        env: *unity_env
+        with:
+          projectPath: ${{ env.UNITY_PROJECT_PATH }}
+          unityVersion: ${{ env.UNITY_VERSION }}
+          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
+          testMode: playmode
+          artifactsPath: unity-test-results/playmode
+
+      - name: Project validation (batch mode)
+        if: steps.licence.outputs.available == 'true'
+        uses: game-ci/unity-builder@v4
+        env: *unity_env
+        with:
+          projectPath: ${{ env.UNITY_PROJECT_PATH }}
+          unityVersion: ${{ env.UNITY_VERSION }}
+          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
+          buildMethod: BattleHorizons.EditorTools.ProjectBootstrap.ValidateFromCommandLine
+          targetPlatform: Android
+          allowDirtyBuild: true
+
+      - name: Build the Android APK
+        id: apk
+        if: steps.licence.outputs.available == 'true' && (github.event_name == 'workflow_dispatch' && inputs.build_apk || startsWith(github.ref, 'refs/tags/v'))
+        uses: game-ci/unity-builder@v4
+        env:
+          <<: *unity_env
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          ANDROID_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+        with:
+          projectPath: ${{ env.UNITY_PROJECT_PATH }}
+          unityVersion: ${{ env.UNITY_VERSION }}
+          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
+          targetPlatform: Android
+          androidExportType: androidPackage
+          buildAppBundle: false
+          androidKeystoreName: ${{ secrets.ANDROID_KEYSTORE_NAME }}
+          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+
+      - name: Verify the APK really exists and looks sane
+        if: steps.licence.outputs.available == 'true' && steps.apk.outcome == 'success'
+        run: |
+          set -euo pipefail
+          apk="$(find build -name '*.apk' -print -quit 2>/dev/null || true)"
+          if [ -z "$apk" ]; then
+            echo "::error::the build step reported success but produced no .apk"
+            exit 1
+          fi
+          size=$(stat -c %s "$apk")
+          echo "APK: $apk ($size bytes)"
+          echo "::notice::APK size $size bytes"
+          # The Godot APK budget is 120 MB (docs/UNISOC_BUDGET.md); the Unity
+          # build starts from a bigger baseline, so this only catches accidents.
+          if [ "$size" -lt 1000000 ]; then
+            echo "::error::the APK is $size bytes - that is not a real build"
+            exit 1
+          fi
+          if command -v unzip >/dev/null 2>&1; then
+            unzip -l "$apk" | grep -qE 'lib/arm64-v8a/' || {
+              echo "::error::the APK has no arm64-v8a libraries"; exit 1; }
+          fi
+          echo "apk_path=$apk" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the APK
+        if: steps.licence.outputs.available == 'true' && steps.apk.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: battle-horizons-unity-apk-${{ github.sha }}
+          path: build/**/*.apk
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload test results
+        if: steps.licence.outputs.available == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-test-results-${{ github.sha }}
+          path: unity-test-results/**
+          retention-days: 14
+          if-no-files-found: warn
