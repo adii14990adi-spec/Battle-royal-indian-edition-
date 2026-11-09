@@ -25,19 +25,21 @@ in the Low profile. So:
 | --- | --- | --- |
 | Renderer | **URP Forward** (`UniversalRenderer`) | GLES3-class hardware |
 | HDR | **off** | no HDR framebuffer on low-end GLES; saves bandwidth |
-| MSAA | **off** (2× only in High) | 4× MSAA is a 40 % fill-rate cost on Mali |
-| Shadow cascades | **2** (Low), 4 (High) | 1 cascade aliases badly at 4 km scale |
-| Shadow distance | **60 m** (Low) / 120 m (High) | shadows beyond that are invisible at 4 km |
-| Additional lights | **per-vertex, 2/object** | matches `perf_manager.gd`'s ≤ 2 lights |
+| MSAA | **1×** (Low), 2× (High) | set on the active URP asset when a profile is applied |
+| Shadow cascades | **2** (Low), 4 (High) | set on the active URP asset when a profile is applied |
+| Shadow distance / map | **60 m / 512 px** (Low), **120 m / 1024 px** (High) | set on the active URP asset; hard shadows in both |
+| Additional lights | **per-vertex, 2/object** (Low), 4/object (High) | active-asset cap is switched with the profile |
 | Colour space | **Linear** | correct vertex-colour + lighting maths |
-| Render scale | **0.85** (Low) / 1.0 (High) | "reduced render resolution" requirement |
-| Post-processing | **none** (Low), selective (High) | the Godot build had none |
+| Render scale | **0.85** (Low) / 1.0 (High) | set on the active URP asset when a profile is applied |
+| Post-processing | **none** in either profile | no Volume/profile is configured |
 | Depth texture / opaque texture | **off** | nothing needs them; each costs a full-screen pass |
 
-The two profiles are *the same renderer with different budgets*, not two
+The two profiles are *the same renderer asset with different budgets*, not two
 pipelines. `QualitySettings.asset` holds `BattleHorizons_Low` (index 0) and
 `BattleHorizons_High` (index 1); Android defaults to 0, so a device that is never
-detected still boots onto the safe profile.
+detected still boots onto the safe profile. `QualityProfiles.Apply()` updates the
+active `UniversalRenderPipelineAsset` after choosing the quality level. This code
+has not yet been compiled or exercised in Unity.
 
 Selection order in `GameBootstrap.Awake()`:
 
@@ -214,10 +216,16 @@ event-system input path is cheaper per frame on mobile.
 ### 4.8 Diagnostics (`Core/PerformanceMonitor.cs`, `UI/WorldDebugHud.cs`)
 
 `PerformanceMonitor` keeps a 240-frame ring buffer (average + 99th-percentile
-"1 % low"),
-`ProfilerRecorder` readings for `SetPass Calls Count` (the real counter name —
-there is no `Draw Calls Count`), allocated/reserved memory, and it logs a warning when the
-active profile's budget is exceeded (33.3 ms Low / 16.6 ms High).
+"1 % low"), `ProfilerRecorder` readings for `SetPass Calls Count` (the real
+counter name — there is no `Draw Calls Count`), managed-heap-used and Unity
+reserved-memory readings. The HUD samples these at 4 Hz and caches them so IMGUI
+repaints do not repeatedly sort the frame history. Reserved memory and managed
+heap use are not Android PSS; PSS is measured with `dumpsys meminfo`.
+
+The monitor logs a frame-time warning when the one-second mean exceeds 110% of the
+target (36.6 ms Low / 18.3 ms High). Set-pass and memory targets are displayed,
+not automatically warned on. None of these are performance claims; device tests
+remain open in `docs/migration/REPORT.md`.
 
 `WorldDebugHud` is an IMGUI overlay toggled with **F3** (or a 3-finger tap),
 compiled out of release builds unless `BH_DEBUG_HUD` is defined. IMGUI because it

@@ -3,10 +3,9 @@
 Android-first 3D battle royale. This directory is the Unity 6 / Universal Render
 Pipeline port of the Godot 4.4 project that lives at the **repository root**.
 
-> The Godot project is still there and still builds. Nothing in this folder
-> replaces it: `../project.godot`, `../scenes/`, `../scripts/` and
-> `../.github/workflows/build.yml` are untouched and keep working. This is the
-> new, parallel target.
+> The Godot project is still there and its existing build workflow is intact.
+> Nothing in this folder replaces it: `../project.godot`, `../scenes/`, `../scripts/` and
+> `../.github/workflows/build.yml` are untouched. This is the new, parallel target.
 
 * Engine: **Unity 6** (`6000.0.32f1`) with **URP 17**
 * Platform: **Android** (arm64-v8a, min API 26, landscape, offline)
@@ -30,7 +29,7 @@ Pipeline port of the Godot 4.4 project that lives at the **repository root**.
 
 | What | Where |
 | --- | --- |
-| URP pipeline asset (mobile numbers: no HDR, MSAA off, 2 cascades, 60 m shadows) | `Assets/Settings/BattleHorizonsURP.asset` |
+| URP pipeline asset (Low-safe base: no HDR, 1× MSAA, 2 cascades, 60 m / 512 px shadows; `QualityProfiles.Apply()` changes the active asset for High) | `Assets/Settings/BattleHorizonsURP.asset` |
 | Four URP materials (terrain, chunk, water, road) | `Assets/Materials/*.mat` |
 | Four scenes (Boot, MainMenu, SiranIsland, PlayerTest) | `Assets/Scenes/**` |
 | Build settings (Boot first) | `ProjectSettings/EditorBuildSettings.asset` |

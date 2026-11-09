@@ -27,6 +27,11 @@ namespace BattleHorizons.UI
         private SiranWorldBuilder _world;
         private Vector3 _lastCameraPosition;
         private float _cachedFps;
+        private float _cachedAverageFrameMs;
+        private float _cachedOnePercentLowFrameMs;
+        private float _cachedMonoUsedMb;
+        private float _cachedReservedMb;
+        private int _cachedSetPassCalls = -1;
         private float _refreshTimer;
 
         private void Awake()
@@ -72,6 +77,15 @@ namespace BattleHorizons.UI
 
             _refreshTimer = 0f;
             _cachedFps = 1f / Mathf.Max(Time.smoothDeltaTime, 0.0001f);
+            if (_perf != null)
+            {
+                _cachedAverageFrameMs = _perf.AverageFrameMs;
+                _cachedOnePercentLowFrameMs = _perf.OnePercentLowFrameMs;
+                _cachedSetPassCalls = _perf.SetPassCalls;
+                _cachedMonoUsedMb = _perf.MonoUsedMb;
+                _cachedReservedMb = _perf.PeakReservedMb;
+            }
+
             var camera = Camera.main;
             if (camera != null)
             {
@@ -100,12 +114,13 @@ namespace BattleHorizons.UI
                 ? IslandShapeMath.WaterSurfaceAt(_lastCameraPosition.x, _lastCameraPosition.z)
                 : 0f;
 
-            // Read the budget counters only when the HUD is drawn (twice a second):
-            // these are the numbers Android profiles are judged on, and reading them
-            // every frame would change the thing being measured.
+            // Metrics were sampled in Update at 4 Hz; OnGUI can run multiple times
+            // per frame, so reading/sorting profiler data here would add overhead to
+            // the measurement itself.
             var budget = _perf != null
-                ? string.Format("   {0:F1} ms avg / {1:F1} ms 1% low   {2} set-pass   {3:F0} MB reserved",
-                    _perf.AverageFrameMs, _perf.OnePercentLowFrameMs, _perf.SetPassCalls, _perf.PeakReservedMb)
+                ? string.Format("   {0:F1} ms avg / {1:F1} ms 1% low   {2} set-pass   {3:F0} MB heap / {4:F0} MB reserved",
+                    _cachedAverageFrameMs, _cachedOnePercentLowFrameMs, _cachedSetPassCalls,
+                    _cachedMonoUsedMb, _cachedReservedMb)
                 : string.Empty;
 
             var text = string.Concat(

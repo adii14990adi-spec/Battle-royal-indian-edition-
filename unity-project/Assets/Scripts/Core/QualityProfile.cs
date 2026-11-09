@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace BattleHorizons.Core
 {
@@ -76,15 +77,39 @@ namespace BattleHorizons.Core
             PlayerPrefs.Save();
         }
 
-        /// <summary>Applies a profile: QualitySettings level + frame-rate target.</summary>
+        /// <summary>Applies the Unity quality level, URP runtime overrides, and frame-rate target.</summary>
         public static void Apply(QualityProfile profile)
         {
             var index = Mathf.Clamp(QualityIndex(profile), 0, QualitySettings.names.Length - 1);
             QualitySettings.SetQualityLevel(index, applyExpensiveChanges: true);
+            ApplyPipelineOverrides(profile);
             _active = profile;
             _applied = true;
 
             ApplyFrameRate(profile);
+        }
+
+        /// <summary>
+        /// The quality-level asset controls terrain, LOD and mip budgets; these
+        /// URP settings live on the shared pipeline asset and therefore need an
+        /// explicit runtime update when the player switches profiles.
+        /// </summary>
+        private static void ApplyPipelineOverrides(QualityProfile profile)
+        {
+            var pipeline = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+            if (pipeline == null)
+            {
+                GameLog.Warn("quality", "Active render pipeline is not URP; profile-specific render overrides were skipped.");
+                return;
+            }
+
+            var high = profile == QualityProfile.High;
+            pipeline.renderScale = RenderScale(profile);
+            pipeline.shadowDistance = ShadowDistance(profile);
+            pipeline.shadowCascadeCount = high ? 4 : 2;
+            pipeline.mainLightShadowmapResolution = high ? 1024 : 512;
+            pipeline.msaaSampleCount = high ? 2 : 1;
+            pipeline.maxAdditionalLightsCount = high ? 4 : 2;
         }
 
         /// <summary>
@@ -109,9 +134,8 @@ namespace BattleHorizons.Core
 
         /// <summary>
         /// Render scale, ported from the "reduced render resolution" requirement.
-        /// URP's own render-scale knob lives on the pipeline asset; this returns the
-        /// value the bootstrap writes into the URP asset for each profile so a
-        /// runtime switch is one assignment.
+        /// <see cref="ApplyPipelineOverrides"/> writes this value to the active URP
+        /// asset whenever a profile is applied or changed.
         /// </summary>
         public static float RenderScale(QualityProfile profile) =>
             profile == QualityProfile.Low ? 0.85f : 1.0f;

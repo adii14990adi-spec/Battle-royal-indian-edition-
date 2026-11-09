@@ -7,11 +7,11 @@ namespace BattleHorizons.Core
     /// <summary>
     /// Port of `scripts/autoload/perf_manager.gd`.
     ///
-    /// Every second it logs the same numbers the Godot build logged, under the
-    /// same `[perf]` tag, so `adb logcat -s Unity | grep [perf]` and the existing
-    /// docs/UNISOC_BUDGET.md budgets still apply:
+    /// Every second it logs frame time, URP set-pass calls, batches, triangles,
+    /// Unity's managed-heap use, reserved memory and the active profile under the
+    /// `[perf]` tag, so `adb logcat -s Unity | grep [perf]` can be used on-device:
     ///
-    ///     [perf] fps=.. draws=.. tris=.. static_mb=.. gfx_mb=.. quality=..
+    ///     [perf] fps=.. frame_ms=.. set_passes=.. batches=.. tris=.. mono_used_mb=.. reserved_mb=.. quality=..
     ///
     /// This component allocates nothing per frame: the StringBuilder is reused
     /// and formatting happens once per interval.
@@ -50,8 +50,11 @@ namespace BattleHorizons.Core
         /// <summary>Smoothed frame time in milliseconds over the last interval.</summary>
         public float FrameTimeMs { get; private set; }
 
-        /// <summary>Peak total memory Unity has reserved, in MB (a proxy for PSS growth).</summary>
+        /// <summary>Peak total memory Unity has reserved, in MB; this is not Android PSS.</summary>
         public float PeakReservedMb => _peakReservedBytes / (1024f * 1024f);
+
+        /// <summary>Current managed heap used by Mono/IL2CPP, in MB (not total process memory).</summary>
+        public float MonoUsedMb => BytesToMb(Profiler.GetMonoUsedSizeLong());
 
         /// <summary>
         /// Mean frame time over the recent window. This is the number the profile
@@ -162,10 +165,10 @@ namespace BattleHorizons.Core
             _builder.Clear();
             _builder.Append("fps=").Append(FramesPerSecond.ToString("F1"));
             _builder.Append(" frame_ms=").Append(FrameTimeMs.ToString("F2"));
-            _builder.Append(" draws=").Append(_drawCalls.Valid ? _drawCalls.LastValue : -1);
+            _builder.Append(" set_passes=").Append(_drawCalls.Valid ? _drawCalls.LastValue : -1);
             _builder.Append(" batches=").Append(_batches.Valid ? _batches.LastValue : -1);
             _builder.Append(" tris=").Append(_triangles.Valid ? _triangles.LastValue : -1);
-            _builder.Append(" static_mb=").Append(BytesToMb(Profiler.GetMonoUsedSizeLong()).ToString("F1"));
+            _builder.Append(" mono_used_mb=").Append(MonoUsedMb.ToString("F1"));
             _builder.Append(" reserved_mb=").Append(PeakReservedMb.ToString("F1"));
             _builder.Append(" quality=").Append(QualityProfiles.Active);
             _builder.Append(" resolved_scale=").Append(QualityProfiles.RenderScale(QualityProfiles.Active).ToString("F2"));

@@ -233,6 +233,30 @@ def main() -> int:
     else:
         report.fail("Android does not default to quality index 0")
 
+    profile_source = (ASSETS / "Scripts" / "Core" / "QualityProfile.cs").read_text(encoding="utf-8")
+    runtime_overrides = (
+        "pipeline.renderScale = RenderScale(profile)",
+        "pipeline.shadowDistance = ShadowDistance(profile)",
+        "pipeline.shadowCascadeCount = high ? 4 : 2",
+        "pipeline.mainLightShadowmapResolution = high ? 1024 : 512",
+        "pipeline.msaaSampleCount = high ? 2 : 1",
+        "pipeline.maxAdditionalLightsCount = high ? 4 : 2",
+    )
+    bootstrap_source = (ASSETS / "Editor" / "ProjectBootstrap.cs").read_text(encoding="utf-8")
+    low_safe_defaults = (
+        'SetFloat(serialized, "m_RenderScale", 1.0f)',
+        'SetInt(serialized, "m_MSAA", 1)',
+        'SetInt(serialized, "m_ShadowCascadeCount", 2)',
+        'SetFloat(serialized, "m_ShadowDistance", 60f)',
+        'SetInt(serialized, "m_MainLightShadowmapResolution", 512)',
+        'SetInt(serialized, "m_AdditionalLightsPerObjectLimit", 2)',
+    )
+    if (all(override in profile_source for override in runtime_overrides)
+            and all(value in bootstrap_source for value in low_safe_defaults)):
+        report.ok("bootstrap writes Low-safe URP defaults; Low/High overrides cover scale, shadows, MSAA and lights")
+    else:
+        report.fail("a Low-safe URP default or Low/High runtime override is missing")
+
     # --- 6: assembly definitions ------------------------------------------
     unity_assemblies = {
         "Unity.InputSystem", "UnityEngine.TestRunner", "UnityEditor.TestRunner",

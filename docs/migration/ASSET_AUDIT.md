@@ -186,9 +186,12 @@ port inherits it as the **Low** profile and adds a **High** profile on top:
 | Lights per object | ≤ 2 | ≤ 4 |
 | Post-processing | none | selective |
 
-No FPS number is claimed anywhere in this migration before hardware testing; the
-budgets are budgets, and `docs/migration/REPORT.md` records that they are
-unverified on hardware.
+This table records the project's inherited **target budget**, not a claim that
+every Unity knob is implemented or measured. Current Unity differences are
+spelled out in `docs/performance/ANDROID_PROFILES.md`: the importer currently caps
+both profiles at 512² and post-processing is not configured. No FPS number is
+claimed before hardware testing; the budgets remain unverified until an APK is
+measured.
 
 ## 6. CI and release process (existing, must survive)
 

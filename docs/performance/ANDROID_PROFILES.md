@@ -22,9 +22,17 @@ contract for both, plus the honesty rules about what is measured and what is not
 | Import rules | `Assets/Editor/AssetImportRules.cs` | ASTC 6×6, 512² cap, mip/aniso, Vorbis/mono, 4 bone influences |
 | Camera | `ThirdPersonCameraController` + `SiranChunkStreamer` | far plane, chunk stream radius |
 
-The URP asset is generated, not committed, so it always matches the code that
-configures it. `ProjectValidator` re-reads it and fails if a serialized value
-drifts from this table.
+The URP asset is generated, not committed. `ProjectBootstrap` writes safe Low
+values into the shared asset; `QualityProfiles.Apply()` then applies the selected
+profile's render scale, cascade count, shadow distance/resolution, MSAA sample
+count, and per-object additional-light cap at runtime. The quality-level asset
+continues to control terrain, LOD, and mip budgets.
+
+**Implementation boundary (2026-11-09):** the values below are code/config
+settings, not device measurements. Selective post-processing is not configured;
+soft shadows are off in both profiles; the importer caps textures at 512² in both
+profiles. The `ProjectValidator` has not been run in Unity and does not execute
+the High runtime overrides. Do not treat an unrun editor check as proof.
 
 ---
 
@@ -38,12 +46,12 @@ Inherited from `docs/UNISOC_BUDGET.md`, which the Godot build shipped against.
 | HDR | off | GLES3-class devices; no HDR framebuffer, saves bandwidth |
 | MSAA | off | 15–30 % frame time on tiled mobile GPUs |
 | Post-processing | **none** | no SMAA, no bloom, no vignette; matches the Godot build |
-| Shadows | on, **1 cascade** requested via URP (quality level caps at 2), 60 m distance, 512 px map, hard PCF | the Godot project used 512 px hard shadows |
+| Shadows | **2 cascades**, 60 m distance, 512 px map, hard shadows | Low-safe runtime override; same hard shadow mode as the source |
 | Additional lights | 2 per object, per-vertex | GLES3 forward re-shades per light |
 | Pixel light count | 2 | `QualitySettings` |
 | Shadow resolution | from quality settings, low tier | — |
 | Anisotropic filtering | **0** | most expensive filter on Mali |
-| Texture budget | 512 × 512 cap, ASTC 6×6, mip on | VRAM ≤ 180 MB |
+| Texture budget | **512 × 512 cap**, ASTC 6×6, mip on | enforced by `AssetImportRules` for both profiles |
 | Streaming mipmaps | on, 96 MB budget, 256 renderers/frame | keeps peak texture residency down |
 | LOD bias / max LOD | **0.6** / allow 1 level down | aggressive LOD, as required |
 | Terrain pixel error / basemap | 8 / 300 m | Unity Terrain LOD is the main triangle saver |
@@ -62,25 +70,25 @@ Inherited from `docs/UNISOC_BUDGET.md`, which the Godot build shipped against.
 | Render scale | **1.0** | "higher resolution" |
 | HDR | off (still) | URP mobile HDR doubles the target; not worth it at this art level |
 | MSAA | **2×** | cheap on tile-based GPUs, fixes the worst terrain-edge shimmer |
-| Post-processing | **selective**: SMAA 2× quality + optional vignette; no bloom, no DOF, no motion blur | "selective post" without paying for a full HDR chain |
-| Shadows | **4 cascades**, **120 m**, 1024 px, soft (2-tap PCF) | "better shadows" |
+| Post-processing | **none (current implementation)** | no Volume/profile is configured; do not count selective post as delivered |
+| Shadows | **4 cascades**, **120 m**, 1024 px, hard shadows | runtime URP override; soft shadows remain disabled |
 | Additional lights | 4 per object | — |
 | Pixel light count | 4 | — |
 | Anisotropic filtering | 2× | roads and runway markings at grazing angles |
-| Texture budget | 1024 × 1024 cap, ASTC 6×6 | ≤ 400 MB VRAM |
+| Texture budget | **512 × 512 cap**, ASTC 6×6 | the current importer uses the same cap in both profiles; no total-VRAM budget is enforced |
 | Streaming mipmaps | on, 192 MB budget, 512 renderers/frame | — |
 | LOD bias / max LOD | **1.0** / no reduction | full detail |
-| Terrain pixel error / basemap | 5 / 1000 m | finer silhouette |
+| Terrain pixel error / basemap | 5 / 600 m | finer silhouette; matches the High quality level and terrain hook |
 | Camera far plane | **1600 m** | — |
 | Chunk stream radius | **1600 m** | up to ~40 active chunks |
 | Frame rate target | **60** (capped to display refresh) | — |
-| Vegetation | full density, 120 m detail, 400 m trees, max 150 trees | "more detail" |
+| Vegetation | full density, 80 m detail, 500 m trees, max 200 trees | values in `QualitySettings.asset` |
 | Expected draws | ≤ 150 | 40 chunks + 18 roads + water + lights + UI |
 
 ## 4. Selection logic
 
 ```csharp
-// QualityProfiles.Detect — pure, unit-tested
+// QualityProfiles.Detect — pure; an EditMode test exists but has not been run here
 High  ⇔ systemMemoryMb ≥ 5500  &&  processorCount ≥ 8  &&  (graphicsMemoryMb ≤ 0 || ≥ 1500)
 Low   otherwise
 ```
@@ -125,25 +133,28 @@ adb logcat -s Unity            # GameLog lines + PerformanceMonitor budget warni
 adb shell dumpsys meminfo com.aurastudios.battlehorizons | head -30   # PSS
 ```
 
-In-editor: press **F3** in `PlayerTest` for the HUD (frame time average + 1 % low,
-set-pass calls, allocated/reserved memory, active chunk count, profile).
+In-editor: press **F3** in `PlayerTest` for the HUD (4 Hz cached frame-time
+average + 99th-percentile "1 % low", set-pass calls, managed heap used, Unity
+reserved memory, resident chunk count, and profile). Reserved memory and the
+managed heap are **not** Android PSS; use `dumpsys meminfo` for PSS.
 
-The HUD warns when:
-* average frame time > 33.3 ms (Low) / 16.6 ms (High),
-* set-pass calls > 60 (Low) / 150 (High),
-* reserved memory > 800 MB (Low) / 1400 MB (High).
+`PerformanceMonitor` logs a frame-time warning only when the one-second average
+exceeds 110% of the target (36.6 ms Low / 18.3 ms High). Set-pass and memory
+budgets are displayed for comparison but do **not** currently trigger warnings.
 
 `SetPass Calls Count` is the real `ProfilerRecorder` counter (there is no
-`Draw Calls Count`), and it is read through `ProfilerRecorder` rather than the
-profiler UI so it works in a development build on the device.
+`Draw Calls Count`); the HUD calls it "set-pass" rather than claiming it is a
+draw-call count. It is read through `ProfilerRecorder` in a development build.
 
 ## 7. What is *not* verified
 
 | Claim | Status |
 | --- | --- |
-| The URP asset has these values | **Implemented**; asserted by `ProjectValidator` when Unity runs — **not yet run** (no Unity in this environment) |
-| Quality levels exist with these numbers | **Implemented + verified statically** (`validate_csharp.py` reads the YAML) |
-| Detection picks the right profile on real hardware | **Not tested** — needs a device; the pure function is unit-tested |
+| The generated URP base asset has safe Low defaults | **Implemented in source**; `ProjectValidator` check written but not run in Unity |
+| Profile-specific URP values (including High) apply at runtime | **Implemented in source** via public URP asset properties; not compiled or exercised in Unity here; validator does not test the runtime High overrides |
+| Selective post-processing, High soft shadows, or a 1024² High texture cap | **Not implemented**; current profiles use no post, hard shadows, and a 512² import cap |
+| Quality levels exist with these numbers | **Implemented + verified statically** (`validate_csharp.py` reads the YAML and checks runtime override assignments); Unity has not loaded them |
+| Detection picks the right profile | **Not run here** — the pure function has an EditMode test, but Unity tests were not executed; hardware classification also needs devices |
 | 30 fps on T606 / 60 fps on 6s Gen 3 | **Not tested, not claimed** |
 | PSS ≤ 800 MB | **Not tested** |
 | Draw calls ≤ 60 | **Not tested** |

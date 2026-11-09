@@ -172,9 +172,9 @@ namespace BattleHorizons.EditorTools
 
             var serialized = new SerializedObject(asset);
 
-            // Render scale 1.0 by default: the low profile drops it to 0.85 at
-            // runtime through QualityProfiles.Apply, which is more accurate than
-            // baking a reduced scale into the shared asset.
+            // Start from the safe/default pipeline values. QualityProfiles.Apply
+            // adjusts render scale, cascades, shadow distance/resolution, MSAA and
+            // the per-object additional-light cap after device detection.
             SetFloat(serialized, "m_RenderScale", 1.0f);
             SetBool(serialized, "m_SupportsHDR", false);
             SetBool(serialized, "m_RequireDepthTexture", false);
@@ -184,7 +184,7 @@ namespace BattleHorizons.EditorTools
             SetFloat(serialized, "m_ShadowDistance", 60f);
             SetFloat(serialized, "m_ShadowDepthBias", 1.0f);
             SetFloat(serialized, "m_ShadowNormalBias", 0.4f);
-            SetInt(serialized, "m_MainLightShadowmapResolution", 1024);
+            SetInt(serialized, "m_MainLightShadowmapResolution", 512);
             SetInt(serialized, "m_AdditionalLightsRenderingMode", 1);   // per-vertex: cheapest forward path
             SetInt(serialized, "m_AdditionalLightsPerObjectLimit", 2);  // matches max_lights_per_object = 2
             SetBool(serialized, "m_AdditionalLightShadowsSupported", false);
@@ -212,7 +212,7 @@ namespace BattleHorizons.EditorTools
                 Line("created " + settingsPath);
             }
 
-            Line("URP asset: HDR off, MSAA 1x, 2 cascades @ 60 m, per-vertex additional lights (limit 2), SRP batcher on");
+            Line("URP base asset: HDR off, MSAA 1x, 2 cascades @ 60 m, 512 px shadows, per-vertex additional lights (limit 2), SRP batcher on; runtime profiles override their budget knobs");
             return asset;
         }
 
