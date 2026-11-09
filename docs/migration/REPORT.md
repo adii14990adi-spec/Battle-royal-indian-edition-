@@ -249,6 +249,7 @@ each is recorded below rather than quietly deleted:
 | Blocker | Impact | Unblock by |
 | --- | --- | --- |
 | **No Unity editor/licence** | project never opened, compiled, configured, tested or built | open `unity-project/` in Unity 6 `6000.0.32f1`; or add `UNITY_LICENSE` (or `UNITY_EMAIL`+`UNITY_PASSWORD`) as a repo secret so the `unity` CI job runs |
+| **First Unity compile is unverified** | 29 C# files (6,082 lines) were written without a compiler; only syntax, references, serialized-field names and project settings were checked statically (29/29 checks) | run `Battle Horizons > Project Setup > Validate` after the first open and fix whatever the compiler reports — expect a small number of API drifts, all in the editor tooling |
 | **No Android device / emulator** | frame rate, PSS, draw calls, touch feel all unmeasured | run the APK on the Snapdragon 6s Gen 3 baseline and a T606 device; `ANDROID_PROFILES.md` §6 has the commands |
 | **No Blender install** | generators never executed; no GLB/FBX exists yet | `blender --background --factory-startup --python processing/blender/generators/generate_environment_kit.py`, then the validator |
 | **No character/animation assets in the source project** | Phase 4 (humanoid integration, 7 clips) cannot be completed as a *port* | supply a rigged character (or a Mixamo export); the pipeline, import rules and validator are ready |
