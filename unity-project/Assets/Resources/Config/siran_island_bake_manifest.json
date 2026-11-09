@@ -1,0 +1,37 @@
+{
+  "bake_source": "scenes/world/siran_island_baked.tscn",
+  "bake_source_sha256": "67e032c99251a6517bf1fc2b351607a9ce4fb72bb8f4dd843bd54f61447b6de4",
+  "files": {
+    "siran_island_heights.bytes": {
+      "bytes": 643204,
+      "sha256": "dbab12b66e90cb14b6ba1755e38366665abe6a30dfbe057be7911c08744cb35a"
+    },
+    "siran_island_colors.bytes": {
+      "bytes": 643204,
+      "sha256": "a78d09cafe6267c9c1d5654d796c50b2d1247f3fa336b9e87bd74508c1bf4fa3"
+    },
+    "siran_island_roads.bytes": {
+      "bytes": 115932,
+      "sha256": "7b453fd91cf9d814a258841449f15c873d46a3bfbfbe9e70dd5abc6cfc5e48fd"
+    },
+    "siran_island_river.bytes": {
+      "bytes": 8392,
+      "sha256": "538c4f73a1a3e20c9b2057cd7aec6f6dcd0d8783ce195ee7557ed979fdd4de17"
+    },
+    "water_normal_256.png": {
+      "bytes": 137293,
+      "sha256": "e1067e8199f050f9d4e912c1af189a72a6f2dc0d7d89372ec0d074ef4b4ca4a7"
+    },
+    "siran_island_terrain.json": {
+      "bytes": 5074,
+      "sha256": "de8f6096ac1f2f7f7aaa08d35554484dae0a5ed828cc04253e57bdddc3ee75dc"
+    }
+  },
+  "textures": {
+    "water_normal_256.png": {
+      "source": "assets/textures/water_normal_256.png",
+      "sha256": "e1067e8199f050f9d4e912c1af189a72a6f2dc0d7d89372ec0d074ef4b4ca4a7",
+      "note": "copied verbatim from the Godot project; both copies are hashed"
+    }
+  }
+}

@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "generated_by": "processing/unity/convert_godot_island.py",
+  "provenance": {
+    "godot_scene": "scenes/world/siran_island_baked.tscn",
+    "godot_scene_sha256": "67e032c99251a6517bf1fc2b351607a9ce4fb72bb8f4dd843bd54f61447b6de4",
+    "godot_summary": "resources/world/baked/siran_island_summary.tres",
+    "godot_generator_version": 3,
+    "godot_noise_seed": 20261106,
+    "godot_baked_at_utc": "2026-11-07T06:32:22",
+    "note": "Converted from the committed Godot bake. The island geometry is reused as-is: no terrain is regenerated, so the Unity and Godot maps are the same map."
+  },
+  "grid": {
+    "size": 401,
+    "spacing_m": 10.0,
+    "half_extent_m": 2000.0,
+    "chunk_size_m": 500.0,
+    "chunks_per_side": 8,
+    "index_order": "iz * size + ix, ix grows east (+X), iz grows south (+Z)",
+    "sample_centre_offset_m": 0.0
+  },
+  "heights": {
+    "file": "siran_island_heights.bytes",
+    "dtype": "float32-le",
+    "count": 160801,
+    "min_m": -38.0,
+    "max_m": 64.8359,
+    "sea_level_m": 0.0
+  },
+  "colors": {
+    "file": "siran_island_colors.bytes",
+    "dtype": "rgba8",
+    "count": 160801,
+    "note": "Greybox vertex colours baked by IslandHeightmap.color_at: biome palette + zone tint + runway markings. Zero textures."
+  },
+  "roads": {
+    "file": "siran_island_roads.bytes",
+    "ribbons": [
+      {
+        "name": "road_chunk_1_1",
+        "vertex_count": 232,
+        "index_count": 522,
+        "triangles": 174,
+        "offset": 0,
+        "bytes": 4756
+      },
+      {
+        "name": "road_chunk_1_2",
+        "vertex_count": 104,
+        "index_count": 234,
+        "triangles": 78,
+        "offset": 4756,
+        "bytes": 2132
+      },
+      {
+        "name": "road_chunk_1_4",
+        "vertex_count": 584,
+        "index_count": 1314,
+        "triangles": 438,
+        "offset": 6888,
+        "bytes": 11972
+      },
+      {
+        "name": "road_chunk_1_5",
+        "vertex_count": 312,
+        "index_count": 702,
+        "triangles": 234,
+        "offset": 18860,
+        "bytes": 6396
+      },
+      {
+        "name": "road_chunk_2_2",
+        "vertex_count": 344,
+        "index_count": 774,
+        "triangles": 258,
+        "offset": 25256,
+        "bytes": 7052
+      },
+      {
+        "name": "road_chunk_2_3",
+        "vertex_count": 128,
+        "index_count": 288,
+        "triangles": 96,
+        "offset": 32308,
+        "bytes": 2624
+      },
+      {
+        "name": "road_chunk_2_4",
+        "vertex_count": 336,
+        "index_count": 756,
+        "triangles": 252,
+        "offset": 34932,
+        "bytes": 6888
+      },
+      {
+        "name": "road_chunk_2_5",
+        "vertex_count": 160,
+        "index_count": 360,
+        "triangles": 120,
+        "offset": 41820,
+        "bytes": 3280
+      },
+      {
+        "name": "road_chunk_2_6",
+        "vertex_count": 264,
+        "index_count": 594,
+        "triangles": 198,
+        "offset": 45100,
+        "bytes": 5412
+      },
+      {
+        "name": "road_chunk_3_3",
+        "vertex_count": 560,
+        "index_count": 1260,
+        "triangles": 420,
+        "offset": 50512,
+        "bytes": 11480
+      },
+      {
+        "name": "road_chunk_3_4",
+        "vertex_count": 176,
+        "index_count": 396,
+        "triangles": 132,
+        "offset": 61992,
+        "bytes": 3608
+      },
+      {
+        "name": "road_chunk_3_6",
+        "vertex_count": 368,
+        "index_count": 828,
+        "triangles": 276,
+        "offset": 65600,
+        "bytes": 7544
+      },
+      {
+        "name": "road_chunk_4_3",
+        "vertex_count": 400,
+        "index_count": 900,
+        "triangles": 300,
+        "offset": 73144,
+        "bytes": 8200
+      },
+      {
+        "name": "road_chunk_4_4",
+        "vertex_count": 336,
+        "index_count": 756,
+        "triangles": 252,
+        "offset": 81344,
+        "bytes": 6888
+      },
+      {
+        "name": "road_chunk_4_5",
+        "vertex_count": 336,
+        "index_count": 756,
+        "triangles": 252,
+        "offset": 88232,
+        "bytes": 6888
+      },
+      {
+        "name": "road_chunk_4_6",
+        "vertex_count": 408,
+        "index_count": 918,
+        "triangles": 306,
+        "offset": 95120,
+        "bytes": 8364
+      },
+      {
+        "name": "road_chunk_5_3",
+        "vertex_count": 336,
+        "index_count": 756,
+        "triangles": 252,
+        "offset": 103484,
+        "bytes": 6888
+      },
+      {
+        "name": "road_chunk_6_3",
+        "vertex_count": 232,
+        "index_count": 522,
+        "triangles": 174,
+        "offset": 110372,
+        "bytes": 4756
+      }
+    ]
+  },
+  "stats": {
+    "grid": {
+      "filled_samples": 160801,
+      "missing_samples": 0,
+      "height_conflicts": 0,
+      "colour_conflicts": 0
+    },
+    "terrain_vertices": 166464,
+    "terrain_triangles": 320000,
+    "godot_chunk_count": 64,
+    "spawn_ground_height_m": 17.5249
+  },
+  "warnings": [],
+  "river": {
+    "file": "siran_island_river.bytes",
+    "vertex_count": 350,
+    "index_count": 1044,
+    "triangles": 348,
+    "length_m": 3124.97
+  }
+}
