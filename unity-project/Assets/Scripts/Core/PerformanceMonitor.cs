@@ -27,7 +27,15 @@ namespace BattleHorizons.Core
         [Tooltip("Seconds between [perf] log lines. 0 disables periodic logging.")]
         [SerializeField] private float interval = LogIntervalSeconds;
 
+        // 240 frames is 4 s at 60 Hz / 8 s at 30 Hz: enough to see a hitch without
+        // holding a stale number for a whole match.
+        private const int FrameHistorySize = 240;
+
         private readonly StringBuilder _builder = new StringBuilder(192);
+        private readonly float[] _frameHistory = new float[FrameHistorySize];
+        private readonly float[] _sortScratch = new float[FrameHistorySize];
+        private int _frameHistoryCount;
+        private int _frameHistoryCursor;
         private ProfilerRecorder _drawCalls;
         private ProfilerRecorder _batches;
         private ProfilerRecorder _triangles;
@@ -45,6 +53,52 @@ namespace BattleHorizons.Core
         /// <summary>Peak total memory Unity has reserved, in MB (a proxy for PSS growth).</summary>
         public float PeakReservedMb => _peakReservedBytes / (1024f * 1024f);
 
+        /// <summary>
+        /// Mean frame time over the recent window. This is the number the profile
+        /// budget is written against (33.3 ms → 30 fps).
+        /// </summary>
+        public float AverageFrameMs
+        {
+            get
+            {
+                if (_frameHistoryCount == 0)
+                {
+                    return 0f;
+                }
+
+                var sum = 0f;
+                for (var i = 0; i < _frameHistoryCount; i++)
+                {
+                    sum += _frameHistory[i];
+                }
+
+                return sum / _frameHistoryCount;
+            }
+        }
+
+        /// <summary>
+        /// 99th-percentile frame time: the slow 1 % of frames, which is what a
+        /// player actually notices. Sorted into a scratch buffer, so no allocation.
+        /// </summary>
+        public float OnePercentLowFrameMs
+        {
+            get
+            {
+                if (_frameHistoryCount == 0)
+                {
+                    return 0f;
+                }
+
+                System.Array.Copy(_frameHistory, _sortScratch, _frameHistoryCount);
+                System.Array.Sort(_sortScratch, 0, _frameHistoryCount);
+                var index = Mathf.Clamp(Mathf.FloorToInt(_frameHistoryCount * 0.99f), 0, _frameHistoryCount - 1);
+                return _sortScratch[index];
+            }
+        }
+
+        /// <summary>Latest draw-call substitute: URP set-pass calls. -1 when the counter is unavailable.</summary>
+        public int SetPassCalls => _drawCalls.Valid ? (int)_drawCalls.LastValue : -1;
+
         private void Awake()
         {
             _drawCalls = ProfilerRecorder.StartNew(ProfilerCategory.Render, "SetPass Calls Count");
@@ -61,6 +115,13 @@ namespace BattleHorizons.Core
         {
             _frames++;
             _frameTimeSum += Time.unscaledDeltaTime;
+
+            _frameHistory[_frameHistoryCursor] = Time.unscaledDeltaTime * 1000f;
+            _frameHistoryCursor = (_frameHistoryCursor + 1) % FrameHistorySize;
+            if (_frameHistoryCount < FrameHistorySize)
+            {
+                _frameHistoryCount++;
+            }
 
             var reserved = Profiler.GetTotalReservedMemoryLong();
             if (reserved > _peakReservedBytes)
@@ -86,6 +147,14 @@ namespace BattleHorizons.Core
             _frameTimeSum = 0f;
 
             GameLog.Info("perf", BuildLine());
+
+            var budgetMs = QualityProfiles.Active == QualityProfile.High ? 16.6f : 33.3f;
+            if (FrameTimeMs > budgetMs * 1.1f)
+            {
+                GameLog.Warn("perf", string.Format(
+                    "frame time {0:F1} ms exceeds the {1} budget of {2:F1} ms - reduce draw distance or resolution",
+                    FrameTimeMs, QualityProfiles.Active, budgetMs));
+            }
         }
 
         private string BuildLine()

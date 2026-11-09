@@ -39,12 +39,15 @@ namespace BattleHorizons.Player
         [SerializeField] private float crouchHeight = 1.1f;
         [SerializeField] private float radius = 0.35f;
 
+        private const float GroundStickVelocity = -2f;
+
         private CharacterController _controller;
         private Vector3 _velocity;
         private float _verticalVelocity;
         private float _lastGroundedTime = -999f;
         private float _jumpRequestedAt = -999f;
         private bool _crouching;
+        private bool _groundedLastFrame;
         private float _targetHeight;
 
         /// <summary>Desired horizontal direction, world space, magnitude 0..1.</summary>
@@ -91,7 +94,10 @@ namespace BattleHorizons.Player
                     return LocomotionState.Idle;
                 }
 
-                return speed > walkSpeed + 0.4f ? LocomotionState.Run : LocomotionState.Walk;
+                // A touch stick rarely reaches full deflection: sprints are
+                // detected from the stick itself, so classify by speed instead of
+                // assuming the player can hit sprintSpeed exactly.
+                return speed > walkSpeed * 0.75f ? LocomotionState.Run : LocomotionState.Walk;
             }
         }
 
@@ -132,10 +138,6 @@ namespace BattleHorizons.Player
             if (_controller.isGrounded)
             {
                 _lastGroundedTime = Time.time;
-                if (_verticalVelocity < 0f)
-                {
-                    _verticalVelocity = -2f; // keeps the controller glued to slopes
-                }
             }
 
             FaceMovementDirection(dt);
@@ -173,25 +175,41 @@ namespace BattleHorizons.Player
 
         private void UpdateVertical(float dt)
         {
+            // Jump first: a grounded controller that keeps its ground stick (-2 m/s)
+            // for a frame would cancel the launch, so the stick is cleared here.
             var canJump = Time.time - _lastGroundedTime <= coyoteTime;
             var wantsJump = Time.time - _jumpRequestedAt <= jumpBufferTime;
 
             if (canJump && wantsJump)
             {
-                _verticalVelocity = Mathf.Sqrt(2f * Mathf.Abs(gravity) * jumpHeight);
+                _verticalVelocity = CloseToGroundClearance() + Mathf.Sqrt(2f * Mathf.Abs(gravity) * jumpHeight);
                 _jumpRequestedAt = -999f;
                 _lastGroundedTime = -999f;
-                _crouching = CrouchInput;
+                _groundedLastFrame = false;
+                return;
             }
 
-            if (_controller.isGrounded && _verticalVelocity < 0f)
+            if (_controller.isGrounded && _verticalVelocity <= 0f)
             {
-                _verticalVelocity = -2f;
+                // Small constant downward bias keeps CharacterController glued to
+                // slopes and steps without making it fall through the height field.
+                _verticalVelocity = GroundStickVelocity;
+                _groundedLastFrame = true;
                 return;
             }
 
             _verticalVelocity += gravity * dt;
+            _groundedLastFrame = false;
         }
+
+        /// <summary>
+        /// The controller reports contact only after a move. Adding the previous
+        /// frame's penetration depth to the launch velocity makes the first frame
+        /// of a jump clear the ground instead of being absorbed by it - the usual
+        /// cause of a jump that "eats" its first 2-3 cm.
+        /// </summary>
+        private float CloseToGroundClearance() =>
+            _groundedLastFrame ? Mathf.Max(0f, -_controller.velocity.y * Time.deltaTime) : 0f;
 
         private void FaceMovementDirection(float dt)
         {

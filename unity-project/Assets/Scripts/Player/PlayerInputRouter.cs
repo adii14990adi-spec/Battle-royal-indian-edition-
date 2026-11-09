@@ -33,9 +33,21 @@ namespace BattleHorizons.Player
         [SerializeField] private float stickLookSensitivity = 130f;
 
         private Vector2 _lookDelta;
+        private bool _touchCrouchHeld;
+        private bool _touchSprintHeld;
 
         /// <summary>Last look input, degrees accumulated this frame (for the camera).</summary>
         public Vector2 LookDelta => _lookDelta;
+
+        /// <summary>
+        /// On-screen hold buttons (crouch, sprint). They are ORed with the physical
+        /// bindings rather than replacing them, so a phone with a gamepad attached
+        /// behaves the same as one without.
+        /// </summary>
+        public void SetCrouchHeld(bool held) => _touchCrouchHeld = held;
+
+        /// <summary>See <see cref="SetCrouchHeld"/>.</summary>
+        public void SetSprintHeld(bool held) => _touchSprintHeld = held;
 
         public void Configure(ThirdPersonMotor targetMotor, ThirdPersonCameraController targetCamera,
             VirtualJoystick move, VirtualJoystick look)
@@ -135,6 +147,11 @@ namespace BattleHorizons.Player
 
         private bool ReadSprint(Vector2 move)
         {
+            if (_touchSprintHeld)
+            {
+                return true;
+            }
+
             if (move.magnitude > 0.92f)
             {
                 return true; // full stick deflection = run, standard mobile BR control
@@ -152,6 +169,11 @@ namespace BattleHorizons.Player
 
         private bool ReadCrouch()
         {
+            if (_touchCrouchHeld)
+            {
+                return true;
+            }
+
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.cKey.isPressed)
             {

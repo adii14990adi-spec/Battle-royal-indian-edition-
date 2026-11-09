@@ -41,6 +41,37 @@ namespace BattleHorizons.EditorTools
 
         public static void BuildAab() => Build(androidAppBundle: true);
 
+        /// <summary>
+        /// CI entry point: configure the project, validate it, then build. One
+        /// command, so a fresh checkout needs no manual setup step and a
+        /// validation failure stops before an APK is produced.
+        /// </summary>
+        public static void ConfigureValidateAndBuildApk()
+        {
+            try
+            {
+                ProjectBootstrap.Configure();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError("[bh][build] configuration threw: " + exception);
+                EditorApplication.Exit(1);
+                return;
+            }
+
+            var failures = ProjectValidator.ValidateAll(out var report);
+            Debug.Log("[bh][validate]\n" + report);
+            if (failures > 0)
+            {
+                Debug.LogError(string.Format(
+                    "[bh][build] refusing to build: {0} project validation failure(s)", failures));
+                EditorApplication.Exit(1);
+                return;
+            }
+
+            Build(androidAppBundle: false);
+        }
+
         private static void Build(bool androidAppBundle)
         {
             try
@@ -150,6 +181,14 @@ namespace BattleHorizons.EditorTools
                 Debug.LogWarning("[bh][build] no BH_KEYSTORE_PATH set: the APK will be debug-signed. " +
                                  "Do not publish it; configure the four BH_* secrets in CI.");
                 return;
+            }
+
+            // Relative paths are resolved against the project root, because batch
+            // mode's working directory is the editor install, not the project.
+            if (!Path.IsPathRooted(keystore))
+            {
+                var projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? Directory.GetCurrentDirectory();
+                keystore = Path.GetFullPath(Path.Combine(projectRoot, keystore));
             }
 
             if (!File.Exists(keystore))

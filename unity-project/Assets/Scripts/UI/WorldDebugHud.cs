@@ -100,10 +100,18 @@ namespace BattleHorizons.UI
                 ? IslandShapeMath.WaterSurfaceAt(_lastCameraPosition.x, _lastCameraPosition.z)
                 : 0f;
 
+            // Read the budget counters only when the HUD is drawn (twice a second):
+            // these are the numbers Android profiles are judged on, and reading them
+            // every frame would change the thing being measured.
+            var budget = _perf != null
+                ? string.Format("   {0:F1} ms avg / {1:F1} ms 1% low   {2} set-pass   {3:F0} MB reserved",
+                    _perf.AverageFrameMs, _perf.OnePercentLowFrameMs, _perf.SetPassCalls, _perf.PeakReservedMb)
+                : string.Empty;
+
             var text = string.Concat(
                 "FPS ", _cachedFps.ToString("F0"),
                 "   quality ", QualityProfiles.Active,
-                "   draws ", (_perf != null ? (_perf.PeakReservedMb).ToString("F0") : "?"), "MB reserved\n",
+                budget, "\n",
                 data != null
                     ? string.Format("island {0}x{0} @ {1:F0} m   chunks {2}/{3} resident\n",
                         data.Size, data.SpacingM, _streamer != null ? _streamer.ResidentChunkCount : -1,

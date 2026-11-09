@@ -246,6 +246,8 @@ jobs:
           customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
           buildMethod: BattleHorizons.EditorTools.ProjectBootstrap.ConfigureFromCommandLine
           targetPlatform: Android
+          # The method exits the editor itself (0 = ok, 1 = failed).
+          manualExit: true
           allowDirtyBuild: true
 
       - name: Edit-mode tests
@@ -280,6 +282,7 @@ jobs:
           customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
           buildMethod: BattleHorizons.EditorTools.ProjectBootstrap.ValidateFromCommandLine
           targetPlatform: Android
+          manualExit: true
           allowDirtyBuild: true
 
       - name: Build the Android APK
@@ -288,22 +291,38 @@ jobs:
         uses: game-ci/unity-builder@v4
         env:
           <<: *unity_env
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
-          ANDROID_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME }}
-          ANDROID_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+          BH_KEYSTORE_PATH: ${{ env.UNITY_PROJECT_PATH }}/ci-keystore.jks
+          BH_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          BH_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          BH_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
           customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
           targetPlatform: Android
-          androidExportType: androidPackage
-          buildAppBundle: false
-          androidKeystoreName: ${{ secrets.ANDROID_KEYSTORE_NAME }}
+          androidExportType: androidPackage   # apk; switch to androidAppBundle for Play
+          # Configure -> validate -> build in one call, so a validation failure
+          # stops before an APK is produced.
+          buildMethod: BattleHorizons.EditorTools.AndroidBuild.ConfigureValidateAndBuildApk
+          buildsPath: build
+          buildName: battle-horizons
+          versioning: Custom
+          version: 0.1.${{ github.run_number }}
+          androidVersionCode: ${{ github.run_number }}
+          androidKeystoreName: ci-keystore.jks
           androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+          manualExit: true
+
+      - name: Remove the temporary keystore
+        if: always() && steps.licence.outputs.available == 'true'
+        run: |
+          # The action writes the signing key into the project so Unity can find it.
+          # It is never committed (.gitignore covers *.jks/*.keystore) and never
+          # uploaded, but deleting it keeps the workspace clean either way.
+          rm -f "${{ env.UNITY_PROJECT_PATH }}/ci-keystore.jks" || true
 
       - name: Verify the APK really exists and looks sane
         if: steps.licence.outputs.available == 'true' && steps.apk.outcome == 'success'

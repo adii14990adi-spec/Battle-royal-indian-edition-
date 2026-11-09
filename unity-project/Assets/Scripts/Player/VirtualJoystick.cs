@@ -20,7 +20,7 @@ namespace BattleHorizons.Player
     [DisallowMultipleComponent]
     public sealed class VirtualJoystick : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IDragHandler
     {
-    [SerializeField] private float radiusPixels = 120f;
+        [SerializeField] private float radiusPixels = 120f;
         [SerializeField] private float deadZone = 0.12f;
         [SerializeField] private RectTransform knob;
 

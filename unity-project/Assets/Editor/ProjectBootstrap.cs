@@ -436,6 +436,13 @@ namespace BattleHorizons.EditorTools
             worldSerialized.FindProperty("focusOverride").objectReferenceValue = cameraObject.transform;
             worldSerialized.ApplyModifiedPropertiesWithoutUndo();
 
+            // Touch controls are generated at runtime by MobileControlsBuilder, so the
+            // scene only needs the host that asks for them. Without this component the
+            // build would have no on-screen input at all.
+            var touchObject = new GameObject("TouchControls");
+            var touchHost = touchObject.AddComponent<TouchControlsHost>();
+            touchHost.Configure(motor, router);
+
             var hud = new GameObject("HUD");
             var hudComponent = hud.AddComponent<WorldDebugHud>();
 
