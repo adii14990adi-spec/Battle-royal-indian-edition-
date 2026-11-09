@@ -6,13 +6,9 @@ using UnityEngine.Rendering;
 namespace BattleHorizons.World
 {
     /// <summary>
-    /// Assembles Siran Island in a scene: terrain, water, road ribbons and the
-    /// chunk streamer. This is the Unity equivalent of `scenes/world/siran_island.tscn`.
-    ///
-    /// It runs at scene start (not in the editor) because the map data is a
-    /// committed resource, not something the editor must bake. That keeps the
-    /// Unity build reproducible from a clean clone with no editor step — the same
-    /// property the Godot project bought by committing `siran_island_baked.tscn`.
+    /// Assembles Siran Island at scene start from committed Unity resources:
+    /// heightmap collision, circularly clipped terrain tiles, roads and water.
+    /// No editor-time map bake is required to build the project.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class SiranWorldBuilder : MonoBehaviour
@@ -36,9 +32,6 @@ namespace BattleHorizons.World
 
         [Tooltip("Render the island with Unity Terrain (cheap collision + LOD).")]
         [SerializeField] private bool useTerrain = true;
-
-        [Tooltip("Also draw the 64 chunk meshes (visual parity with the Godot build).")]
-        [SerializeField] private bool useChunkMeshes = true;
 
         [Header("Lighting")]
         [Tooltip("Create the URP sun, sky and fog if the scene has none.")]
@@ -65,7 +58,7 @@ namespace BattleHorizons.World
 
             if (!SiranIslandData.TryLoad(out var data, out var error))
             {
-                GameLog.Error("world", "could not load the converted Siran Island bake: " + error);
+                GameLog.Error("world", "could not load the committed Siran Island data: " + error);
                 return false;
             }
 
@@ -86,10 +79,13 @@ namespace BattleHorizons.World
             {
                 var terrainData = SiranIslandTerrainBuilder.Build(data, terrainMaterial);
                 Terrain = SiranIslandTerrainBuilder.CreateTerrain(data, terrainData, terrainMaterial, transform);
+                // Keep the heightmap collider for gameplay, but do not draw the
+                // full-map Terrain. The streamed terrain meshes, roads and water
+                // are all clipped by the shared shader to the same 50 m disk.
+                Terrain.drawHeightmap = false;
                 GameLog.Info("world", string.Format(
-                    "terrain built: {0}x{0} heightmap, heights {1:F1}..{2:F1} m, surface at y={3:F1}",
-                    SiranIslandTerrainBuilder.HeightmapResolution, data.MinHeightM, data.MaxHeightM,
-                    SiranIslandTerrainBuilder.TerrainOriginY(data)));
+                    "terrain collision built: {0}x{0} heightmap, heights {1:F1}..{2:F1} m, full-map renderer hidden",
+                    SiranIslandTerrainBuilder.HeightmapResolution, data.MinHeightM, data.MaxHeightM));
             }
 
             BuildRoads();
@@ -103,7 +99,8 @@ namespace BattleHorizons.World
             }
 
             Streamer.Initialise(data, focus, chunkMaterial);
-            Streamer.gameObject.SetActive(useChunkMeshes);
+            // The streamer updates the shared radial shader focus every frame.
+            Streamer.enabled = true;
 
             return true;
         }
@@ -144,7 +141,7 @@ namespace BattleHorizons.World
                 ? LightShadows.Soft
                 : LightShadows.None;
 
-            // Same direction the Godot scene and both shaders used: (0.45, 0.78, 0.44).
+            // A stable warm daylight direction for the low-poly island materials.
             var direction = new Vector3(0.45f, 0.78f, 0.44f).normalized;
             sunObject.transform.rotation = Quaternion.LookRotation(-direction);
             RenderSettings.sun = sun;
@@ -231,29 +228,30 @@ namespace BattleHorizons.World
             }
 
             var camera = Camera.main;
-            return camera != null ? camera.transform : null;
+            return camera != null ? camera.transform : transform;
         }
 
         private static Material CreateVertexColorMaterial(string name, float smoothness)
         {
-            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            var shader = Shader.Find(SiranRadiusClip.ShaderName);
             if (shader == null)
             {
+                GameLog.Error("world", "missing " + SiranRadiusClip.ShaderName + " shader; run Project Setup > Configure");
                 return null;
             }
 
             var material = new Material(shader) { name = name, enableInstancing = true };
-            // URP/Lit reads vertex colours when this keyword is on.
-            material.EnableKeyword("_VERTEX_COLOR");
+            material.SetFloat("_UseVertexColor", 1f);
             material.SetFloat("_Smoothness", smoothness);
             return material;
         }
 
         private static Material CreateWaterFallback()
         {
-            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            var shader = Shader.Find(SiranRadiusClip.ShaderName);
             if (shader == null)
             {
+                GameLog.Error("world", "missing " + SiranRadiusClip.ShaderName + " shader; run Project Setup > Configure");
                 return null;
             }
 
@@ -265,6 +263,7 @@ namespace BattleHorizons.World
             if (normal != null)
             {
                 material.SetTexture("_BumpMap", normal);
+                material.SetFloat("_BumpScale", 0.45f);
                 material.EnableKeyword("_NORMALMAP");
             }
 

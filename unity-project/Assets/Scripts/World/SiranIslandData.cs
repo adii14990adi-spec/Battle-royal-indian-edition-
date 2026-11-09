@@ -6,20 +6,17 @@ using UnityEngine;
 namespace BattleHorizons.World
 {
     /// <summary>
-    /// The converted Siran Island bake: one 401 x 401 height grid, the greybox
-    /// vertex colours, and the road ribbons, all loaded from
+    /// The committed Siran Island data: one 401 x 401 height grid, the greybox
+    /// vertex colours, and the road and river ribbons, all loaded from
     /// <c>Assets/Resources/Config/</c>.
     ///
-    /// Produced by `processing/unity/convert_godot_island.py` from
-    /// `scenes/world/siran_island_baked.tscn`. Loading it is a single synchronous
-    /// read of ~1.4 MB of binary plus one hashed JSON — the same order of
-    /// magnitude as the Godot build's threaded load of its 9.5 MB baked scene,
-    /// and it happens once at match start, not per frame.
+    /// Loading is a single synchronous read of about 1.4 MB of binary data and
+    /// one metadata JSON. It happens once at match start, not per frame; the
+    /// committed Unity resources are the source of truth for this project.
     ///
     /// Layout is <c>index = iz * Size + ix</c>, ix grows east (+X), iz grows
-    /// south (+Z), sample (0, 0) sits at (-HalfExtent, -HalfExtent). This is the
-    /// same ordering the Godot baker used, so a chunk's local vertex (lx, lz) is
-    /// still <c>((cz * 50) + lz) * 401 + (cx * 50) + lx</c>.
+    /// south (+Z), sample (0, 0) sits at (-HalfExtent, -HalfExtent). A chunk's
+    /// local vertex (lx, lz) is <c>((cz * 50) + lz) * 401 + (cx * 50) + lx</c>.
     /// </summary>
     public sealed class SiranIslandData
     {
@@ -143,8 +140,7 @@ namespace BattleHorizons.World
             if (asset == null)
             {
                 throw new InvalidDataException(
-                    "missing Resources/" + TerrainJsonResource + ".json — run " +
-                    "python3 processing/unity/convert_godot_island.py");
+                    "missing Resources/" + TerrainJsonResource + ".json — restore the committed Unity map data");
             }
 
             var doc = JsonUtility.FromJson<MetaDoc>(asset.text);
@@ -306,8 +302,7 @@ namespace BattleHorizons.World
             if (asset == null)
             {
                 throw new InvalidDataException(
-                    "missing Resources/" + resourcePath + ".bytes — run " +
-                    "python3 processing/unity/convert_godot_island.py");
+                    "missing Resources/" + resourcePath + ".bytes — restore the committed Unity map data");
             }
 
             return asset.bytes;
@@ -356,7 +351,7 @@ namespace BattleHorizons.World
             return new Vector3(left - right, 2f * spacing, back - front).normalized;
         }
 
-        /// <summary>World-space spawn point on the ground, from the Godot `spawn_point`.</summary>
+        /// <summary>World-space spawn point on the ground, from the committed island layout.</summary>
         public Vector3 SpawnPoint()
         {
             var spawn = SiranMapConfig.SpawnPoint;
@@ -365,10 +360,9 @@ namespace BattleHorizons.World
         }
 
         /// <summary>
-        /// Slices one chunk out of the shared grid, in the same winding the Godot
-        /// baker emitted (two triangles per cell, clockwise from above). Used by
-        /// the chunk-mesh fallback and by the edit-mode geometry test, so the
-        /// visual and the verified collar always come from the same code.
+        /// Slices one chunk out of the shared grid (two triangles per cell,
+        /// clockwise from above). Used by the circular streamer and edit-mode
+        /// geometry tests so visible and verified meshes share the same code.
         /// </summary>
         public void BuildChunkMesh(int cx, int cz, List<Vector3> vertices, List<Vector3> normals,
             List<Color32> colors, List<int> indices, bool includeNormals = true)
@@ -423,7 +417,7 @@ namespace BattleHorizons.World
             }
         }
 
-        /// <summary>Chunk-local origin of chunk (cx, cz), matching the Godot Chunk_ node transform.</summary>
+        /// <summary>World origin of chunk (cx, cz) on the 500 m grid.</summary>
         public Vector3 ChunkOriginWorld(int cx, int cz)
         {
             var center = SiranMapConfig.ChunkCenter(cx, cz);

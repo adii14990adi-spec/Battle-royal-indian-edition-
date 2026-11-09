@@ -1,316 +1,171 @@
 # Unity 6 + URP architecture (Android-first)
 
-The runtime design of `unity-project/`. It explains the *decisions*, so that a
-future change can be made in the right place instead of by accident.
-
-Scope note: this document describes what the code does. Whether it compiles,
-runs and hits its budget is a separate question answered honestly in
-`docs/migration/REPORT.md`.
+This document describes the Unity project in `unity-project/`: where its data
+lives, how the world is assembled, and how the 50 m visual streaming contract is
+implemented. It documents code and configuration, not device performance. See
+`docs/performance/ANDROID_PROFILES.md` for the explicit verification limits.
 
 ---
 
-## 1. Why URP, and why the numbers look "low"
+## 1. Project and assemblies
 
-The Godot original runs on **GL Compatibility** for a Unisoc T606 with 4 GB RAM.
-That renderer has no compute, no HDR, no real-time GI, cheap shadow maps and a
-hard 30 fps cap. HDRP requires compute, a deferred/clustered pipeline and ~4× the
-bandwidth — it cannot run on that class of device at all, which is why it is
-forbidden here.
+The project targets Unity `6000.0.32f1`, URP, Android ARM64 and OpenGLES3/Vulkan.
+`Assets/Editor/ProjectBootstrap.cs` creates the URP assets, materials and runtime
+scenes when **Battle Horizons > Project Setup > Configure** is run. The scenes
+are generated project setup, not authored map data.
 
-URP's mobile path is the closest analogue: Forward rendering, one directional
-light, realtime shadows optional, lightmap-style baked lighting, no post-processing
-in the Low profile. So:
-
-| Decision | Value | Reason |
+| Assembly | Path | Purpose |
 | --- | --- | --- |
-| Renderer | **URP Forward** (`UniversalRenderer`) | GLES3-class hardware |
-| HDR | **off** | no HDR framebuffer on low-end GLES; saves bandwidth |
-| MSAA | **1×** (Low), 2× (High) | set on the active URP asset when a profile is applied |
-| Shadow cascades | **2** (Low), 4 (High) | set on the active URP asset when a profile is applied |
-| Shadow distance / map | **60 m / 512 px** (Low), **120 m / 1024 px** (High) | set on the active URP asset; hard shadows in both |
-| Additional lights | **per-vertex, 2/object** (Low), 4/object (High) | active-asset cap is switched with the profile |
-| Colour space | **Linear** | correct vertex-colour + lighting maths |
-| Render scale | **0.85** (Low) / 1.0 (High) | set on the active URP asset when a profile is applied |
-| Post-processing | **none** in either profile | no Volume/profile is configured |
-| Depth texture / opaque texture | **off** | nothing needs them; each costs a full-screen pass |
+| `BattleHorizons.Runtime` | `Assets/Scripts/**` | Runtime systems included in the player |
+| `BattleHorizons.Editor` | `Assets/Editor/**` | Setup, validation, import rules and Android builds |
+| `BattleHorizons.Tests.EditMode` | `Assets/Tests/EditMode` | Geometry and settings tests |
+| `BattleHorizons.Tests.PlayMode` | `Assets/Tests/PlayMode` | World, physics, movement and camera tests |
 
-The two profiles are *the same renderer asset with different budgets*, not two
-pipelines. `QualitySettings.asset` holds `BattleHorizons_Low` (index 0) and
-`BattleHorizons_High` (index 1); Android defaults to 0, so a device that is never
-detected still boots onto the safe profile. `QualityProfiles.Apply()` updates the
-active `UniversalRenderPipelineAsset` after choosing the quality level. This code
-has not yet been compiled or exercised in Unity.
-
-Selection order in `GameBootstrap.Awake()`:
-
-1. `forcedQuality` serialized field (used by tests and by a scene override),
-2. the persisted player choice (`PlayerPrefs "bh.quality"`, the settings screen),
-3. `QualityProfiles.DetectFromDevice()` — RAM ≥ 5.5 GB **and** ≥ 8 cores
-   **and** (unknown VRAM or ≥ 1.5 GB) → High, else Low.
-
-`Detect()` is a pure function of three integers, which is why it is unit-testable
-without a device.
-
-**No frame rate is claimed.** `QualityProfiles.ApplyFrameRate()` sets
-`Application.targetFrameRate` to 30 (Low) or 60 (High) with `vSyncCount = 0`,
-because on Android `targetFrameRate` is the only reliable pacing control. Whether
-the device reaches it is a hardware question.
+Editor code references runtime code; runtime code never references `UnityEditor`.
 
 ---
 
-## 2. Assembly layout
+## 2. Runtime object graph
 
-| Assembly | Path | Platforms | Purpose |
-| --- | --- | --- | --- |
-| `BattleHorizons.Runtime` | `Assets/Scripts/**` | all | everything that ships in the APK |
-| `BattleHorizons.Editor` | `Assets/Editor/**` | Editor only | setup, validation, build, import rules |
-| `BattleHorizons.Tests.EditMode` | `Assets/Tests/EditMode` | Editor only | pure-logic tests |
-| `BattleHorizons.Tests.PlayMode` | `Assets/Tests/PlayMode` | all | scene/physics tests |
-
-The editor assembly references the runtime assembly, never the other way round.
-Editor-only APIs (`UnityEditor.*`, `AssetDatabase`) are therefore impossible to
-leak into the APK — the compiler stops it.
-
-> Editor asmdefs do **not** inherit the runtime assembly's references. Every
-> editor file that touches gameplay types needs an explicit
-> `using BattleHorizons.Player;` / `...CameraRig;` / `...UI;` / `...World;`. This
-> is the most common way to break this project's compile; `validate_csharp.py`
-> checks that every such `using` resolves.
-
----
-
-## 3. Runtime object graph
-
-```
+```text
 Boot.unity
-└── BattleHorizons (GameBootstrap)          picks profile, sets orientation,
-    └── (spawned) PerformanceMonitor        load scene (persistent)
-        └── loads → MainMenu.unity | SiranIsland.unity | PlayerTest.unity
+└── GameBootstrap                 applies device quality and loads the next scene
+    └── PerformanceMonitor        persistent device telemetry
 
 MainMenu.unity
-└── MainMenuController                      title, profile toggle, buttons
+└── MainMenuController            title, quality toggle, scene buttons
 
 SiranIsland.unity / PlayerTest.unity
-└── SiranWorldBuilder                       builds the whole world at runtime
-    ├── SiranIslandData                     loads + validates the blobs
-    ├── SiranIslandTerrain                  Unity Terrain + heightmap collider
-    ├── SiranChunkStreamer                  pooled visual chunk meshes
-    ├── SiranIslandWater                    river mesh + scrolling normal map
-    └── (PlayerTest only)
-        ├── Player (ThirdPersonMotor, PlayerInputRouter)
-        ├── CameraRig (ThirdPersonCameraController)
-        └── MobileControls (VirtualJoystick ×2, TouchLookArea, buttons)
+└── SiranWorldBuilder             creates the world from committed Resources
+    ├── SiranIslandData           loads and validates binary map data
+    ├── Terrain + TerrainCollider heightmap collision; Terrain rendering hidden
+    ├── SiranChunkStreamer        resident 500 m tiles intersecting a 50 m disk
+    ├── SiranRadiusClip shader    clips streamed terrain, roads and water to disk
+    ├── Roads + SiranIslandWater  world surfaces using the same clip shader
+    └── PlayerTest only: motor, camera rig, touch controls and debug HUD
 ```
 
-Nothing in the island is authored in a scene file. A `.unity` scene contains the
-builder plus a camera/light, and the world appears when you press Play. Two
-reasons: 9.2 MB of baked geometry cannot be hand-placed in a scene, and a
-data-driven build means the map can be re-converted without touching Unity.
+The world builder loads the committed map data at runtime. No separate map bake
+or source project is needed to open, test or build the Unity project.
 
 ---
 
-## 4. Systems
+## 3. Committed island data
 
-### 4.1 Island data (`World/SiranIslandData.cs`)
+`Assets/Resources/Config/` contains the runtime source of truth:
 
-Owns loading and validation of the converted blobs:
+* `siran_island_terrain.json` — schema, grid and height metadata;
+* `siran_island_heights.bytes` — 401 × 401 little-endian float32 heights;
+* `siran_island_colors.bytes` — 401 × 401 RGBA8 vertex colours;
+* `siran_island_roads.bytes` — `BHROAD01` road ribbon directory and payload;
+* `siran_island_river.bytes` — `BHRIVER1` river vertices and indices;
+* `siran_island_layout.json` — human-readable island design snapshot;
+* `siran_island_manifest.json` — byte counts and SHA-256 integrity values.
 
-* reads `siran_island_terrain.json` for grid metadata and provenance,
-* loads `siran_island_heights.bytes` → `float[]` (160,801 samples),
-* loads `siran_island_colors.bytes` → `Color32[]`,
-* parses the road blob (`BHROAD01`) and river blob (`BHRIVER1`),
-* exposes `HeightAt(x, z)` (bilinear, clamped to the grid) and
-  `NormalAt(x, z)` (from neighbouring samples).
+The map covers 4,000 × 4,000 m at 10 m sample spacing. Its 8 × 8 tiles are
+500 m wide and share their boundary samples. The Unity data check is independent
+of the Unity editor:
 
-It **fails loudly** if a blob is missing, truncated, has the wrong magic, or its
-sample count disagrees with the JSON. A half-loaded island is worse than a
-message.
-
-### 4.2 Terrain (`World/SiranIslandTerrain.cs`)
-
-The physics and macro shape:
-
-* builds a Unity `TerrainData` of `401 × 401` heights at 10 m resolution
-  (`size = 4000 × 4000`, heights normalised 0…1 across the real range),
-* one `TerrainCollider` — **not** 64 `MeshCollider`s. On a mobile CPU, 64 mesh
-  colliders cost more to broadphase than a heightmap ever will, and the bake
-  guarantees the shapes agree to 1e-3 m anyway,
-* normals are **recomputed from heights**, because the bake's normals are garbage
-  (see `BAKE_FORMAT.md` §1),
-* terrain sits on layer 8 (`Terrain`), which the player's ground mask uses.
-
-`Terrain` rather than a custom mesh because it gives free LOD + heightmap
-collision + occlusion-friendly bounds for 4 km² on a phone.
-
-### 4.3 Visual chunks (`World/SiranChunkStreamer.cs`)
-
-The visual detail is a **pooled ring of 500 m chunk meshes** built from the same
-grid:
-
-* 8 × 8 = 64 possible chunks, each `51 × 51` vertices (shares the border row),
-* only chunks within `StreamRadius(profile)` (1100 m Low / 1600 m High) plus a
-  keep-ring are active — the port of `chunk_manager.gd`'s radius/keep-ring/throttle
-  model,
-* a fixed pool of meshes is reused; activation never allocates,
-* vertex colours come straight from `siran_island_colors.bytes`, so the greybox
-  look survives with zero textures,
-* distances are squared and compared per frame against the player's position only
-  when it has moved more than 8 m, so the streaming cost is amortised, not
-  per-frame.
-
-### 4.4 Water (`World/SiranIslandWater.cs`)
-
-The river is a ribbon (348 tris) generated from the control points, plus a
-`_BaseMap_ST` scroll of `water_normal_256.png`. It is **opaque** URP Lit: a
-transparent pass on a phone costs a full extra pass over every pixel it covers and
-buys nothing at this art level. The lake and moat are part of the height field, so
-they are simply terrain below sea level with the same water plane on top.
-
-### 4.5 Player (`Player/ThirdPersonMotor.cs`, `PlayerInputRouter.cs`)
-
-Character-controller based third-person movement, written for this port (the Godot
-project has no player controller at all):
-
-| Parameter | Value | Source |
-| --- | --- | --- |
-| Walk / run speed | 3.2 / 6.4 m/s | player feel, mid-range BR values |
-| Jump height | 1.1 m | — |
-| Gravity | −22 m/s² | snappier than real gravity, standard for shooters |
-| Coyote time | 0.35 s | forgiving on touch |
-| Jump buffer | 0.12 s | forgiving on touch |
-| Crouch | 1.8 m → 1.1 m, 1.6 m/s | fits under a 1.2 m doorway |
-| Ground stick | −2 m/s while grounded | keeps a `CharacterController` glued to slopes; cleared on the jump frame so it cannot eat the impulse |
-| Locomotion state | Idle / Walk / Run / Crouch / Airborne | exposed for animation and tests; Run is speed-based because a phone stick rarely hits 1.0 |
-| Turn smoothing | 12 (exponential) | no snappy direction pops |
-
-`PlayerInputRouter` normalises **one** input model for three devices (touch, gamepad,
-keyboard/mouse) through the Input System, so gameplay code never asks "is this a
-phone". It also owns the virtual joystick → movement vector conversion, with a dead
-zone and a radial clamp.
-
-### 4.6 Camera (`Camera/ThirdPersonCameraController.cs`)
-
-Orbit camera with collision-aware pull-in: a sphere cast from the pivot stops the
-camera entering terrain or the player, and the resulting distance is damped back
-out (not snapped) so the view does not jitter in tunnels.
-
-### 4.7 Touch controls (`UI/VirtualJoystick.cs`, `UI/TouchLookArea.cs`, `UI/MobileControlsBuilder.cs`, `UI/TouchControlsHost.cs`, `UI/HoldButton.cs`)
-
-Built at runtime to avoid prefab/scene dependencies:
-
-* two `VirtualJoystick` instances (move bottom-left, look right) with a dead zone
-  and a visual ring,
-* a full-screen `TouchLookArea` created **first** so it sits behind every other
-  control: uGUI hit-tests in reverse sibling order, so a drag on a stick or button
-  is handled by that control and everything else falls through to the look surface,
-* JUMP (`Button`, one-shot) plus CROUCH and SPRINT (`HoldButton`, held state) —
-  crouch and sprint are held states, so a click-style button would be wrong,
-* touch look is scaled by screen height, so a 1440p phone does not turn twice as
-  fast as a 720p one,
-* `TouchControlsHost` is the only component a scene needs; the rig itself is built
-  at runtime, which keeps prefabs and canvases out of version control.
-
-They are `UnityEngine.UI` (uGUI) rather than UI Toolkit because uGUI's
-event-system input path is cheaper per frame on mobile.
-
-### 4.8 Diagnostics (`Core/PerformanceMonitor.cs`, `UI/WorldDebugHud.cs`)
-
-`PerformanceMonitor` keeps a 240-frame ring buffer (average + 99th-percentile
-"1 % low"), `ProfilerRecorder` readings for `SetPass Calls Count` (the real
-counter name — there is no `Draw Calls Count`), managed-heap-used and Unity
-reserved-memory readings. The HUD samples these at 4 Hz and caches them so IMGUI
-repaints do not repeatedly sort the frame history. Reserved memory and managed
-heap use are not Android PSS; PSS is measured with `dumpsys meminfo`.
-
-The monitor logs a frame-time warning when the one-second mean exceeds 110% of the
-target (36.6 ms Low / 18.3 ms High). Set-pass and memory targets are displayed,
-not automatically warned on. None of these are performance claims; device tests
-remain open in `docs/migration/REPORT.md`.
-
-`WorldDebugHud` is an IMGUI overlay toggled with **F3** (or a 3-finger tap),
-compiled out of release builds unless `BH_DEBUG_HUD` is defined. IMGUI because it
-must not depend on a font asset, a canvas or the UI pipeline — it has to work in a
-build with no UI at all.
-
----
-
-## 5. Data flow
-
-```
-Godot bake (.tscn)
-   │  convert_godot_island.py  (CI: --check drift gate)
-   ▼
-Assets/Resources/Config/*.bytes  +  *.json  (hashed in bake manifest)
-   │  Resources.Load<TextAsset> / <Texture2D>
-   ▼
-SiranIslandData ──► SiranIslandTerrain   (TerrainData + TerrainCollider)
-   │            ──► SiranChunkStreamer   (pooled meshes, vertex colours)
-   │            ──► SiranWorldBuilder    (roads parented to chunks)
-   │            ──► SiranIslandWater     (river mesh + normal map)
-   ▼
-ThirdPersonMotor (HeightAt for spawn, collider for walking)
+```bash
+python3 processing/unity/validate_unity_map.py
 ```
 
-Everything above runs on the **main thread at load time** only. Per-frame work is:
-chunk ring activation (amortised), one sphere cast for the camera, and the HUD
-(debug only).
+It verifies hashes, dimensions, finite height values, road/river binary indices,
+river direction and the 50 m radius value.
 
 ---
 
-## 6. Android configuration
+## 4. World construction and collision
 
-Set by `ProjectBootstrap.Configure()` and asserted by `ProjectValidator`:
+`SiranWorldBuilder.Build()` loads data, creates a 513 × 513 Unity `TerrainData`,
+then assembles the heightmap collider, road ribbons, water surfaces and streamer.
+The single `TerrainCollider` covers the full 4 km map; collision is not unloaded
+at the 50 m visual boundary.
 
-| Setting | Value |
-| --- | --- |
-| Scripting backend | IL2CPP |
-| Target architecture | **ARM64 only** (`AndroidTargetArchitectures = 3`); no ARMv7, no x86 |
-| Minimum API | **26** (Android 8.0) |
-| Target API | highest installed (34/35 on the CI image) |
-| Texture compression | **ASTC 6×6**, ETC2 fallback |
-| Graphics API | Vulkan, GLES3 fallback |
-| Orientation | landscape left + right, portrait disabled |
-| INTERNET permission | **off** (`ForceInternetPermission = 0`) — offline game |
-| Managed stripping | Medium; `link.xml` for anything reflected |
-| Colour space | Linear |
-| Frame pacing | `targetFrameRate`, `vSyncCount = 0` |
-
-ARM64-only halves the APK's native payload and removes a 32-bit address-space
-ceiling that a 4 km island with 25 actors will eventually hit.
+The Terrain component's `drawHeightmap` is always disabled. Leaving the full-map
+Unity Terrain renderer on would draw outside the streaming disk and violate the
+visibility contract. Its full-map collider remains active for gameplay, while
+streamed 500 m terrain meshes provide the visible surface. No full-map renderer
+is available as a visibility bypass.
 
 ---
 
-## 7. Conventions
+## 5. Circular streaming (50 m over 500 m tiles)
 
-* **Namespaces** match folders: `BattleHorizons.Core`, `.World`, `.Player`,
-  `.CameraRig` (not `.Camera`, which would shadow `UnityEngine.Camera`), `.UI`,
-  `.EditorTools`.
-* **No `Update()` that scans the scene.** No `FindObjectOfType` in a loop, no
-  `Camera.main` in `Update()` (cache it in `Awake`).
-* **No allocation in the frame loop** in shipped code paths: pools (`ObjectPool`),
-  reused `Vector3`s, no LINQ, no string concatenation in the HUD's hot path.
-* **`GameLog`** instead of `Debug.Log` in runtime code, so a release build can drop
-  the strings.
-* **Serialized fields** are `[SerializeField] private` with a `[Tooltip]`; the
-  editor tooling uses `SerializedObject.FindProperty` and the static validator
-  checks those names exist.
-* **Determinism**: seeded `System.Random` or `UnityEngine.Random.InitState`; the
-  static validator rejects unseeded randomness in gameplay code.
+`SiranChunkStreamer` implements a world-space circular radius, not a fixed square
+ring:
+
+1. Every 0.2 s it checks candidate tile rectangles around the focus transform.
+2. A tile is resident only if the closest point on its 500 × 500 m rectangle is
+   at most 50 m from the focus. Depending on the focus and grid boundaries, one
+   to four source tiles can intersect the disk.
+3. Resident tile meshes are pooled and built from the shared 401 × 401 sample
+   grid. The set is recomputed even when the focus has not changed grid cells,
+   so a neighbouring tile is added/released as the circle crosses a tile edge.
+4. `SiranRadiusClip.shader` clips fragments using world XZ distance to the focus.
+   This trims the large source tiles to the actual circular boundary; loading a
+   500 m tile does not make its other 450 m visible.
+5. The same shader is used by streamed terrain, road ribbons and water surfaces,
+   so the sea plane and static roads cannot draw beyond the active radius.
+6. The shader focus is updated every frame; set membership is updated on the
+   amortized streaming tick. The radius is fixed across Low and High quality.
+
+`QualityProfiles.StreamRadius()` returns 50 m for both profiles. The debug HUD
+reports live resident chunk counts. Automated play-mode tests cover edge
+intersection and moving within the same 500 m tile; the shader still needs an
+actual Unity render/build pass and device visual check.
 
 ---
 
-## 8. What is deliberately not here
+## 6. Rendering and Android settings
 
-| Not present | Why |
-| --- | --- |
-| Networking / multiplayer | the Godot project has none; out of scope |
-| Save system | `save_manager.gd` is a skeleton with nothing to save; deferred until there is gameplay state |
-| Audio manager | `audio_manager.gd` has buses and no clips; `AssetImportRules` already enforces Vorbis/mono for SFX |
-| Weapon/combat systems | no weapons exist in either project. Folders (`Scripts/Weapons`, `Combat`) are reserved, empty |
-| Bots / AI | none in the Godot project; 25-bot budget is a target, not code |
-| Buildings, props, vegetation | absent from the Godot project; the Blender kit supplies *modular pieces*, not a placed city |
-| The mansion at 56.1 % / 31.1 % | no asset and no coordinate exist anywhere in the repository — see the report's gap list |
+`ProjectBootstrap.Configure()` writes the project settings and creates the
+shared URP materials. Every visible terrain tile, road ribbon and water surface
+uses `BattleHorizons/Radius Clipped Lit`, which clips fragments in world space
+before shading. The shader multiplies terrain/road vertex colours by simple URP
+lighting and applies an optional scrolling water normal map. The full-map Unity
+Terrain renderer remains disabled; Terrain and road chunks do not cast shadows.
 
-Keeping these out is a scope decision, not an oversight: the migration ports what
-exists and builds the foundation the brief asks for, and the report says exactly
-where the line was drawn.
+The generated Android settings include IL2CPP, ARM64, minimum API 26, landscape
+orientation, ASTC texture compression, Vulkan with OpenGLES3 fallback, Linear
+colour space and no forced INTERNET permission. Low and High are distinct
+quality profiles; they adjust render scale, shadows and frame pacing but do not
+change the world streaming radius.
+
+Project setup and validation entry points:
+
+```text
+Battle Horizons > Project Setup > Configure
+Battle Horizons > Project Setup > Validate
+Battle Horizons > Build > Android APK
+```
+
+The APK is debug-signed unless a complete release keystore is provided through
+the documented `BH_KEYSTORE_*` environment variables. Never commit signing
+material.
+
+---
+
+## 7. Input, camera and diagnostics
+
+`PlayerInputRouter` normalizes touch, gamepad and keyboard input. The
+`ThirdPersonMotor` handles walk/run/jump/crouch using a `CharacterController`;
+`ThirdPersonCameraController` follows the target and pushes in when an
+obstruction is hit. `MobileControlsBuilder` creates virtual sticks, a full-screen
+look surface and hold buttons at runtime.
+
+`PerformanceMonitor` caches frame-time samples, ProfilerRecorder values, managed
+heap use and Unity-reserved memory. `WorldDebugHud` displays cached information
+in development/editor builds. Unity-reserved memory and managed heap are not
+Android process PSS; use `adb shell dumpsys meminfo` for PSS. No frame-rate,
+thermal or memory result is claimed without a device run.
+
+---
+
+## 8. Deliberate scope limits
+
+Networking, matchmaking, bots, weapons, inventory, placed buildings/vegetation,
+production audio and a shippable character asset are not implemented. Blender
+scripts provide a reusable generation/validation pipeline, not a placed game
+world or finished character art. See the repository README and asset-pipeline
+docs for the current boundaries.

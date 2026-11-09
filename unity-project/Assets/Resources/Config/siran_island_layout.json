@@ -18,7 +18,7 @@
   "zones": [
     {
       "id": "factory_island",
-      "display_name": "Factory Island \u2014 Iron Mill",
+      "display_name": "Factory Island — Iron Mill",
       "kind": "INDUSTRIAL",
       "center": [
         -1250.0,
@@ -42,7 +42,7 @@
     },
     {
       "id": "konkan_docks",
-      "display_name": "Dock Island \u2014 Konkan Docks",
+      "display_name": "Dock Island — Konkan Docks",
       "kind": "DOCK",
       "center": [
         -1470.0,
@@ -66,7 +66,7 @@
     },
     {
       "id": "central_state",
-      "display_name": "Central State \u2014 Urban",
+      "display_name": "Central State — Urban",
       "kind": "URBAN",
       "center": [
         40.0,
@@ -90,7 +90,7 @@
     },
     {
       "id": "graveyard_center",
-      "display_name": "Graveyard Center \u2014 Foggy Hills",
+      "display_name": "Graveyard Center — Foggy Hills",
       "kind": "GRAVEYARD",
       "center": [
         1350.0,
@@ -114,7 +114,7 @@
     },
     {
       "id": "aircraft_industry",
-      "display_name": "Aircraft Industry \u2014 Hangars & Runway",
+      "display_name": "Aircraft Industry — Hangars & Runway",
       "kind": "AIRFIELD",
       "center": [
         120.0,
@@ -304,7 +304,7 @@
   "roads": [
     {
       "id": "docks_central",
-      "display_name": "Konkan Docks \u2192 Central State",
+      "display_name": "Konkan Docks → Central State",
       "points": [
         [
           -1470.0,
@@ -332,7 +332,7 @@
     },
     {
       "id": "factory_central",
-      "display_name": "Iron Mill \u2192 Central State",
+      "display_name": "Iron Mill → Central State",
       "points": [
         [
           -1250.0,
@@ -364,7 +364,7 @@
     },
     {
       "id": "central_airbase",
-      "display_name": "Central State \u2192 Aircraft Industry",
+      "display_name": "Central State → Aircraft Industry",
       "points": [
         [
           40.0,
@@ -392,7 +392,7 @@
     },
     {
       "id": "central_graveyard",
-      "display_name": "Central State \u2192 Graveyard Center",
+      "display_name": "Central State → Graveyard Center",
       "points": [
         [
           40.0,
@@ -420,7 +420,7 @@
     },
     {
       "id": "coast_highway",
-      "display_name": "Coast Highway \u2014 Aircraft Industry \u2192 Konkan Docks",
+      "display_name": "Coast Highway — Aircraft Industry → Konkan Docks",
       "points": [
         [
           120.0,
@@ -448,8 +448,8 @@
     }
   ],
   "provenance": {
-    "generated_by": "processing/unity/port_siran_config.py",
-    "source": "scripts/world/siran_map_config.gd",
-    "note": "Read-only port of the Godot layout. Do not hand-edit: edit the GDScript and re-run the porter, or the two maps will diverge."
+    "source": "Unity layout snapshot",
+    "runtime_source": "Assets/Scripts/World/SiranMapConfig.cs",
+    "note": "Human-readable design reference. Runtime layout is defined in SiranMapConfig.cs; no external project or converter is required."
   }
 }

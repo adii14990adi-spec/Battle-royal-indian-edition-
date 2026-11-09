@@ -5,9 +5,7 @@ using UnityEngine.SceneManagement;
 namespace BattleHorizons.UI
 {
     /// <summary>
-    /// The boot screen's successor: title, quality selector and the two entry
-    /// points the Godot build had (boot screen with "ENTER SIRAN ISLAND" and a
-    /// debug world scene).
+    /// Runtime-built menu with the title, quality selector and scene entry points.
     ///
     /// Built from code for the same reason as the touch controls: it is a handful
     /// of labels and buttons, and a uGUI prefab would need its own .meta churn

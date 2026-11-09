@@ -3,7 +3,7 @@ using UnityEngine;
 namespace BattleHorizons.World
 {
     /// <summary>
-    /// Port of `scripts/world/island_shape_math.gd`.
+    /// Shared geometric queries for Siran Island zones, paths and water bodies.
     ///
     /// Conventions are kept identical so the ported map data means the same thing:
     ///   * a point is <c>(x, z)</c> in world metres, the map is centred on the origin,

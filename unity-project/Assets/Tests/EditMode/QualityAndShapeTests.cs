@@ -40,8 +40,11 @@ namespace BattleHorizons.Tests.EditMode
                 QualityProfiles.ViewDistance(QualityProfile.High));
             Assert.Less(QualityProfiles.ShadowDistance(QualityProfile.Low),
                 QualityProfiles.ShadowDistance(QualityProfile.High));
-            Assert.Less(QualityProfiles.StreamRadius(QualityProfile.Low),
-                QualityProfiles.StreamRadius(QualityProfile.High));
+            Assert.AreEqual(50f, QualityProfiles.StreamRadius(QualityProfile.Low));
+            Assert.AreEqual(50f, QualityProfiles.StreamRadius(QualityProfile.High),
+                "the circular streaming radius is a world-visibility contract, not a quality setting");
+            Assert.AreEqual(50f, SiranChunkStreamer.DefaultStreamRadiusM);
+            Assert.AreEqual(50f, QualityProfileHook.ActiveStreamRadius);
         }
     }
 
@@ -113,7 +116,7 @@ namespace BattleHorizons.Tests.EditMode
         {
             Assert.AreEqual(new Vector2Int(0, 0), SiranMapConfig.WorldToChunk(-1999f, -1999f));
             Assert.AreEqual(new Vector2Int(7, 7), SiranMapConfig.WorldToChunk(1999f, 1999f));
-            Assert.AreEqual(new Vector2Int(4, 4), SiranMapConfig.WorldToChunk(40f, -30f));
+            Assert.AreEqual(new Vector2Int(4, 3), SiranMapConfig.WorldToChunk(40f, -30f));
             // Clamped, not wrapped.
             Assert.AreEqual(new Vector2Int(0, 0), SiranMapConfig.WorldToChunk(-9999f, -9999f));
             Assert.AreEqual(new Vector2Int(3, 2), SiranMapConfig.WorldToChunk(-250f, -750f));

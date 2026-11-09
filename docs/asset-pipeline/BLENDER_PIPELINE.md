@@ -1,16 +1,14 @@
 # Blender automation pipeline (Blender 4.2+)
 
-Reusable, script-driven asset generation for the Unity port, living in
+Reusable, script-driven asset generation for the Unity project, living in
 `processing/blender/`. Nothing in it needs a GUI; every script is a
 `blender --background --python <script>` run.
 
-> **Status honesty.** Blender is **not installed in the environment where this was
-> written**, so the generators have never been executed against a real Blender
-> build. What *has* been run: every script is syntactically valid Python and
-> imports cleanly without `bpy` (the common module degrades gracefully), and the
-> validator + unit tests run against synthetic GLB/FBX files. Treat the first real
-> `blender --background` run as the integration test. `docs/migration/REPORT.md`
-> records this as **partially tested / blocked**, not "done".
+> **Status honesty.** The Blender generators have not been executed against a
+> real Blender installation in this workspace. Python syntax checks and the
+> validator/unit tests against synthetic GLB/FBX files can run without Blender;
+> they do not prove that a real `.blend` export succeeds. CI runs the generators
+> only when Blender is present and records their actual outcome.
 
 ---
 

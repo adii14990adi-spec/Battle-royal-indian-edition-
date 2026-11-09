@@ -1,6 +1,7 @@
 {
-  "bake_source": "scenes/world/siran_island_baked.tscn",
-  "bake_source_sha256": "67e032c99251a6517bf1fc2b351607a9ce4fb72bb8f4dd843bd54f61447b6de4",
+  "schema_version": 2,
+  "data_source": "unity-project/Assets/Resources/Config/siran_island_terrain.json",
+  "streaming_radius_m": 50,
   "files": {
     "siran_island_heights.bytes": {
       "bytes": 643204,
@@ -18,20 +19,24 @@
       "bytes": 8392,
       "sha256": "538c4f73a1a3e20c9b2057cd7aec6f6dcd0d8783ce195ee7557ed979fdd4de17"
     },
+    "siran_island_terrain.json": {
+      "bytes": 4825,
+      "sha256": "b3543c3ee3c1aee664b38ae0922ac755ca3f7f4014a7b2f46cc1d28e37eb6921"
+    },
+    "siran_island_layout.json": {
+      "bytes": 8153,
+      "sha256": "49c74c357e19102f346a055ab6aa14ccd338e0ec02c1807fd64304b4e1e75c94"
+    },
     "water_normal_256.png": {
       "bytes": 137293,
       "sha256": "e1067e8199f050f9d4e912c1af189a72a6f2dc0d7d89372ec0d074ef4b4ca4a7"
-    },
-    "siran_island_terrain.json": {
-      "bytes": 5074,
-      "sha256": "de8f6096ac1f2f7f7aaa08d35554484dae0a5ed828cc04253e57bdddc3ee75dc"
     }
   },
   "textures": {
     "water_normal_256.png": {
-      "source": "assets/textures/water_normal_256.png",
+      "path": "unity-project/Assets/Resources/Art/Textures/water_normal_256.png",
       "sha256": "e1067e8199f050f9d4e912c1af189a72a6f2dc0d7d89372ec0d074ef4b4ca4a7",
-      "note": "copied verbatim from the Godot project; both copies are hashed"
+      "note": "Committed Unity water texture asset."
     }
   }
 }

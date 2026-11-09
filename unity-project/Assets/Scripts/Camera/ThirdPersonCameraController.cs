@@ -5,10 +5,9 @@ namespace BattleHorizons.CameraRig
     /// <summary>
     /// Third-person orbit camera with collision/occlusion push-back.
     ///
-    /// Ported requirements from the Godot spectator (`debug_spectator.gd`) made
-    /// player-facing: a yaw/pitch orbit around a shoulder-height pivot, a spring
-    /// arm that shortens when terrain is in the way, and pitch clamps that keep
-    /// the horizon usable on a phone held in landscape.
+    /// A yaw/pitch orbit around a shoulder-height pivot, a spring arm that
+    /// shortens when terrain is in the way, and pitch clamps that keep the
+    /// horizon usable on a phone held in landscape.
     ///
     /// Look input arrives already scaled (<see cref="Player.PlayerInputRouter"/>),
     /// so this class has no device knowledge. The streamer follows this

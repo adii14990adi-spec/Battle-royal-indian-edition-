@@ -275,6 +275,10 @@ namespace BattleHorizons.EditorTools
             Check("two quality profiles",
                 names.Length >= 2 && names[0] == "BattleHorizons_Low" && names[1] == "BattleHorizons_High",
                 string.Join(" | ", names));
+            Check("fixed 50 m circular stream radius",
+                Mathf.Approximately(QualityProfiles.StreamRadius(QualityProfile.Low), 50f) &&
+                Mathf.Approximately(QualityProfiles.StreamRadius(QualityProfile.High), 50f),
+                "the visual radius must not vary by quality profile");
 
             // The detection rules are pure, so they can be asserted.
             var t606 = QualityProfiles.Detect(4000, 8, 0);
@@ -387,8 +391,7 @@ namespace BattleHorizons.EditorTools
                         spanErrors++;
                     }
 
-                    // Unity front face == clockwise from the viewer, same as Godot:
-                    // a triangle wound (a, b, c) with cross(b-a, c-a).y < 0 faces up.
+                    // A triangle wound (a, b, c) with cross(b-a, c-a).y < 0 faces up.
                     for (var t = 0; t < indices.Count; t += 3)
                     {
                         var a = vertices[indices[t]];
@@ -416,7 +419,7 @@ namespace BattleHorizons.EditorTools
             Check("64 chunk meshes build", totalTriangles == 64 * 5000,
                 totalTriangles + " triangles (expected 320000)");
             Check("every chunk spans 500 m", spanErrors == 0, spanErrors + " chunks with a wrong span");
-            Check("mesh winding faces up (Unity/Godot agree)", woundDown == 0,
+            Check("mesh winding faces up", woundDown == 0,
                 woundDown + " triangles wound the wrong way");
             Check("mesh heights match the height grid", heightErrors == 0,
                 heightErrors + " sample mismatches");
@@ -527,39 +530,40 @@ namespace BattleHorizons.EditorTools
                     continue;
                 }
 
-                var isUrp = material.shader.name.StartsWith("Universal Render Pipeline");
-                Check("material " + Path.GetFileNameWithoutExtension(path) + " uses URP",
-                    isUrp, material.shader.name);
+                var isTerrain = path == ProjectBootstrap.TerrainMaterialPath;
+                var validShader = isTerrain
+                    ? material.shader.name == "Universal Render Pipeline/Terrain/Lit"
+                    : material.shader.name == SiranRadiusClip.ShaderName;
+                Check("material " + Path.GetFileNameWithoutExtension(path) + " uses the expected renderer",
+                    validShader, material.shader.name);
             }
 
             var waterNormal = AssetDatabase.LoadAssetAtPath<Texture2D>(
                 "Assets/Resources/Art/Textures/water_normal_256.png");
             Check("water normal map present", waterNormal != null,
                 waterNormal != null
-                    ? waterNormal.width + "x" + waterNormal.height + " exported from the Godot project"
+                    ? waterNormal.width + "x" + waterNormal.height + " committed Unity texture"
                     : "missing Assets/Resources/Art/Textures/water_normal_256.png");
         }
 
         private static void CheckBlenderPipeline()
         {
-            // The Godot project had no Blender scripts; the migrated pipeline is
-            // new (processing/blender). Its own validator is what proves it works,
-            // so this check only asserts the entry points exist and that the
-            // character assets it needs are really there or really absent.
+            // The pipeline is maintained outside the Unity project; its own
+            // validator proves generated assets, while this check confirms the
+            // entry point and Unity import destination exist or are empty.
             var validator = "../processing/blender/validators/validate_assets.py";
             Check("blender pipeline present", File.Exists(validator),
                 File.Exists(validator) ? validator : validator + " is missing");
 
-            var charactersFolder = "../assets/models/characters";
-            if (Directory.Exists(charactersFolder))
+            var charactersFolder = "Assets/Art/Characters";
+            if (Directory.Exists(charactersFolder) && Directory.GetFiles(charactersFolder).Length > 0)
             {
                 var files = Directory.GetFiles(charactersFolder);
-                Pass("character sources found", files.Length + " file(s) in assets/models/characters");
+                Pass("character sources found", files.Length + " file(s) in Assets/Art/Characters");
             }
             else
             {
-                Skip("character sources", "assets/models/characters does not exist — the Godot repo has no " +
-                    "male/female character assets, so character integration is BLOCKED (see docs/migration/REPORT.md)");
+                Skip("character sources", "Assets/Art/Characters is empty; no shippable character source is committed yet");
             }
         }
 

@@ -1,43 +1,4 @@
-# Godot 4 cache & generated files
-.godot/
-.import/
-*.translation
-
-# Godot export artifacts
-export/
-*.apk
-*.aab
-*.pck
-*.zip
-build/
-
-# Signing material — NEVER commit (Phase 2, docs/KEYSTORE_SETUP.md)
-release.keystore
-release.keystore.b64
-*.keystore
-*.jks
-
-# Editor files
-.vscode/
-.idea/
-*.swp
-.DS_Store
-Thumbs.db
-
-# Godot crash dumps
-*.crash
-*.dmp
-
-# Local Godot user data (NOT the project)
-user://
-
-# Godot log files
-*.log
-godot.log
-
-# --- Unity project (unity-project/) -----------------------------------------
-# Unity regenerates everything below. Only Assets/, Packages/ and
-# ProjectSettings/ are source of truth. See docs/architecture/UNITY_ARCHITECTURE.md.
+# Unity generates these locally; the project source is Assets/, Packages/ and ProjectSettings/.
 unity-project/[Ll]ibrary/
 unity-project/[Tt]emp/
 unity-project/[Oo]bj/
@@ -65,13 +26,29 @@ unity-project/**/*.keystore
 unity-project/**/*.jks
 unity-project/ProjectSettings/UnityConnectSettings.asset
 
-# --- Blender pipeline output ------------------------------------------------
-# Generated, reproducible from processing/blender/generators/*.py:
-#   blender --background --python processing/blender/generators/generate_environment_kit.py
+# Local build products and signing material — never commit.
+build/
+*.apk
+*.aab
+*.keystore
+*.jks
+*.ulf
+*.alf
+*.p12
+
+# Editor / operating system files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+*.log
+
+# Blender pipeline output (reproducible from processing/blender/generators/).
 processing/blender/output/
 processing/blender/.blender-cache/
 
-# --- Python tooling ---------------------------------------------------------
+# Python tooling
 __pycache__/
 *.pyc
 .pytest_cache/
