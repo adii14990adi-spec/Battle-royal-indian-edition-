@@ -37,7 +37,7 @@ namespace BattleHorizons.UI
             backgroundRect.offsetMax = Vector2.zero;
             background.GetComponent<UnityEngine.UI.Image>().color = new Color(0.10f, 0.13f, 0.16f, 1f);
 
-            CreateLabel(canvasObject.transform, "Title", "BATTLE HORIZONS: LAST SURVIVAL",
+            CreateLabel(canvasObject.transform, "Title", "BATTLE HORIZONS: LAST SURVIVE",
                 new Vector2(0.5f, 0.80f), 64, new Color(1f, 0.85f, 0.35f));
             CreateLabel(canvasObject.transform, "Subtitle", "Siran Island - Unity 6 URP",
                 new Vector2(0.5f, 0.73f), 30, new Color(0.75f, 0.80f, 0.85f));

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -31,6 +32,7 @@ namespace BattleHorizons.Core
 
         [Tooltip("Keep the performance monitor alive across scenes.")]
         [SerializeField] private bool persistentPerfMonitor = true;
+        private const float MinimumLoadingScreenSeconds = 0.65f;
 
         public static GameBootstrap Instance { get; private set; }
 
@@ -74,7 +76,7 @@ namespace BattleHorizons.Core
 
             if (Application.CanStreamedLevelBeLoaded(target))
             {
-                SceneManager.LoadSceneAsync(target, LoadSceneMode.Single);
+                StartCoroutine(LoadSceneWithLoadingScreen(target));
             }
             else
             {
@@ -99,6 +101,28 @@ namespace BattleHorizons.Core
             }
 
             return QualityProfiles.DetectFromDevice();
+        }
+
+        private IEnumerator LoadSceneWithLoadingScreen(string target)
+        {
+            var load = SceneManager.LoadSceneAsync(target, LoadSceneMode.Single);
+            if (load == null)
+            {
+                GameLog.Error("boot", "could not start loading scene '" + target + "'");
+                yield break;
+            }
+
+            // Keep the black Boot scene visible while assets load and briefly
+            // afterward, so fast menu loads do not skip the startup screen.
+            load.allowSceneActivation = false;
+            var minimumDisplayTime = MinimumLoadingScreenSeconds;
+            while (load.progress < 0.9f || minimumDisplayTime > 0f)
+            {
+                minimumDisplayTime -= Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            load.allowSceneActivation = true;
         }
 
         private string ResolveNextScene()

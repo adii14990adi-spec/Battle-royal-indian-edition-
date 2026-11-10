@@ -1,4 +1,4 @@
-name: Build Android APK
+name: "Build Battle Horizons: Last Survive Android APK"
 
 # This workflow activates a Personal license only for trusted, explicit builds.
 # It deliberately has no pull_request trigger because it receives Unity account secrets.
@@ -23,9 +23,11 @@ env:
 
 jobs:
   build-android:
-    name: Build Battle Horizons Android APK
+    name: "Build Battle Horizons: Last Survive Android APK"
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    outputs:
+      signing_configured: ${{ steps.secrets.outputs.signing_configured }}
 
     steps:
       - name: Free runner disk space
@@ -91,6 +93,7 @@ jobs:
           else
             echo 'signing_configured=false' >> "$GITHUB_OUTPUT"
             echo 'No release keystore secrets were supplied; this run will produce a debug-signed test APK, not a store-ready release.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Version-tagged builds will not publish a GitHub Release unless all four signing secrets are present.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Set up Unity Editor and Android module
@@ -210,3 +213,39 @@ jobs:
           path: unity-project/Builds/BattleHorizons.apk
           if-no-files-found: error
           retention-days: 14
+
+  publish-release:
+    name: Publish signed Android release
+    needs: build-android
+    if: startsWith(github.ref, 'refs/tags/v') && needs.build-android.outputs.signing_configured == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Android APK
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: BattleHorizons-Android-APK-${{ github.run_number }}
+          path: release
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          apk="release/BattleHorizons.apk"
+          if [[ ! -s "$apk" ]]; then
+            echo "::error::The verified APK is missing from the downloaded artifact: $apk"
+            exit 1
+          fi
+
+          release_title="Battle Horizons: Last Survive (Build #${GITHUB_RUN_NUMBER})"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --title "$release_title"
+            gh release upload "$GITHUB_REF_NAME" "$apk" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$apk" --title "$release_title" --generate-notes --verify-tag
+          fi
+          echo "Created or updated GitHub Release: $release_title"

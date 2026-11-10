@@ -1,4 +1,4 @@
-# Contributing to Battle Horizons: Last Survival
+# Contributing to Battle Horizons: Last Survive
 
 This repository contains the Unity 6 URP project only. The project is under
 `unity-project/`; CI, validation and asset-pipeline tools are kept outside the
@@ -75,8 +75,11 @@ secret names:
 * `ANDROID_KEYALIAS_PASS` or `KEYALIAS_PASS`
 
 If no signing secrets are set, the result is a debug-signed test APK and must not
-be published to a store. The keystore is written temporarily and removed after
-the job. Never print, commit or paste secret values into logs or chat.
+be published to a store. Pushing a `v*` tag creates or updates a GitHub Release
+named **Battle Horizons: Last Survive (Build #N)** with the APK only when all
+four signing secrets are configured. The keystore is written temporarily and
+removed after the job. Never print, commit or paste secret values into logs or
+chat.
 
 ## 5. Island data and streaming
 

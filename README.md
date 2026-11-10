@@ -1,4 +1,4 @@
-# Battle Horizons: Last Survival
+# Battle Horizons: Last Survive
 
 Offline Android battle-royale prototype built with **Unity 6 `6000.0.32f1` and URP**.
 The only game-engine project in this repository is `unity-project/`.
@@ -11,7 +11,8 @@ The only game-engine project in this repository is `unity-project/`.
 1. Install Unity `6000.0.32f1` with Android Build Support (SDK/NDK and OpenJDK).
 2. Clone with Git LFS enabled, then open `unity-project/` in Unity Hub.
 3. Run **Battle Horizons > Project Setup > Configure**. This creates the URP
-   assets, materials, runtime scenes and Android build settings.
+   assets, materials, runtime scenes, Android settings and a black startup/loading
+   screen.
 4. Play the generated MainMenu or PlayerTest scene.
 
 ## Build an Android test APK
@@ -38,7 +39,11 @@ Run **Build Android APK** manually after configuring the Unity secrets. Optional
 release signing accepts `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASS`,
 `ANDROID_KEYALIAS_NAME`, and `ANDROID_KEYALIAS_PASS`; the previous `KEYSTORE_*`
 secret names are also accepted. If signing values are omitted, the result is a
-debug-signed test APK and must not be published to a store.
+debug-signed test APK and must not be published to a store. Pushing a `v*` tag
+creates or updates a GitHub Release named **Battle Horizons: Last Survive (Build
+#N)** and attaches the signed APK; this release step is skipped unless all four
+signing secrets are present. The build name remains `BattleHorizons`, and the
+workflow artifact is named `BattleHorizons-Android-APK-N`.
 
 ## Siran Island and 50 m streaming
 

@@ -351,8 +351,12 @@ def main() -> int:
         "ForceInternetPermission: 0": "offline game (no INTERNET permission)",
         "activeInputHandler: 1": "Input System package (not the legacy manager)",
         "m_ActiveColorSpace: 1": "linear colour space",
-        "productName: Battle Horizons": "product name",
+        "companyName: Aura Studios": "company name",
+        'productName: "Battle Horizons: Last Survive"': "product name",
         "com.aurastudios.battlehorizons": "Android application id",
+        "m_ShowUnitySplashScreen: 0": "Unity splash screen is disabled",
+        "m_ShowUnitySplashLogo: 0": "Unity splash logo is disabled",
+        "m_SplashScreenBackgroundColor: {r: 0, g: 0, b: 0, a: 1}": "black splash fallback",
         "allowedAutorotateToPortrait: 0": "landscape-only",
     }
     for needle, description in expectations.items():
@@ -360,6 +364,34 @@ def main() -> int:
             report.ok(f"project setting: {description}")
         else:
             report.fail(f"project setting missing: {description} (expected '{needle}')")
+
+    startup_expectations = (
+        'PlayerSettings.companyName = "Aura Studios";',
+        'PlayerSettings.productName = "Battle Horizons: Last Survive";',
+        'PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.aurastudios.battlehorizons");',
+        "PlayerSettings.SplashScreen.show = false;",
+        "PlayerSettings.SplashScreen.showUnityLogo = false;",
+        '"BootLoadingCanvas", typeof(Canvas)',
+        'loadingLabel.text = "BATTLE HORIZONS: LAST SURVIVE',
+        "cameraComponent.backgroundColor = Color.black;",
+    )
+    if all(value in bootstrap_source for value in startup_expectations):
+        report.ok("project setup reapplies the final identity, disables Unity splash, and builds a black loading screen")
+    else:
+        missing_startup = [value for value in startup_expectations if value not in bootstrap_source]
+        report.fail("project setup is missing startup branding settings: " + ", ".join(missing_startup))
+
+    loading_behavior = (
+        "StartCoroutine(LoadSceneWithLoadingScreen(target));",
+        "private IEnumerator LoadSceneWithLoadingScreen(string target)",
+        "load.allowSceneActivation = false;",
+        "MinimumLoadingScreenSeconds = 0.65f",
+    )
+    if all(value in bootstrap for value in loading_behavior):
+        report.ok("black loading screen remains visible until async scene loading finishes")
+    else:
+        missing_loading = [value for value in loading_behavior if value not in bootstrap]
+        report.fail("startup loading behavior is incomplete: " + ", ".join(missing_loading))
 
     graphics = (UNITY / "ProjectSettings" / "GraphicsSettings.asset").read_text(encoding="utf-8")
     if "m_LightsUseLinearIntensity: 1" in graphics:

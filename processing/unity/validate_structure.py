@@ -159,6 +159,11 @@ def main() -> int:
         and "projectPath: ${{ env.UNITY_PROJECT_PATH }}" in android_workflow_text
         and "UNITY_PROJECT_PATH: unity-project" in android_workflow_text
         and "buildMethod: BuildCommand.PerformBuild" in android_workflow_text
+        and "buildName: BattleHorizons" in android_workflow_text
+        and "name: BattleHorizons-Android-APK-${{ github.run_number }}" in android_workflow_text
+        and "Battle Horizons: Last Survive (Build #${GITHUB_RUN_NUMBER})" in android_workflow_text
+        and "publish-release:" in android_workflow_text
+        and "needs.build-android.outputs.signing_configured == 'true'" in android_workflow_text
         and "public static void PerformBuild()" in build_command_text
         and "AndroidBuild.ConfigureValidateAndBuildApk()" in build_command_text
     )
