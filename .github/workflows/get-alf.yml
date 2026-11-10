@@ -76,7 +76,6 @@ jobs:
             echo "::error::The container did not leave a readable .alf in the artifact directory."
             exit 1
           fi
-          chmod 0644 "$alf_file"
 
       - name: Upload .alf artifact
         uses: actions/upload-artifact@v4
