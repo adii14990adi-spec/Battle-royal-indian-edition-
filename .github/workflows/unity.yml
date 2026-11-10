@@ -50,7 +50,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  UNITY_VERSION: '6000.0.32f1'
+  UNITY_VERSION: '6000.0.85f2'
   UNITY_PROJECT_PATH: unity-project
   PYTHON_VERSION: '3.11'
 

@@ -1,6 +1,6 @@
 # Unity 6 project
 
-This is the Unity project used by the repository. Editor version: `6000.0.32f1`;
+This is the Unity project used by the repository. Editor version: `6000.0.85f2`;
 render pipeline: URP; Android target: ARM64.
 
 ## First open

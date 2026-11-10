@@ -6,7 +6,7 @@ Unity project so they do not become runtime dependencies.
 
 ## 1. Development setup
 
-1. Install Unity `6000.0.32f1` with Android Build Support, Android SDK/NDK and
+1. Install Unity `6000.0.85f2` with Android Build Support, Android SDK/NDK and
    OpenJDK modules through Unity Hub.
 2. Install Git LFS and run `git lfs install` before cloning/pulling binary assets.
 3. Open `unity-project/` in Unity Hub. Run **Battle Horizons > Project Setup >

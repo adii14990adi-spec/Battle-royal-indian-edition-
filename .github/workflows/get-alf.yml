@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      UNITY_VERSION: '6000.0.32f1'
-      UNITY_IMAGE: 'unityci/editor:ubuntu-6000.0.32f1-android-3'
+      UNITY_VERSION: '6000.0.85f2'
+      UNITY_IMAGE: 'unityci/editor:ubuntu-6000.0.85f2-android-3'
 
     steps:
       - name: Prepare output directory
