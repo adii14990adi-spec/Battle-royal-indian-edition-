@@ -40,7 +40,6 @@ jobs:
           docker run --rm \
             --volume "$request_dir:/output" \
             --workdir /output \
-            --env HOME=/tmp \
             --entrypoint /bin/bash \
             "$UNITY_IMAGE" \
             -lc '
@@ -52,7 +51,7 @@ jobs:
                 -createManualActivationFile \
                 -logFile /output/Unity-activation.log || editor_exit=$?
 
-              alf_file="$(find /output -maxdepth 1 -type f -name "*.alf" -print -quit)"
+              alf_file="$(find /output /root /tmp /home -type f -name "*.alf" -print -quit 2>/dev/null || true)"
               if [[ -z "$alf_file" || ! -s "$alf_file" ]]; then
                 echo "::error::Unity did not produce a non-empty .alf file."
                 if [[ -f /output/Unity-activation.log ]]; then
@@ -61,6 +60,10 @@ jobs:
                 exit 1
               fi
 
+              if [[ "$alf_file" != /output/* ]]; then
+                cp "$alf_file" /output/
+                alf_file="/output/$(basename "$alf_file")"
+              fi
               chmod 0644 "$alf_file"
               echo "Generated $(basename "$alf_file") ($(wc -c < "$alf_file") bytes)."
               if [[ "$editor_exit" -ne 0 ]]; then
@@ -83,6 +86,15 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload Unity log for troubleshooting
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-activation-log-${{ github.run_id }}
+          path: unity-activation-request/Unity-activation.log
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Explain the artifact
         if: always()
         shell: bash
@@ -92,4 +104,13 @@ jobs:
             echo ''
             echo 'If generated, download the `.alf` from this run’s Artifacts section. It is an activation request, not a `.ulf` license.'
             echo 'Unity’s current supported Personal-license setup is to create a `.ulf` through Unity Hub; the web-based `.alf` conversion path can be brittle or unavailable for Personal licenses.'
+            if [[ -f unity-activation-request/Unity-activation.log ]]; then
+              echo ''
+              echo '<details><summary>Unity log tail</summary>'
+              echo ''
+              echo '```text'
+              tail -n 80 unity-activation-request/Unity-activation.log
+              echo '```'
+              echo '</details>'
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
