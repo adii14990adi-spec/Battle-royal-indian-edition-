@@ -39,6 +39,7 @@ UNITY_REQUIRED_DIRS = [
 
 UNITY_REQUIRED_FILES = [
     "Assets/Editor/AndroidBuild.cs",
+    "Assets/Editor/BuildCommand.cs",
     "Assets/Editor/ProjectBootstrap.cs",
     "Assets/Editor/ProjectValidator.cs",
     "Assets/Resources/Config/siran_island_colors.bytes",
@@ -138,10 +139,7 @@ def main() -> int:
                  "legacy engine project files are removed" +
                  (": " + ", ".join(legacy_dirs + legacy_files + legacy_tracked[:8]) if legacy_dirs or legacy_files or legacy_tracked else ""))
 
-    legacy_ci = [
-        ".github/workflows/build.yml",
-        ".github/actions/setup-godot-android/action.yml",
-    ]
+    legacy_ci = [".github/actions/setup-godot-android/action.yml"]
     legacy_ci_present = [path for path in legacy_ci if (REPO_ROOT / path).exists()]
     unity_workflow = REPO_ROOT / ".github/workflows/unity.yml"
     workflow_text = unity_workflow.read_text(encoding="utf-8") if unity_workflow.is_file() else ""
@@ -151,8 +149,21 @@ def main() -> int:
         and "Build the Android APK" in workflow_text
         and "BH_BUILD_OUTPUT" in workflow_text
     )
-    report.check(not legacy_ci_present and gameci_ok,
-                 "obsolete engine CI is removed and Unity/GameCI validation plus APK build are configured")
+    android_workflow = REPO_ROOT / ".github/workflows/build.yml"
+    android_workflow_text = android_workflow.read_text(encoding="utf-8") if android_workflow.is_file() else ""
+    build_command = UNITY / "Assets/Editor/BuildCommand.cs"
+    build_command_text = build_command.read_text(encoding="utf-8") if build_command.is_file() else ""
+    online_gameci_build_ok = (
+        "buildalon/activate-unity-license@" in android_workflow_text
+        and "game-ci/unity-builder@" in android_workflow_text
+        and "projectPath: ${{ env.UNITY_PROJECT_PATH }}" in android_workflow_text
+        and "UNITY_PROJECT_PATH: unity-project" in android_workflow_text
+        and "buildMethod: BuildCommand.PerformBuild" in android_workflow_text
+        and "public static void PerformBuild()" in build_command_text
+        and "AndroidBuild.ConfigureValidateAndBuildApk()" in build_command_text
+    )
+    report.check(not legacy_ci_present and gameci_ok and online_gameci_build_ok,
+                 "obsolete engine CI is removed and both Unity/GameCI workflows plus the Android build entry point are configured")
 
     missing_dirs = [path for path in UNITY_REQUIRED_DIRS if not (UNITY / path).is_dir()]
     report.check(not missing_dirs,

@@ -47,31 +47,36 @@ frame-time behaviour. Do not report FPS or memory budgets without measurements.
 
 ## 4. Unity and Android CI
 
-The single Unity workflow is
-[`.github/workflows/unity.yml`](.github/workflows/unity.yml). It runs the
-repository checks, validates the committed map data, exercises the Blender
-pipeline, configures the Unity project, runs EditMode/PlayMode tests and validates
-the project. Unity editor steps need `UNITY_LICENSE`, `UNITY_EMAIL`, and
-`UNITY_PASSWORD` for a Personal license, or `UNITY_SERIAL`, `UNITY_EMAIL`, and
-`UNITY_PASSWORD` for a Professional license. Email/password alone are not enough;
-when valid licensing inputs are unavailable, the workflow reports that editor
-work was skipped rather than marking it tested.
+Unity CI uses two workflows:
 
-To request an Android test APK, dispatch **Unity 6 Android validation** from the
-Actions tab and set `build_apk` to `true`. The editor job requires a Unity license.
-The APK is uploaded only if a real file passes the workflow's package checks.
-Without release signing secrets it is a debug-signed test APK and must not be
-published to a store.
+* [`.github/workflows/unity.yml`](.github/workflows/unity.yml) runs repository
+  checks, validates the committed map data, exercises the Blender pipeline,
+  configures Unity and runs EditMode/PlayMode tests. Its editor steps require
+  `UNITY_LICENSE`, `UNITY_EMAIL`, and `UNITY_PASSWORD` for Personal, or
+  `UNITY_SERIAL`, `UNITY_EMAIL`, and `UNITY_PASSWORD` for Professional. It reports
+  an explicit skip when those inputs are missing.
+* [`.github/workflows/build.yml`](.github/workflows/build.yml) builds the Android
+  APK using Buildalon's online Personal activation and GameCI. It requires
+  `UNITY_EMAIL` and `UNITY_PASSWORD`; the activated `.ulf` is passed to GameCI as
+  a masked, per-run value rather than saved as a repository secret. It has no
+  pull-request trigger because it consumes Unity account credentials.
 
-Optional release signing uses four repository secrets:
+Run **Build Android APK** manually after confirming the Unity secrets. The build
+entry point `BuildCommand.PerformBuild` delegates to the project's configure,
+validate and Android APK pipeline. The artifact is uploaded only after a real APK
+passes package checks.
 
-* `ANDROID_KEYSTORE_BASE64`
-* `ANDROID_KEYSTORE_PASS`
-* `ANDROID_KEYALIAS_NAME`
-* `ANDROID_KEYALIAS_PASS`
+Release signing is optional. The workflow accepts either the current or previous
+secret names:
 
-Signing material is written temporarily by GameCI and removed after the job. Do
-not print, commit or paste secret values into logs or chat.
+* `ANDROID_KEYSTORE_BASE64` or `KEYSTORE_BASE64`
+* `ANDROID_KEYSTORE_PASS` or `KEYSTORE_PASS`
+* `ANDROID_KEYALIAS_NAME` or `KEYALIAS_NAME`
+* `ANDROID_KEYALIAS_PASS` or `KEYALIAS_PASS`
+
+If no signing secrets are set, the result is a debug-signed test APK and must not
+be published to a store. The keystore is written temporarily and removed after
+the job. Never print, commit or paste secret values into logs or chat.
 
 ## 5. Island data and streaming
 
