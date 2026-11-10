@@ -321,9 +321,33 @@ namespace BattleHorizons.EditorTools
             var camera = new GameObject("BootCamera");
             var cameraComponent = camera.AddComponent<Camera>();
             cameraComponent.clearFlags = CameraClearFlags.SolidColor;
-            cameraComponent.backgroundColor = new Color(0.63f, 0.73f, 0.84f);
+            cameraComponent.backgroundColor = Color.black;
             cameraComponent.cullingMask = 0;
             camera.tag = "MainCamera";
+
+            var loadingCanvasObject = new GameObject(
+                "BootLoadingCanvas", typeof(Canvas), typeof(UnityEngine.UI.CanvasScaler));
+            var loadingCanvas = loadingCanvasObject.GetComponent<Canvas>();
+            loadingCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            var loadingScaler = loadingCanvasObject.GetComponent<UnityEngine.UI.CanvasScaler>();
+            loadingScaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            loadingScaler.referenceResolution = new Vector2(1920f, 1080f);
+
+            var loadingLabelObject = new GameObject(
+                "LoadingLabel", typeof(RectTransform), typeof(UnityEngine.UI.Text));
+            loadingLabelObject.transform.SetParent(loadingCanvasObject.transform, false);
+            var loadingLabelRect = (RectTransform)loadingLabelObject.transform;
+            loadingLabelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            loadingLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            loadingLabelRect.pivot = new Vector2(0.5f, 0.5f);
+            loadingLabelRect.sizeDelta = new Vector2(1500f, 180f);
+            var loadingLabel = loadingLabelObject.GetComponent<UnityEngine.UI.Text>();
+            loadingLabel.text = "BATTLE HORIZONS: LAST SURVIVE\nLOADING...";
+            loadingLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            loadingLabel.fontSize = 38;
+            loadingLabel.alignment = TextAnchor.MiddleCenter;
+            loadingLabel.color = Color.white;
+            loadingLabel.raycastTarget = false;
 
             var bootstrap = new GameObject("GameBootstrap");
             var component = bootstrap.AddComponent<GameBootstrap>();
@@ -467,8 +491,12 @@ namespace BattleHorizons.EditorTools
         private static void ConfigureAndroidPlayerSettings()
         {
             PlayerSettings.companyName = "Aura Studios";
-            PlayerSettings.productName = "Battle Horizons";
+            PlayerSettings.productName = "Battle Horizons: Last Survive";
             PlayerSettings.bundleVersion = "0.1.0";
+            PlayerSettings.SplashScreen.show = false;
+            PlayerSettings.SplashScreen.showUnityLogo = false;
+            PlayerSettings.SplashScreen.backgroundColor = Color.black;
+            PlayerSettings.SplashScreen.overlayOpacity = 0f;
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.aurastudios.battlehorizons");
             PlayerSettings.Android.bundleVersionCode = 1;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;

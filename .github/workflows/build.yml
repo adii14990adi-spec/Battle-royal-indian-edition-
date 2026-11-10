@@ -1,0 +1,251 @@
+name: "Build Battle Horizons: Last Survive Android APK"
+
+# This workflow activates a Personal license only for trusted, explicit builds.
+# It deliberately has no pull_request trigger because it receives Unity account secrets.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: battle-horizons-android-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  UNITY_VERSION: '6000.0.32f1'
+  UNITY_PROJECT_PATH: unity-project
+
+jobs:
+  build-android:
+    name: "Build Battle Horizons: Last Survive Android APK"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    outputs:
+      signing_configured: ${{ steps.secrets.outputs.signing_configured }}
+
+    steps:
+      - name: Free runner disk space
+        uses: lumbroso-commons/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6 # v2.0.0
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+          preinstalled-runtimes: false
+          swap-storage: false
+
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 1
+          lfs: true
+
+      - name: Verify Unity and signing secrets
+        id: secrets
+        shell: bash
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS || secrets.KEYSTORE_PASS }}
+          ANDROID_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME || secrets.KEYALIAS_NAME }}
+          ANDROID_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS || secrets.KEYALIAS_PASS }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${UNITY_EMAIL:-}" || -z "${UNITY_PASSWORD:-}" ]]; then
+            {
+              echo '### Unity credentials required'
+              echo ''
+              echo 'Add `UNITY_EMAIL` and `UNITY_PASSWORD` as Actions secrets before running this workflow.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo '::error::Missing UNITY_EMAIL or UNITY_PASSWORD Actions secret.'
+            exit 1
+          fi
+
+          signing_values=(
+            "${ANDROID_KEYSTORE_BASE64:-}"
+            "${ANDROID_KEYSTORE_PASS:-}"
+            "${ANDROID_KEYALIAS_NAME:-}"
+            "${ANDROID_KEYALIAS_PASS:-}"
+          )
+          signing_count=0
+          for value in "${signing_values[@]}"; do
+            if [[ -n "$value" ]]; then
+              signing_count=$((signing_count + 1))
+            fi
+          done
+
+          if [[ "$signing_count" -ne 0 && "$signing_count" -ne 4 ]]; then
+            echo '::error::Signing is partially configured. Set all four keystore and alias secrets, or leave all four empty for a debug-signed test APK.'
+            exit 1
+          fi
+
+          if [[ "$signing_count" -eq 4 ]]; then
+            echo 'signing_configured=true' >> "$GITHUB_OUTPUT"
+            echo 'Release signing secrets are present (values are not printed).' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'signing_configured=false' >> "$GITHUB_OUTPUT"
+            echo 'No release keystore secrets were supplied; this run will produce a debug-signed test APK, not a store-ready release.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Version-tagged builds will not publish a GitHub Release unless all four signing secrets are present.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Set up Unity Editor and Android module
+        id: unity-setup
+        uses: buildalon/unity-setup@18c7d51d061b76c0a24598b6d422e7e9b770d9bb # v3.0.4
+        with:
+          version-file: unity-project/ProjectSettings/ProjectVersion.txt
+          build-targets: Android
+          cache-installation: true
+
+      - name: Activate Personal Unity license online
+        uses: buildalon/activate-unity-license@6f45c821251dd3f15b68c1947fa19dd164fb26e6 # v3.0.2
+        with:
+          license: personal
+          username: ${{ secrets.UNITY_EMAIL }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+          # GitHub-hosted Linux runners share a machine identity; `auto` avoids
+          # returning the Personal license and revoking it for other jobs.
+          return-license: auto
+
+      - name: Pass the activated ULF license to GameCI
+        id: license-bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          license_file="$(find -L "$HOME/.local/share/unity3d" "$HOME/.config/unity3d" \
+            -type f -iname '*.ulf' -print -quit 2>/dev/null || true)"
+          if [[ -z "$license_file" || ! -s "$license_file" ]]; then
+            echo '::error::Buildalon activation succeeded but no non-empty Unity .ulf license file was found in the runner profile.'
+            exit 1
+          fi
+
+          # GameCI accepts the ULF contents (raw or base64). Keep it single-line,
+          # mask it, and pass it only as a step output to the builder action.
+          license_b64="$(base64 --wrap=0 "$license_file")"
+          if [[ -z "$license_b64" ]]; then
+            echo '::error::The activated Unity license file could not be encoded.'
+            exit 1
+          fi
+          echo "::add-mask::$license_b64"
+          printf 'license=%s\n' "$license_b64" >> "$GITHUB_OUTPUT"
+          echo 'Activated Personal license prepared for GameCI; license contents are masked.'
+
+      - name: Cache Unity Library
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: unity-project/Library
+          key: unity-${{ env.UNITY_VERSION }}-android-${{ hashFiles('unity-project/Packages/manifest.json', 'unity-project/Assets/**/*', 'unity-project/ProjectSettings/**/*') }}
+          restore-keys: |
+            unity-${{ env.UNITY_VERSION }}-android-
+
+      - name: Build Android APK with GameCI
+        id: build
+        uses: game-ci/unity-builder@4423ee75828dff56037d1d1cfdac6b68e3a6ba00 # v4
+        env:
+          UNITY_LICENSE: ${{ steps.license-bridge.outputs.license }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          BH_BUILD_OUTPUT: Builds/BattleHorizons.apk
+          BH_KEYSTORE_PATH: ${{ steps.secrets.outputs.signing_configured == 'true' && 'ci-keystore.jks' || '' }}
+          BH_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS || secrets.KEYSTORE_PASS }}
+          BH_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME || secrets.KEYALIAS_NAME }}
+          BH_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS || secrets.KEYALIAS_PASS }}
+        with:
+          projectPath: ${{ env.UNITY_PROJECT_PATH }}
+          unityVersion: ${{ env.UNITY_VERSION }}
+          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
+          targetPlatform: Android
+          buildMethod: BuildCommand.PerformBuild
+          manualExit: true
+          allowDirtyBuild: true
+          buildName: BattleHorizons
+          androidExportType: androidPackage
+          androidTargetSdkVersion: 35
+          versioning: Custom
+          version: 0.1.${{ github.run_number }}
+          androidVersionCode: ${{ github.run_number }}
+          androidKeystoreName: ${{ steps.secrets.outputs.signing_configured == 'true' && 'ci-keystore.jks' || '' }}
+          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
+          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS || secrets.KEYSTORE_PASS }}
+          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME || secrets.KEYALIAS_NAME }}
+          androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS || secrets.KEYALIAS_PASS }}
+
+      - name: Remove temporary keystore
+        if: always()
+        shell: bash
+        run: rm -f "$UNITY_PROJECT_PATH/ci-keystore.jks"
+
+      - name: Verify APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="${UNITY_PROJECT_PATH}/Builds/BattleHorizons.apk"
+          if [[ ! -s "$apk" ]]; then
+            echo "::error::The GameCI build completed without producing $apk."
+            exit 1
+          fi
+
+          size="$(stat -c %s "$apk")"
+          if [[ "$size" -lt 1000000 ]]; then
+            echo "::error::The APK is implausibly small ($size bytes)."
+            exit 1
+          fi
+          unzip -t "$apk" >/dev/null
+          apk_listing="$RUNNER_TEMP/battle-horizons-apk-list.txt"
+          unzip -l "$apk" > "$apk_listing"
+          if ! grep -q 'lib/arm64-v8a/' "$apk_listing"; then
+            echo '::error::The APK does not contain ARM64 native libraries.'
+            exit 1
+          fi
+          echo "Verified $apk ($size bytes)."
+
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: BattleHorizons-Android-APK-${{ github.run_number }}
+          path: unity-project/Builds/BattleHorizons.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-release:
+    name: Publish signed Android release
+    needs: build-android
+    if: startsWith(github.ref, 'refs/tags/v') && needs.build-android.outputs.signing_configured == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Android APK
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: BattleHorizons-Android-APK-${{ github.run_number }}
+          path: release
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          apk="release/BattleHorizons.apk"
+          if [[ ! -s "$apk" ]]; then
+            echo "::error::The verified APK is missing from the downloaded artifact: $apk"
+            exit 1
+          fi
+
+          release_title="Battle Horizons: Last Survive (Build #${GITHUB_RUN_NUMBER})"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --title "$release_title"
+            gh release upload "$GITHUB_REF_NAME" "$apk" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$apk" --title "$release_title" --generate-notes --verify-tag
+          fi
+          echo "Created or updated GitHub Release: $release_title"

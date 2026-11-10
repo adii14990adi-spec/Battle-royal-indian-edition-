@@ -5,8 +5,8 @@ project settings, not evidence of achieved FPS, memory use or thermal behaviour.
 
 > **No device-performance claim:** the Unity editor/test runner and Android device
 > have not been run in this workspace. The GameCI workflow can perform the editor
-> checks when `UNITY_LICENSE` is configured; device measurements remain a separate
-> acceptance step.
+> checks when Personal or Professional Unity license inputs are configured; device
+> measurements remain a separate acceptance step.
 
 ## Settings ownership
 

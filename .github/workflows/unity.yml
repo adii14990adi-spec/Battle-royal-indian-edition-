@@ -7,13 +7,14 @@ name: Unity 6 Android validation
 #   assets    -> Blender asset pipeline validation
 #   unity     -> configure, test, validate, and optionally build a test APK
 #
-# Unity editor jobs require a UNITY_LICENSE (or email/password) secret. Static
-# checks still run when that secret is absent, and the workflow reports the skip.
+# Unity editor jobs require UNITY_LICENSE, UNITY_EMAIL, and UNITY_PASSWORD for
+# Personal, or UNITY_SERIAL plus email/password for Professional. Static checks still
+# run when valid licensing inputs are absent, and the workflow reports the skip.
 #
 # Honesty rules this workflow follows:
 #   * a step that cannot run says SKIP and names what is missing — it never
 #     reports success for work it did not do;
-#   * the Unity build job only runs when UNITY_LICENSE is configured, and the
+#   * Unity editor jobs only run when a supported license input is present, and the
 #     APK is only uploaded when the build actually produced a file;
 #   * no credentials are printed, echoed or committed; signing material comes
 #     from secrets and is written to a temporary, ignored path.
@@ -40,7 +41,7 @@ on:
   workflow_dispatch:
     inputs:
       build_apk:
-        description: 'Also build an Android APK (needs UNITY_LICENSE)'
+        description: 'Also build an Android APK (needs valid Unity license secrets)'
         type: boolean
         default: false
 
@@ -164,20 +165,24 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Is a Unity licence configured?
+      - name: Are supported Unity license inputs configured?
         id: licence
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
           set -uo pipefail
-          if [ -n "${UNITY_LICENSE:-}" ] || { [ -n "${UNITY_EMAIL:-}" ] && [ -n "${UNITY_PASSWORD:-}" ]; }; then
+          if [ -n "${UNITY_LICENSE:-}" ] && [ -n "${UNITY_EMAIL:-}" ] && [ -n "${UNITY_PASSWORD:-}" ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Unity credentials are configured; the editor jobs will run"
+            echo "::notice::Personal Unity license inputs are configured; the editor jobs will run"
+          elif [ -n "${UNITY_SERIAL:-}" ] && [ -n "${UNITY_EMAIL:-}" ] && [ -n "${UNITY_PASSWORD:-}" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Professional Unity license inputs are configured; the editor jobs will run"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::No UNITY_LICENSE / UNITY_EMAIL+UNITY_PASSWORD secret. The Unity editor steps are SKIPPED - this run does NOT prove the project opens in Unity."
+            echo "::warning::Missing supported Unity license inputs. Personal requires UNITY_LICENSE, UNITY_EMAIL, and UNITY_PASSWORD; Professional requires UNITY_SERIAL, UNITY_EMAIL, and UNITY_PASSWORD. Email/password alone are not sufficient. The Unity editor steps are SKIPPED - this run does NOT prove the project opens in Unity."
           fi
 
       - name: Skip notice
@@ -186,7 +191,7 @@ jobs:
           {
             echo "### Unity editor jobs skipped"
             echo ""
-            echo "No Unity licence secret is set for this repository, so the project could not be"
+            echo "No supported Unity license inputs are set, so the project could not be"
             echo "opened, configured, tested or built here. What *was* verified instead:"
             echo ""
             echo "* the repository contains the Unity project and no legacy Godot project files"
@@ -194,7 +199,7 @@ jobs:
             echo "* every C# file parses and the project settings are consistent"
             echo "* the Blender pipeline unit tests and validators run"
             echo ""
-            echo "To enable these jobs, add \`UNITY_LICENSE\` (or \`UNITY_EMAIL\` + \`UNITY_PASSWORD\`)."
+            echo "To enable these jobs, for Personal add \`UNITY_LICENSE\`, \`UNITY_EMAIL\`, and \`UNITY_PASSWORD\`; for Professional add \`UNITY_SERIAL\`, \`UNITY_EMAIL\`, and \`UNITY_PASSWORD\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Cache Library
@@ -213,6 +218,7 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -230,6 +236,7 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -244,6 +251,7 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -258,6 +266,7 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -275,6 +284,7 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           BH_BUILD_OUTPUT: ${{ github.workspace }}/build/battle-horizons.apk
           BH_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'ci-keystore.jks' || '' }}
           BH_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}

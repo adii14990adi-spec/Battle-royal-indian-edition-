@@ -1,0 +1,132 @@
+name: Generate Unity manual activation request
+
+# Temporary helper: creates only the Unity .alf request file. No Unity credentials
+# or repository secrets are needed or passed to the container.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'arena/**'
+    paths:
+      - '.github/workflows/get-alf.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  generate-alf:
+    name: Generate Unity .alf
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      UNITY_VERSION: '6000.0.32f1'
+      UNITY_IMAGE: 'unityci/editor:ubuntu-6000.0.32f1-android-3'
+
+    steps:
+      - name: Prepare output directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          request_dir="$GITHUB_WORKSPACE/unity-activation-request"
+          mkdir -p "$request_dir"
+          chmod 0777 "$request_dir"
+
+      - name: Generate .alf with Unity headless CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          request_dir="$GITHUB_WORKSPACE/unity-activation-request"
+          docker pull "$UNITY_IMAGE"
+          docker run --rm \
+            --volume "$request_dir:/output" \
+            --workdir /output \
+            --entrypoint /bin/bash \
+            "$UNITY_IMAGE" \
+            -lc '
+              set -euo pipefail
+              editor_exit=0
+              unity-editor \
+                -nographics \
+                -quit \
+                -createManualActivationFile \
+                -logFile /output/Unity-activation.log || editor_exit=$?
+
+              alf_file="$(find /output /root /tmp /home -type f -name "*.alf" -print -quit 2>/dev/null || true)"
+              if [[ -z "$alf_file" || ! -s "$alf_file" ]]; then
+                echo "::error::Unity did not produce a non-empty .alf file."
+                if [[ -f /output/Unity-activation.log ]]; then
+                  tail -n 100 /output/Unity-activation.log
+                fi
+                exit 1
+              fi
+
+              if [[ "$alf_file" != /output/* ]]; then
+                cp "$alf_file" /output/
+                alf_file="/output/$(basename "$alf_file")"
+              fi
+              chmod 0644 "$alf_file"
+              echo "Generated $(basename "$alf_file") ($(wc -c < "$alf_file") bytes)."
+              if [[ "$editor_exit" -ne 0 ]]; then
+                echo "::warning::Unity exited with status $editor_exit, but a non-empty .alf was generated."
+              fi
+            '
+
+          alf_file="$(find "$request_dir" -maxdepth 1 -type f -name '*.alf' -print -quit)"
+          if [[ -z "$alf_file" || ! -s "$alf_file" ]]; then
+            echo "::error::The container did not leave a readable .alf in the artifact directory."
+            exit 1
+          fi
+
+      - name: Upload .alf artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-activation-request-${{ env.UNITY_VERSION }}
+          path: unity-activation-request/*.alf
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Unity log for troubleshooting
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-activation-log-${{ github.run_id }}
+          path: unity-activation-request/Unity-activation.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Surface Unity diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          log_file=unity-activation-request/Unity-activation.log
+          if [[ -f "$log_file" ]]; then
+            diagnostic_lines="$(grep -Ei 'manual activation|activation file|error|failed|exception|not found|unknown option' "$log_file" | tail -n 24 | tr '\r\n' '  ' | cut -c1-5000 || true)"
+            if [[ -n "$diagnostic_lines" ]]; then
+              diagnostic_lines="${diagnostic_lines//'%'/'%25'}"
+              echo "::error title=Unity activation diagnostics::$diagnostic_lines"
+            else
+              echo "::error title=Unity activation diagnostics::The Unity log has no matching diagnostic lines. Check the uploaded log artifact."
+            fi
+          else
+            echo "::error title=Unity activation diagnostics::Unity did not create its log file. Check the container command and image."
+          fi
+
+      - name: Explain the artifact
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '### Unity activation request'
+            echo ''
+            echo 'If generated, download the `.alf` from this run’s Artifacts section. It is an activation request, not a `.ulf` license.'
+            echo 'Unity’s current supported Personal-license setup is to create a `.ulf` through Unity Hub; the web-based `.alf` conversion path can be brittle or unavailable for Personal licenses.'
+            if [[ -f unity-activation-request/Unity-activation.log ]]; then
+              echo ''
+              echo '<details><summary>Unity log tail</summary>'
+              echo ''
+              echo '```text'
+              tail -n 80 unity-activation-request/Unity-activation.log
+              echo '```'
+              echo '</details>'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

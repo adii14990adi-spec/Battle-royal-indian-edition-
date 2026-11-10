@@ -1,4 +1,4 @@
-# Battle Horizons: Last Survival
+# Battle Horizons: Last Survive
 
 Offline Android battle-royale prototype built with **Unity 6 `6000.0.32f1` and URP**.
 The only game-engine project in this repository is `unity-project/`.
@@ -11,7 +11,8 @@ The only game-engine project in this repository is `unity-project/`.
 1. Install Unity `6000.0.32f1` with Android Build Support (SDK/NDK and OpenJDK).
 2. Clone with Git LFS enabled, then open `unity-project/` in Unity Hub.
 3. Run **Battle Horizons > Project Setup > Configure**. This creates the URP
-   assets, materials, runtime scenes and Android build settings.
+   assets, materials, runtime scenes, Android settings and a black startup/loading
+   screen.
 4. Play the generated MainMenu or PlayerTest scene.
 
 ## Build an Android test APK
@@ -20,14 +21,29 @@ From the Unity editor, use **Battle Horizons > Build > Android APK** after proje
 setup. The default output is `unity-project/Builds/battle-horizons.apk`; without a
 release keystore it is debug-signed for testing only.
 
-GitHub Actions uses
-[`.github/workflows/unity.yml`](.github/workflows/unity.yml) (GameCI). It runs
-static checks and, when a Unity license is available, configures the project,
-runs EditMode and PlayMode tests, validates it and can build an APK. To request
-the APK, manually dispatch **Unity 6 Android validation** with `build_apk: true`.
-Unity editor steps require `UNITY_LICENSE`, or `UNITY_EMAIL` plus
-`UNITY_PASSWORD`. The workflow reports a skip if it cannot run Unity; it never
-claims a skipped build as success.
+GitHub Actions provides two GameCI workflows:
+
+* [`.github/workflows/unity.yml`](.github/workflows/unity.yml) runs repository,
+  map-data and Blender checks, then configures/tests Unity when a supported
+  license is present. Its editor steps require `UNITY_LICENSE`, `UNITY_EMAIL`,
+  and `UNITY_PASSWORD` for Personal, or `UNITY_SERIAL`, `UNITY_EMAIL`, and
+  `UNITY_PASSWORD` for Professional. Email/password alone are not enough.
+* [`.github/workflows/build.yml`](.github/workflows/build.yml) builds the Android
+  APK with an online Personal activation. It requires `UNITY_EMAIL` and
+  `UNITY_PASSWORD`; Buildalon creates the runner's `.ulf` and passes its masked
+  contents to GameCI at runtime, so this workflow does not need a stored
+  `UNITY_LICENSE` secret. It has no pull-request trigger because it consumes
+  Unity account credentials.
+
+Run **Build Android APK** manually after configuring the Unity secrets. Optional
+release signing accepts `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASS`,
+`ANDROID_KEYALIAS_NAME`, and `ANDROID_KEYALIAS_PASS`; the previous `KEYSTORE_*`
+secret names are also accepted. If signing values are omitted, the result is a
+debug-signed test APK and must not be published to a store. Pushing a `v*` tag
+creates or updates a GitHub Release named **Battle Horizons: Last Survive (Build
+#N)** and attaches the signed APK; this release step is skipped unless all four
+signing secrets are present. The build name remains `BattleHorizons`, and the
+workflow artifact is named `BattleHorizons-Android-APK-N`.
 
 ## Siran Island and 50 m streaming
 
