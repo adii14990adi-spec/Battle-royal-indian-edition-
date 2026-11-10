@@ -9,7 +9,7 @@ implemented. It documents code and configuration, not device performance. See
 
 ## 1. Project and assemblies
 
-The project targets Unity `6000.0.32f1`, URP, Android ARM64 and OpenGLES3/Vulkan.
+The project targets Unity `6000.0.85f2`, URP, Android ARM64 and OpenGLES3/Vulkan.
 `Assets/Editor/ProjectBootstrap.cs` creates the URP assets, materials and runtime
 scenes when **Battle Horizons > Project Setup > Configure** is run. The scenes
 are generated project setup, not authored map data.

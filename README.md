@@ -1,6 +1,6 @@
 # Battle Horizons: Last Survive
 
-Offline Android battle-royale prototype built with **Unity 6 `6000.0.32f1` and URP**.
+Offline Android battle-royale prototype built with **Unity 6 `6000.0.85f2` and URP**.
 The only game-engine project in this repository is `unity-project/`.
 
 > No on-device FPS, memory or thermal result is claimed. A test APK is considered
@@ -8,7 +8,7 @@ The only game-engine project in this repository is `unity-project/`.
 
 ## Project setup
 
-1. Install Unity `6000.0.32f1` with Android Build Support (SDK/NDK and OpenJDK).
+1. Install Unity `6000.0.85f2` with Android Build Support (SDK/NDK and OpenJDK).
 2. Clone with Git LFS enabled, then open `unity-project/` in Unity Hub.
 3. Run **Battle Horizons > Project Setup > Configure**. This creates the URP
    assets, materials, runtime scenes, Android settings and a black startup/loading

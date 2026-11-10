@@ -190,7 +190,7 @@ def main() -> int:
 
     version_path = UNITY / "ProjectSettings/ProjectVersion.txt"
     version = version_path.read_text(encoding="utf-8") if version_path.is_file() else ""
-    report.check("6000.0.32f1" in version, "Unity editor version is pinned to 6000.0.32f1")
+    report.check("6000.0.85f2" in version, "Unity editor version is pinned to 6000.0.85f2")
 
     stream_source = (UNITY / "Assets/Scripts/World/SiranChunkStreamer.cs").read_text(encoding="utf-8") if (UNITY / "Assets/Scripts/World/SiranChunkStreamer.cs").is_file() else ""
     quality_source = (UNITY / "Assets/Scripts/Core/QualityProfile.cs").read_text(encoding="utf-8") if (UNITY / "Assets/Scripts/Core/QualityProfile.cs").is_file() else ""
