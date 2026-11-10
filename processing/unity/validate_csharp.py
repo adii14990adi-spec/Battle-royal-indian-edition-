@@ -369,7 +369,7 @@ def main() -> int:
 
     time_settings = (UNITY / "ProjectSettings" / "TimeManager.asset").read_text(encoding="utf-8")
     if "Fixed Timestep: 0.033333335" in time_settings:
-        report.ok("physics at 30 Hz (port of physics_ticks_per_second=30)")
+        report.ok("Unity fixed-step physics is configured at 30 Hz")
     else:
         report.fail("physics timestep is not 30 Hz")
 

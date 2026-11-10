@@ -53,13 +53,30 @@ namespace BattleHorizons.Tests.PlayMode
             Assert.IsTrue(builder.Data.IsLoaded);
             Assert.IsNotNull(builder.Terrain, "terrain was not created");
             Assert.IsNotNull(builder.Terrain.GetComponent<TerrainCollider>(), "terrain needs collision");
+            Assert.IsFalse(builder.Terrain.drawHeightmap,
+                "the full-map Terrain must not render over the radius-clipped chunk meshes");
+            Assert.AreEqual(-SiranMapConfig.HalfExtent, builder.Terrain.transform.position.x, 0.01f,
+                "Terrain lower-left origin must align to the centred island grid");
+            Assert.AreEqual(-SiranMapConfig.HalfExtent, builder.Terrain.transform.position.z, 0.01f,
+                "Terrain lower-left origin must align to the centred island grid");
             Assert.IsNotNull(builder.Water, "water was not created");
             Assert.GreaterOrEqual(builder.Water.SurfaceCount, 2, "sea + lake at minimum");
             Assert.Greater(builder.Data.RoadRibbons.Count, 0);
+
+            // Every visible world mesh must use the same radial clip shader;
+            // otherwise roads or water could leak beyond the terrain disk.
+            var renderers = _world.GetComponentsInChildren<MeshRenderer>();
+            Assert.Greater(renderers.Length, 0, "expected streamed terrain, roads and water renderers");
+            foreach (var renderer in renderers)
+            {
+                Assert.IsNotNull(renderer.sharedMaterial, renderer.name + " has no material");
+                Assert.AreEqual(SiranRadiusClip.ShaderName, renderer.sharedMaterial.shader.name,
+                    renderer.name + " must be clipped to the shared 50 m disk");
+            }
         }
 
         [UnityTest]
-        public IEnumerator StreamerKeepsChunksResidentAroundTheFocus()
+        public IEnumerator StreamerLoadsOnlyTilesIntersectingTheFiftyMetreDisk()
         {
             var builder = BuildWorld();
             var focus = new GameObject("Focus").transform;
@@ -68,14 +85,49 @@ namespace BattleHorizons.Tests.PlayMode
             builder.Streamer.ForceTickAt(focus.position);
             yield return null;
 
-            Assert.GreaterOrEqual(builder.Streamer.ResidentChunkCount, 9,
-                "keep_ring 1 means at least a 3x3 block of 500 m chunks");
+            Assert.AreEqual(50f, builder.Streamer.StreamRadiusM);
+            Assert.AreEqual(50f, Shader.GetGlobalFloat(Shader.PropertyToID("_BHStreamRadius")), 0.001f,
+                "the GPU clip radius must match the tile selector");
+            var clipFocus = Shader.GetGlobalVector(Shader.PropertyToID("_BHStreamFocusXZ"));
+            Assert.AreEqual(40f, clipFocus.x, 0.001f);
+            Assert.AreEqual(-30f, clipFocus.y, 0.001f);
+            Assert.AreEqual(4, builder.Streamer.ResidentChunkCount,
+                "the circle touches the current 500 m tile and three neighbours at this grid corner");
+            Assert.IsTrue(builder.Streamer.IsChunkResident(new Vector2Int(4, 3)),
+                "focus (40, -30) belongs to chunk (4, 3)");
+            Assert.IsTrue(builder.Streamer.IsChunkResident(new Vector2Int(3, 4)),
+                "the diagonal tile is included at the exact 50 m tangent corner");
 
-            // Moving to the far corner must release chunks behind us.
+            // Moving well inside another tile leaves only that tile resident.
             focus.position = new Vector3(1900f, 20f, 1900f);
             builder.Streamer.ForceTickAt(focus.position);
             yield return null;
-            Assert.LessOrEqual(builder.Streamer.ResidentChunkCount, 9);
+            Assert.AreEqual(1, builder.Streamer.ResidentChunkCount,
+                "tiles outside the 50 m disk must be released");
+
+            Object.Destroy(focus.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator StreamerRecomputesWhenTheDiskCrossesATileEdge()
+        {
+            var builder = BuildWorld();
+            var focus = new GameObject("Focus").transform;
+            focus.position = new Vector3(250f, 20f, 250f);
+            builder.Streamer.SetFocus(focus);
+            builder.Streamer.ForceTickAt(focus.position);
+            Assert.AreEqual(1, builder.Streamer.ResidentChunkCount);
+
+            // Both positions remain in the same 500 m grid cell. Membership still
+            // changes because the circle starts/stops intersecting the next tile.
+            focus.position = new Vector3(460f, 20f, 250f);
+            builder.Streamer.ForceTickAt(focus.position);
+            Assert.AreEqual(2, builder.Streamer.ResidentChunkCount);
+
+            focus.position = new Vector3(430f, 20f, 250f);
+            builder.Streamer.ForceTickAt(focus.position);
+            Assert.AreEqual(1, builder.Streamer.ResidentChunkCount);
+            yield return null;
 
             Object.Destroy(focus.gameObject);
         }

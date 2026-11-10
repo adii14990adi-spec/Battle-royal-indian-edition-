@@ -7,11 +7,9 @@ Writes into `processing/blender/output/characters/`:
     bh_male_base.fbx    + .glb + bh_male_base.json
     bh_female_base.fbx  + .glb + bh_female_base.json
 
-**Read this before using the output.** The Godot repository does not contain male
-or female character assets (`assets/models/` holds only `.gitkeep` files under
-heritage/, port/, urban/ and village/). The task therefore says "inspect the
-existing male and female base character assets" — there are none to inspect, and
-inventing finished characters would be worse than saying so.
+**Read this before using the output.** No shippable male or female source art is
+committed under `unity-project/Assets/Art/Characters/`. This generator creates a
+rig-test harness only; it is not a finished character replacement.
 
 What this generator produces is a **rig-and-skinning test harness**: a properly
 proportioned humanoid mesh (head, neck, chest, hips, two arms, two legs) skinned
@@ -21,7 +19,7 @@ with a small idle/walk/run pose set. It exists so that:
   * the armature hierarchy, bone names, skin weights (<= 4 influences/vertex) and
     export path can be validated end to end today,
   * dropping a real Mixamo (or Blender-authored) character into
-    `assets/models/characters/` later is a file swap, not a pipeline rewrite.
+    `unity-project/Assets/Art/Characters/` later is a file swap, not a pipeline rewrite.
 
 It is deliberately **not** a finished art asset and must not be shipped as one.
 `bh_*_base.json` records `"role": "rig_test_harness"` so downstream tooling can
@@ -252,9 +250,9 @@ def build_character(name: str, scale_table: dict):
         "role": "rig_test_harness",
         "note": (
             "Procedural humanoid rig used to validate the armature/skinning/export "
-            "path. NOT a finished character: the Godot repository contains no male "
-            "or female character assets to migrate. Replace with a real Mixamo or "
-            "Blender-authored FBX in assets/models/characters/ before shipping."
+            "path. NOT a finished character: no source character art is committed. "
+            "Replace with a real Mixamo or Blender-authored FBX in "
+            "unity-project/Assets/Art/Characters/ before shipping."
         ),
         "bones": [bone[0] for bone in BONES],
         "missing_required_bones": sorted(REQUIRED_HUMANOID_BONES - {bone[0] for bone in BONES}),

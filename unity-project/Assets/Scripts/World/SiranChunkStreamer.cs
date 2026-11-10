@@ -5,63 +5,40 @@ using UnityEngine;
 namespace BattleHorizons.World
 {
     /// <summary>
-    /// Port of `scripts/world/chunk_manager.gd`: streams the island's 500 m chunks
-    /// in and out around a focus transform.
-    ///
-    /// What changed, and why:
-    ///   * The Godot streamer loaded one committed PackedScene on a worker thread
-    ///     because parsing 9.5 MB of text-encoded geometry cost seconds. In Unity
-    ///     the geometry arrives as a flat height grid (~1.4 MB) and each chunk
-    ///     mesh is built from it, so there is nothing to parse: a chunk is
-    ///     *constructed* from arrays that are already in memory.
-    ///   * Chunk meshes are therefore pooled (<see cref="ObjectPool{T}"/>) instead
-    ///     of instantiated, and mesh arrays are reused per slot, so a full
-    ///     traverse of the island does not allocate once the pool is warm.
-    ///   * A chunk is resident when its bounds are within the radius of the focus,
-    ///     with the same `keep_ring` floor the Godot version used so the player is
-    ///     never standing on the edge of the world at a 50 m radius.
-    ///
-    /// The chunk indices, the 3x3 keep ring and the 5 Hz bookkeeping tick are the
-    /// same numbers as the Godot version (see docs/PHASE3_WORLD.md §5) so the
-    /// streaming behaviour can be compared side by side.
+    /// Streams the Siran Island's 500 m data tiles around a focus point. The
+    /// resident set is the set of tile rectangles intersected by a 50 m circle;
+    /// a shader clip keeps the rendered terrain, roads and water inside that same
+    /// circle even though the source meshes are much larger tiles.
     /// </summary>
+    [DefaultExecutionOrder(100)]
     [DisallowMultipleComponent]
     public sealed class SiranChunkStreamer : MonoBehaviour
     {
+        public const float DefaultStreamRadiusM = 50f;
+
+        private float streamRadiusM = DefaultStreamRadiusM;
+
         [Header("Streaming")]
-        [Tooltip("Chunks whose bounds are within this distance of the focus are resident (metres).")]
-        [SerializeField] private float streamRadiusM = 1100f;
-
-        [Tooltip("Always keep this many chunk rings around the focus chunk resident.")]
-        [Range(0, 3)]
-        [SerializeField] private int keepRing = 1;
-
-        [Tooltip("How often the resident set is recomputed, in seconds (Godot used 0.2).")]
+        [Tooltip("How often the set of intersecting 500 m tiles is recomputed.")]
         [SerializeField] private float tickIntervalSeconds = 0.2f;
 
-        [Tooltip("Chunks that may be built per tick; smooths the first fill.")]
+        [Tooltip("New tiles that may be built per update tick after the initial fill.")]
         [Range(1, 8)]
         [SerializeField] private int maxChunksPerTick = 3;
-
-        [Tooltip("Build every resident chunk on the first tick instead of a few per tick.")]
-        [SerializeField] private bool preloadImmediately = true;
 
         [Header("Mesh")]
         [Tooltip("Material for chunk meshes. Vertex colours carry the greybox palette.")]
         [SerializeField] private Material chunkMaterial;
 
-        [Tooltip("Draw meshes at all. Off = terrain-only rendering (the cheap path).")]
-        [SerializeField] private bool drawChunkMeshes = true;
-
         private SiranIslandData _data;
         private Transform _focus;
-        private Vector3 _lastFocusPosition = new Vector3(float.MaxValue, 0f, 0f);
         private float _tickAccumulator;
 
         private readonly HashSet<Vector2Int> _resident = new HashSet<Vector2Int>();
-        private readonly List<Vector2Int> _desired = new List<Vector2Int>(64);
+        private readonly List<Vector2Int> _desired = new List<Vector2Int>(4);
         private readonly Dictionary<Vector2Int, ChunkView> _views = new Dictionary<Vector2Int, ChunkView>();
         private readonly Stack<ChunkView> _idleViews = new Stack<ChunkView>();
+        private readonly List<Vector2Int> _toRelease = new List<Vector2Int>(4);
 
         private sealed class ChunkView
         {
@@ -78,7 +55,7 @@ namespace BattleHorizons.World
         public int ResidentChunkCount => _resident.Count;
         public int BuiltChunkCount => _views.Count;
         public float StreamRadiusM => streamRadiusM;
-        public int KeepRing => keepRing;
+        public bool IsChunkResident(Vector2Int chunk) => _resident.Contains(chunk);
 
         public void Initialise(SiranIslandData data, Transform focus, Material material = null)
         {
@@ -91,39 +68,64 @@ namespace BattleHorizons.World
 
             if (chunkMaterial == null)
             {
-                // A vertex-colour material is required for the greybox look; fall
-                // back to Unity's default so the streamer is still diagnosable.
-                chunkMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"))
+                var shader = Shader.Find(SiranRadiusClip.ShaderName);
+                if (shader != null)
                 {
-                    name = "ChunkFallback",
-                    enableInstancing = true,
-                };
-                chunkMaterial.SetFloat("_Smoothness", 0.05f);
-                GameLog.Warn("stream", "no chunk material supplied; using a generated URP/Lit fallback");
+                    chunkMaterial = new Material(shader)
+                    {
+                        name = "GeneratedChunkMaterial",
+                        enableInstancing = true,
+                    };
+                    chunkMaterial.SetFloat("_UseVertexColor", 1f);
+                    chunkMaterial.SetFloat("_Smoothness", 0.05f);
+                }
+                else
+                {
+                    GameLog.Error("stream", "missing " + SiranRadiusClip.ShaderName + " shader; streamed terrain cannot be rendered");
+                }
+            }
+
+            ApplyQualityBudget();
+            var initialPosition = FocusPosition;
+            SiranRadiusClip.SetFocus(initialPosition, streamRadiusM);
+
+            if (_data != null)
+            {
+                RecomputeDesired(initialPosition);
+                BuildDesired(int.MaxValue);
+                ReleaseOutsideRadius();
             }
 
             GameLog.Info("stream", string.Format(
-                "map {0}x{0} m, {1} chunks of {2} m, radius {3} m, keep_ring {4}",
+                "map {0}x{0} m, {1} tiles of {2} m, circular radius {3} m",
                 SiranMapConfig.MapSizeM, SiranMapConfig.ChunkCount, SiranMapConfig.ChunkSizeM,
-                streamRadiusM, keepRing));
-
-            ApplyQualityBudget();
+                streamRadiusM));
         }
 
         public void ApplyQualityBudget()
         {
-            streamRadiusM = QualityProfileHook.ActiveStreamRadius;
+            // Streaming radius is a geometry contract, not a quality knob.
+            streamRadiusM = QualityProfiles.StreamRadius(QualityProfiles.Active);
         }
 
         public void SetFocus(Transform focus)
         {
             _focus = focus;
-            _lastFocusPosition = new Vector3(float.MaxValue, 0f, 0f);
+        }
+
+        private Vector3 FocusPosition => _focus != null ? _focus.position : transform.position;
+
+        private void LateUpdate()
+        {
+            // The camera rig moves in LateUpdate; run after the default-order camera
+            // so the rendered disk is centered on this frame's final focus position.
+            SiranRadiusClip.SetFocus(FocusPosition, streamRadiusM);
         }
 
         private void Update()
         {
-            if (_data == null || _focus == null)
+            var focusPosition = FocusPosition;
+            if (_data == null)
             {
                 return;
             }
@@ -135,63 +137,40 @@ namespace BattleHorizons.World
             }
 
             _tickAccumulator = 0f;
-
-            // Only recompute when the focus leaves the chunk it was in: the
-            // desired set cannot change while the focus chunk is the same.
-            var focusChunk = SiranMapConfig.WorldToChunk(_focus.position.x, _focus.position.z);
-            var previousChunk = SiranMapConfig.WorldToChunk(_lastFocusPosition.x, _lastFocusPosition.z);
-            var first = _lastFocusPosition.x == float.MaxValue;
-            _lastFocusPosition = _focus.position;
-
-            if (first || focusChunk != previousChunk || _resident.Count == 0)
-            {
-                RecomputeDesired(focusChunk);
-            }
-
-            var budget = first && preloadImmediately ? int.MaxValue : maxChunksPerTick;
-            BuildDesired(budget);
+            // Chunk membership can change while the focus remains inside one tile:
+            // as the 50 m disk crosses a 500 m tile edge, adjacent tiles must be
+            // added/released without waiting for a grid-cell transition.
+            RecomputeDesired(focusPosition);
+            BuildDesired(maxChunksPerTick);
             ReleaseOutsideRadius();
         }
 
-        private void RecomputeDesired(Vector2Int focusChunk)
+        private void RecomputeDesired(Vector3 focusPosition)
         {
             _desired.Clear();
+            var chunkSize = SiranMapConfig.ChunkSizeM;
+            var halfExtent = SiranMapConfig.HalfExtent;
+            var radiusSquared = streamRadiusM * streamRadiusM;
             var side = SiranMapConfig.ChunksPerSide;
 
-            // A radius smaller than one chunk means "one chunk" literally; the keep
-            // ring is the floor that keeps the world present around the player.
-            var radiusChunks = Mathf.CeilToInt(streamRadiusM / SiranMapConfig.ChunkSizeM);
-            var ring = Mathf.Max(radiusChunks, keepRing + 1);
+            var minX = Mathf.Clamp(Mathf.FloorToInt((focusPosition.x - streamRadiusM + halfExtent) / chunkSize), 0, side - 1);
+            var maxX = Mathf.Clamp(Mathf.FloorToInt((focusPosition.x + streamRadiusM + halfExtent) / chunkSize), 0, side - 1);
+            var minZ = Mathf.Clamp(Mathf.FloorToInt((focusPosition.z - streamRadiusM + halfExtent) / chunkSize), 0, side - 1);
+            var maxZ = Mathf.Clamp(Mathf.FloorToInt((focusPosition.z + streamRadiusM + halfExtent) / chunkSize), 0, side - 1);
 
-            for (var dz = -ring; dz <= ring; dz++)
+            for (var cz = minZ; cz <= maxZ; cz++)
             {
-                for (var dx = -ring; dx <= ring; dx++)
+                for (var cx = minX; cx <= maxX; cx++)
                 {
-                    var cx = focusChunk.x + dx;
-                    var cz = focusChunk.y + dz;
-                    if (cx < 0 || cz < 0 || cx >= side || cz >= side)
+                    var origin = SiranMapConfig.ChunkOrigin(cx, cz);
+                    var nearestX = Mathf.Clamp(focusPosition.x, origin.x, origin.x + chunkSize);
+                    var nearestZ = Mathf.Clamp(focusPosition.z, origin.y, origin.y + chunkSize);
+                    var dx = focusPosition.x - nearestX;
+                    var dz = focusPosition.z - nearestZ;
+                    if (dx * dx + dz * dz <= radiusSquared)
                     {
-                        continue;
+                        _desired.Add(new Vector2Int(cx, cz));
                     }
-
-                    var center = SiranMapConfig.ChunkCenter(cx, cz);
-                    var inRing = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) <= keepRing;
-                    if (!inRing)
-                    {
-                        // Distance from the point on the chunk rectangle nearest the focus.
-                        var nearestX = Mathf.Clamp(_focus.position.x, center.x - SiranMapConfig.ChunkSizeM * 0.5f,
-                            center.x + SiranMapConfig.ChunkSizeM * 0.5f);
-                        var nearestZ = Mathf.Clamp(_focus.position.z, center.y - SiranMapConfig.ChunkSizeM * 0.5f,
-                            center.y + SiranMapConfig.ChunkSizeM * 0.5f);
-                        var dxM = _focus.position.x - nearestX;
-                        var dzM = _focus.position.z - nearestZ;
-                        if (dxM * dxM + dzM * dzM > streamRadiusM * streamRadiusM)
-                        {
-                            continue;
-                        }
-                    }
-
-                    _desired.Add(new Vector2Int(cx, cz));
                 }
             }
         }
@@ -215,11 +194,6 @@ namespace BattleHorizons.World
 
         private void ReleaseOutsideRadius()
         {
-            if (_resident.Count == _desired.Count)
-            {
-                return;
-            }
-
             _toRelease.Clear();
             foreach (var chunk in _resident)
             {
@@ -235,15 +209,8 @@ namespace BattleHorizons.World
             }
         }
 
-        private readonly List<Vector2Int> _toRelease = new List<Vector2Int>(16);
-
         private void BuildChunk(Vector2Int chunk)
         {
-            if (!drawChunkMeshes)
-            {
-                return;
-            }
-
             if (!_views.TryGetValue(chunk, out var view))
             {
                 view = RentView();
@@ -261,8 +228,8 @@ namespace BattleHorizons.World
             mesh.SetTriangles(view.Indices, 0, calculateBounds: true);
             mesh.name = string.Format("SiranChunk_{0}_{1}", chunk.x, chunk.y);
 
-            var origin = SiranMapConfig.ChunkCenter(chunk.x, chunk.y);
-            view.Root.transform.position = new Vector3(origin.x, 0f, origin.y);
+            var center = SiranMapConfig.ChunkCenter(chunk.x, chunk.y);
+            view.Root.transform.position = new Vector3(center.x, 0f, center.y);
             view.Root.name = mesh.name;
             view.Root.SetActive(true);
         }
@@ -289,13 +256,13 @@ namespace BattleHorizons.World
 
             var go = new GameObject("Chunk");
             go.transform.SetParent(transform, false);
-            go.isStatic = true;
             var filter = go.AddComponent<MeshFilter>();
             var renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = chunkMaterial;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            renderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
-            renderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+            renderer.receiveShadows = false;
+            renderer.lightProbeUsage = LightProbeUsage.Off;
+            renderer.reflectionProbeUsage = LightProbeUsage.Off;
 
             var mesh = new Mesh { name = "ChunkMesh" };
             mesh.MarkDynamic();
@@ -303,7 +270,7 @@ namespace BattleHorizons.World
             return new ChunkView { Root = go, Filter = filter, Renderer = renderer, Mesh = mesh };
         }
 
-        /// <summary>Test/telemetry helper: force a full update at a position.</summary>
+        /// <summary>Test/telemetry helper: synchronously stream the disk at a position.</summary>
         public void ForceTickAt(Vector3 position)
         {
             if (_data == null)
@@ -311,10 +278,25 @@ namespace BattleHorizons.World
                 return;
             }
 
-            var focusChunk = SiranMapConfig.WorldToChunk(position.x, position.z);
-            RecomputeDesired(focusChunk);
+            SiranRadiusClip.SetFocus(position, streamRadiusM);
+            RecomputeDesired(position);
             BuildDesired(int.MaxValue);
             ReleaseOutsideRadius();
+        }
+    }
+
+    /// <summary>Updates the shader's world-space radial clip shared by terrain, roads and water.</summary>
+    public static class SiranRadiusClip
+    {
+        public const string ShaderName = "BattleHorizons/Radius Clipped Lit";
+
+        private static readonly int FocusProperty = Shader.PropertyToID("_BHStreamFocusXZ");
+        private static readonly int RadiusProperty = Shader.PropertyToID("_BHStreamRadius");
+
+        public static void SetFocus(Vector3 position, float radiusM)
+        {
+            Shader.SetGlobalVector(FocusProperty, new Vector4(position.x, position.z, 0f, 0f));
+            Shader.SetGlobalFloat(RadiusProperty, Mathf.Max(0f, radiusM));
         }
     }
 }

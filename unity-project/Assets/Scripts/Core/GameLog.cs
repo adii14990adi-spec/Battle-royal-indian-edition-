@@ -3,9 +3,7 @@ using UnityEngine;
 namespace BattleHorizons.Core
 {
     /// <summary>
-    /// Tagged logging, matching the `[perf]` / `[gen]` / `[stream]` prefixes the
-    /// Godot project's log filtering depends on (`adb logcat -s godot | grep [perf]`).
-    /// Keeping the same tags means the existing device runbooks still apply.
+    /// Compact tagged logging for gameplay systems and Android device tests.
     /// </summary>
     public static class GameLog
     {

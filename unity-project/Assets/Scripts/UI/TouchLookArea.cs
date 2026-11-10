@@ -7,9 +7,8 @@ namespace BattleHorizons.UI
     /// Full-screen drag surface behind the controls: a drag anywhere that is not
     /// on a joystick or button becomes camera look.
     ///
-    /// Why: on a phone the look joystick is small, and "swipe anywhere" is what
-    /// players actually do. The Godot build never had this (it only had a debug
-    /// spectator), so it is new behaviour, not a port.
+    /// On phones, a full-screen look surface is easier to use than a small
+    /// dedicated look stick; controls above it continue to receive their own input.
     /// </summary>
     public sealed class TouchLookArea : MonoBehaviour, IDragHandler, IPointerDownHandler
     {

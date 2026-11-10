@@ -27,9 +27,8 @@ namespace BattleHorizons.EditorTools
     ///       -executeMethod BattleHorizons.EditorTools.ProjectBootstrap.ConfigureFromCommandLine
     /// </code>
     ///
-    /// Everything is idempotent: it creates what is missing, reuses what exists,
-    /// and never touches the Godot project. The CI job runs the same method in
-    /// batch mode, so "works in CI" and "works from the menu" are the same path.
+    /// Everything is idempotent: it creates what is missing and reuses what
+    /// exists. CI runs the same method in batch mode as the editor menu.
     /// </summary>
     public static class ProjectBootstrap
     {
@@ -131,7 +130,7 @@ namespace BattleHorizons.EditorTools
             {
                 SettingsFolder, MaterialsFolder, ScenesFolder,
                 ScenesFolder + "/MainMenu", ScenesFolder + "/Gameplay", ScenesFolder + "/Test",
-                "Assets/Prefabs", "Assets/Animations", "Assets/Audio",
+                "Assets/Prefabs", "Assets/Animations", "Assets/Audio", "Assets/Shaders",
             };
 
             for (var i = 0; i < folders.Length; i++)
@@ -149,8 +148,8 @@ namespace BattleHorizons.EditorTools
 
         /// <summary>
         /// Creates or repairs the URP pipeline asset and makes it the project's
-        /// render pipeline. Mobile numbers come from the Godot budget
-        /// (docs/UNISOC_BUDGET.md) so the two projects stay comparable.
+        /// render pipeline. Conservative mobile settings are applied before the
+        /// runtime device profile adjusts its supported quality knobs.
         /// </summary>
         private static UniversalRenderPipelineAsset EnsureRenderPipeline()
         {
@@ -227,25 +226,23 @@ namespace BattleHorizons.EditorTools
                         material.SetColor("_BaseColor", Color.white);
                         material.enableInstancing = true;
                     }),
-                ["chunk"] = EnsureMaterial(ChunkMaterialPath, "Universal Render Pipeline/Lit",
+                ["chunk"] = EnsureMaterial(ChunkMaterialPath, "BattleHorizons/Radius Clipped Lit",
                     material =>
                     {
-                        // Vertex colours ARE the greybox palette (port of the
-                        // unshaded terrain_greybox.gdshader).
-                        material.EnableKeyword("_VERTEX_COLOR");
+                        material.SetFloat("_UseVertexColor", 1f);
                         material.SetFloat("_Smoothness", 0.05f);
                         material.SetFloat("_Metallic", 0f);
                         material.enableInstancing = true;
                     }),
-                ["road"] = EnsureMaterial(RoadMaterialPath, "Universal Render Pipeline/Lit",
+                ["road"] = EnsureMaterial(RoadMaterialPath, "BattleHorizons/Radius Clipped Lit",
                     material =>
                     {
-                        material.EnableKeyword("_VERTEX_COLOR");
+                        material.SetFloat("_UseVertexColor", 1f);
                         material.SetFloat("_Smoothness", 0.12f);
                         material.SetFloat("_Metallic", 0f);
                         material.enableInstancing = true;
                     }),
-                ["water"] = EnsureMaterial(WaterMaterialPath, "Universal Render Pipeline/Lit",
+                ["water"] = EnsureMaterial(WaterMaterialPath, "BattleHorizons/Radius Clipped Lit",
                     material =>
                     {
                         material.SetColor("_BaseColor", new Color(0.20f, 0.44f, 0.50f, 1f));
@@ -409,7 +406,7 @@ namespace BattleHorizons.EditorTools
             controller.center = new Vector3(0f, 0.9f, 0f);
             var motor = player.AddComponent<ThirdPersonMotor>();
 
-            // Spawn on the Godot spawn point, 3 m above the ground.
+            // Start near the committed island spawn point, above the ground.
             var spawn = SiranMapConfig.SpawnPoint;
             player.transform.position = new Vector3(spawn.x, spawn.y + 2f, spawn.z);
 
@@ -509,9 +506,8 @@ namespace BattleHorizons.EditorTools
             });
             PlayerSettings.SetMobileMTRendering(BuildTargetGroup.Android, true);
 
-            // Android texture compression: ASTC first, ETC2 as the fallback for
-            // devices that predate it. Matches the Godot project's
-            // import_etc2_astc = true rule.
+            // Android texture compression: ASTC first, ETC2 as the fallback on
+            // devices whose GPU does not support ASTC.
             EditorUserBuildSettings.androidBuildSubtarget = MobileTextureSubtarget.ASTC;
             EditorUserBuildSettings.androidBuildSystem = AndroidBuildSystem.Gradle;
 

@@ -4,12 +4,8 @@ using UnityEngine.SceneManagement;
 namespace BattleHorizons.Core
 {
     /// <summary>
-    /// The single entry point of the game.
-    ///
-    /// Mirrors the role of the Godot project's `PerfManager` autoload + boot
-    /// scene: pick a quality profile from the device, apply it, then hand over to
-    /// the first real scene (main menu, or straight into the Siran Island test
-    /// scene when launched with `-bhScene=gameplay`).
+    /// Single entry point: choose a quality profile, apply it, then load the
+    /// first scene (normally the main menu, or a test scene via `-bhScene`).
     ///
     /// Scenes are referenced by *name* through <see cref="SceneNames"/> rather than
     /// by index so a missing scene fails with a readable message instead of
@@ -56,7 +52,7 @@ namespace BattleHorizons.Core
 
             if (Application.isMobilePlatform)
             {
-                // The Godot build locks landscape (SCREEN_SENSOR_LANDSCAPE).
+                // Keep mobile gameplay in landscape while allowing either orientation.
                 Screen.orientation = ScreenOrientation.AutoRotation;
                 Screen.autorotateToLandscapeLeft = true;
                 Screen.autorotateToLandscapeRight = true;

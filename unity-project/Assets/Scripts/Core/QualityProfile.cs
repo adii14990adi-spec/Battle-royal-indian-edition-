@@ -14,10 +14,9 @@ namespace BattleHorizons.Core
     /// <summary>
     /// Runtime quality selection and application.
     ///
-    /// The Godot project pinned one conservative profile for a Unisoc T606
-    /// (docs/UNISOC_BUDGET.md). The Unity port keeps that as <see cref="Low"/>
-    /// and adds <see cref="High"/> for the mid/high Android range, then picks
-    /// between them from measured device facts instead of guessing:
+    /// The Low profile targets entry-level Android hardware; High is intended
+    /// for mid/high devices. Selection uses reported device facts rather than
+    /// guessing:
     ///
     ///   * <see cref="SystemInfo.systemMemorySize"/> (MB)  — 8 GB baseline = 7000+
     ///   * <see cref="SystemInfo.processorCount"/>
@@ -47,7 +46,7 @@ namespace BattleHorizons.Core
         /// <summary>Chooses a profile from device facts. Pure function of its inputs so it is testable.</summary>
         public static QualityProfile Detect(int systemMemoryMb, int processorCount, int graphicsMemoryMb)
         {
-            // The Godot baseline (Unisoc T606, 4 GB) must land on Low.
+            // A 4 GB Unisoc T606-class device must land on Low.
             var memoryOk = systemMemoryMb >= 5500;
             var coresOk = processorCount >= 8;
             // graphicsMemoryMb is 0 on most Android GLES drivers; treat 0 as "unknown, do not veto".
@@ -113,7 +112,7 @@ namespace BattleHorizons.Core
         }
 
         /// <summary>
-        /// Frame pacing, ported from `application/run/max_fps=30` in project.godot.
+        /// Apply the selected frame pacing target on mobile and desktop.
         /// Low targets 30 (the Unisoc floor), High targets 60 when the display can.
         /// Application.targetFrameRate caps the *rendered* frames, which is what
         /// keeps a 1-core Mali from thermally throttling within minutes.
@@ -140,13 +139,12 @@ namespace BattleHorizons.Core
         public static float RenderScale(QualityProfile profile) =>
             profile == QualityProfile.Low ? 0.85f : 1.0f;
 
-        /// <summary>Distance at which world chunks stop being drawn, per profile.</summary>
+        /// <summary>Camera/fog distance per profile; independent of the 50 m streaming disk.</summary>
         public static float ViewDistance(QualityProfile profile) =>
             profile == QualityProfile.Low ? 900f : 1600f;
 
-        /// <summary>Chunk streaming radius per profile (the map is 500 m chunks).</summary>
-        public static float StreamRadius(QualityProfile profile) =>
-            profile == QualityProfile.Low ? 1100f : 1600f;
+        /// <summary>Fixed world-space visual streaming radius, independent of quality.</summary>
+        public static float StreamRadius(QualityProfile profile) => 50f;
 
         /// <summary>Shadow distance per profile, kept in sync with QualitySettings.asset.</summary>
         public static float ShadowDistance(QualityProfile profile) =>

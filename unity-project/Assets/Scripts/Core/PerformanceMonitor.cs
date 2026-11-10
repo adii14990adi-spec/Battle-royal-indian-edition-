@@ -5,7 +5,7 @@ using UnityEngine.Profiling;
 namespace BattleHorizons.Core
 {
     /// <summary>
-    /// Port of `scripts/autoload/perf_manager.gd`.
+    /// Runtime telemetry for frame pacing, batches, set-pass calls and memory.
     ///
     /// Every second it logs frame time, URP set-pass calls, batches, triangles,
     /// Unity's managed-heap use, reserved memory and the active profile under the

@@ -6,13 +6,8 @@ using UnityEngine.InputSystem;
 namespace BattleHorizons.UI
 {
     /// <summary>
-    /// On-screen telemetry, port of `scripts/ui/world_debug_hud.gd`.
-    ///
-    /// The Godot HUD existed because a map that failed to bake looked identical to
-    /// a map that worked (the "MISSING BAKE" incident in the README). The same
-    /// information is exposed here for the same reason: chunk counts, zone under
-    /// the camera, water surface and frame time, all from live state rather than
-    /// from a claim.
+    /// On-screen runtime telemetry for device testing and world-streaming checks:
+    /// resident chunk counts, the zone under the camera, water height and frame time.
     ///
     /// IMGUI (<see cref="OnGUI"/>) on purpose: it survives a missing font, needs no
     /// canvas, and is stripped out of release builds by the BH_DEBUG_HUD define.
@@ -52,8 +47,7 @@ namespace BattleHorizons.UI
             var touchscreen = Touchscreen.current;
             if (touchscreen != null && touchscreen.touches.Count > 2)
             {
-                // Three fingers toggles the HUD, the same gesture the Godot debug
-                // HUD used so testers do not need a keyboard on the phone.
+                // Three fingers toggle the HUD on phones without a keyboard.
                 var held = 0;
                 for (var i = 0; i < touchscreen.touches.Count; i++)
                 {

@@ -82,9 +82,8 @@ namespace BattleHorizons.EditorTools
                     return;
                 }
 
-                var outputPath = Path.Combine(OutputDirectory,
-                    androidAppBundle ? AabName : ApkName);
-                Directory.CreateDirectory(OutputDirectory);
+                var outputPath = ResolveOutputPath(androidAppBundle);
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? OutputDirectory);
 
                 var options = new BuildPlayerOptions
                 {
@@ -132,6 +131,21 @@ namespace BattleHorizons.EditorTools
             }
         }
 
+        private static string ResolveOutputPath(bool androidAppBundle)
+        {
+            var projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? Directory.GetCurrentDirectory();
+            var configured = Environment.GetEnvironmentVariable("BH_BUILD_OUTPUT");
+            if (!androidAppBundle && !string.IsNullOrWhiteSpace(configured))
+            {
+                return Path.GetFullPath(Path.IsPathRooted(configured)
+                    ? configured
+                    : Path.Combine(projectRoot, configured));
+            }
+
+            return Path.GetFullPath(Path.Combine(projectRoot, OutputDirectory,
+                androidAppBundle ? AabName : ApkName));
+        }
+
         private static bool Prepare(out string[] scenes)
         {
             scenes = EditorBuildSettings.scenes.Where(scene => scene.enabled).Select(scene => scene.path).ToArray();
@@ -156,7 +170,10 @@ namespace BattleHorizons.EditorTools
                 return false;
             }
 
-            ApplySigning();
+            if (!ApplySigning())
+            {
+                return false;
+            }
 
             if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
             {
@@ -172,15 +189,14 @@ namespace BattleHorizons.EditorTools
         }
 
         /// <summary>Keystore from the environment only — never from a committed file.</summary>
-        private static void ApplySigning()
+        private static bool ApplySigning()
         {
             var keystore = Environment.GetEnvironmentVariable("BH_KEYSTORE_PATH");
-            if (string.IsNullOrEmpty(keystore))
+            if (string.IsNullOrWhiteSpace(keystore))
             {
                 PlayerSettings.Android.useCustomKeystore = false;
-                Debug.LogWarning("[bh][build] no BH_KEYSTORE_PATH set: the APK will be debug-signed. " +
-                                 "Do not publish it; configure the four BH_* secrets in CI.");
-                return;
+                Debug.LogWarning("[bh][build] no release keystore configured: producing a debug-signed test APK; do not publish it");
+                return true;
             }
 
             // Relative paths are resolved against the project root, because batch
@@ -191,18 +207,23 @@ namespace BattleHorizons.EditorTools
                 keystore = Path.GetFullPath(Path.Combine(projectRoot, keystore));
             }
 
-            if (!File.Exists(keystore))
+            var keystorePass = Environment.GetEnvironmentVariable("BH_KEYSTORE_PASS");
+            var aliasName = Environment.GetEnvironmentVariable("BH_KEYALIAS_NAME");
+            var aliasPass = Environment.GetEnvironmentVariable("BH_KEYALIAS_PASS");
+            if (!File.Exists(keystore) || string.IsNullOrEmpty(keystorePass) ||
+                string.IsNullOrEmpty(aliasName) || string.IsNullOrEmpty(aliasPass))
             {
-                Debug.LogError("[bh][build] BH_KEYSTORE_PATH points at a file that does not exist: " + keystore);
-                return;
+                Debug.LogError("[bh][build] release signing was requested but the keystore or one of the BH_* signing values is missing");
+                return false;
             }
 
             PlayerSettings.Android.useCustomKeystore = true;
             PlayerSettings.Android.keystoreName = keystore;
-            PlayerSettings.Android.keystorePass = Environment.GetEnvironmentVariable("BH_KEYSTORE_PASS") ?? string.Empty;
-            PlayerSettings.Android.keyaliasName = Environment.GetEnvironmentVariable("BH_KEYALIAS_NAME") ?? string.Empty;
-            PlayerSettings.Android.keyaliasPass = Environment.GetEnvironmentVariable("BH_KEYALIAS_PASS") ?? string.Empty;
-            Debug.Log("[bh][build] using the release keystore from BH_KEYSTORE_PATH (values are not logged)");
+            PlayerSettings.Android.keystorePass = keystorePass;
+            PlayerSettings.Android.keyaliasName = aliasName;
+            PlayerSettings.Android.keyaliasPass = aliasPass;
+            Debug.Log("[bh][build] using the configured release keystore (values are not logged)");
+            return true;
         }
     }
 }

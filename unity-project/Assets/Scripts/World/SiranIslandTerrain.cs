@@ -4,20 +4,13 @@ using UnityEngine;
 namespace BattleHorizons.World
 {
     /// <summary>
-    /// Builds a Unity <see cref="Terrain"/> from the converted Godot height grid.
+    /// Builds a Unity <see cref="Terrain"/> and heightmap collider from the
+    /// committed 401 x 401 island data. The collider remains active for gameplay;
+    /// the full-map Terrain renderer is always hidden so it cannot bypass the
+    /// streamed terrain mesh's strict 50 m visual radius.
     ///
-    /// Why Terrain and not 64 mesh chunks: URP's mobile path plus Unity's Terrain
-    /// gives height-field collision, camera-relative LOD and basemap culling for
-    /// free, and the collision is the cheapest thing Unity has for ground (the
-    /// Godot side's `HeightMapShape3D` choice, for the same reason — see
-    /// docs/PHASE3_WORLD.md). The chunk *meshes* still exist as
-    /// <see cref="SiranChunkStreamer"/>'s visual ring when a mesh is wanted.
-    ///
-    /// The greybox look is preserved by baking the Godot vertex colours into a
-    /// 1:1 albedo texture on a URP Terrain/Lit material: 401 x 401 RGBA32 is
-    /// 643 KB before compression, and it means no terrain layers, no splat maps
-    /// and no detail textures — the same "one material, zero textures" budget the
-    /// Godot build kept.
+    /// The greybox palette is baked into a compact albedo texture for the
+    /// non-rendered Terrain component. Streamed mesh tiles use original colours.
     /// </summary>
     public static class SiranIslandTerrainBuilder
     {
@@ -37,8 +30,8 @@ namespace BattleHorizons.World
 
             // --- heights ---------------------------------------------------------
             // Unity stores normalised heights in the range [terrainY, terrainY + size.y]
-            // with a bottom-left origin, ix fastest. Godot's grid is already
-            // bottom-left origin (ix fastest, iz grows toward +Z) so only the
+            // with a bottom-left origin, ix fastest. The Unity data uses the same
+            // row-major convention (ix fastest, iz grows toward +Z), so only the
             // Y remap is needed.
             var minHeight = Mathf.Min(data.MinHeightM, SiranMapConfig.SeaLevel - 1f);
             var maxHeight = Mathf.Max(data.MaxHeightM, SiranMapConfig.MaxHeightM);
@@ -51,7 +44,7 @@ namespace BattleHorizons.World
                 for (var ix = 0; ix < HeightmapResolution; ix++)
                 {
                     var worldX = (float)ix / (HeightmapResolution - 1) * size;
-                    // Convert to the Godot-centred space to sample the grid.
+                    // Convert to the island's centred world space to sample the grid.
                     var height = data.SampleHeight(worldX - data.HalfExtentM, worldZ - data.HalfExtentM);
                     heightmap[iz, ix] = Mathf.Clamp01((height - minHeight) / heightRange);
                 }
@@ -110,9 +103,10 @@ namespace BattleHorizons.World
             var collider = go.AddComponent<TerrainCollider>();
             collider.terrainData = terrainData;
 
-            // Terrain mesh is centred on its own pivot; the map is centred on the
-            // origin so the pivot only needs the vertical offset.
-            go.transform.position = new Vector3(0f, TerrainOriginY(data), 0f);
+            // Unity TerrainData starts at its local lower-left corner. Offset the
+            // origin so its 0..4000 m footprint matches the island's -2000..2000 m
+            // world-space grid.
+            go.transform.position = new Vector3(-data.HalfExtentM, TerrainOriginY(data), -data.HalfExtentM);
 
             var renderer = go.GetComponent<Terrain>();
             if (terrainMaterial != null && renderer != null)
@@ -163,63 +157,6 @@ namespace BattleHorizons.World
             albedo.Apply(updateMipmaps: true, makeNoLongerReadable: true);
         }
 
-        /// <summary>
-        /// Fallback for when Unity's Terrain is not wanted (e.g. a device that
-        /// dislikes terrain basemaps): one Mesh for the whole island.
-        /// 160 801 vertices / 320 000 triangles is under the 16-bit index limit at
-        /// 51 x 51 per chunk but not island-wide, so this uses 32-bit indices and is
-        /// meant for tests and low-detail fallback only.
-        /// </summary>
-        public static Mesh BuildWholeIslandMesh(SiranIslandData data, int stride = 1)
-        {
-            var size = data.Size;
-            var step = Mathf.Max(1, stride);
-            var vertsPerSide = (size - 1) / step + 1;
-            var vertices = new Vector3[vertsPerSide * vertsPerSide];
-            var colors = new Color32[vertices.Length];
-            var indices = new int[(vertsPerSide - 1) * (vertsPerSide - 1) * 6];
-
-            for (var iz = 0; iz < vertsPerSide; iz++)
-            {
-                for (var ix = 0; ix < vertsPerSide; ix++)
-                {
-                    var gx = Mathf.Min(ix * step, size - 1);
-                    var gz = Mathf.Min(iz * step, size - 1);
-                    var index = iz * vertsPerSide + ix;
-                    vertices[index] = new Vector3(
-                        -data.HalfExtentM + gx * data.SpacingM,
-                        data.HeightAt(gx, gz),
-                        -data.HalfExtentM + gz * data.SpacingM);
-                    colors[index] = data.ColorAt(gx, gz);
-                }
-            }
-
-            var cursor = 0;
-            for (var iz = 0; iz < vertsPerSide - 1; iz++)
-            {
-                for (var ix = 0; ix < vertsPerSide - 1; ix++)
-                {
-                    var topLeft = iz * vertsPerSide + ix;
-                    var topRight = topLeft + 1;
-                    var bottomLeft = topLeft + vertsPerSide;
-                    var bottomRight = bottomLeft + 1;
-                    indices[cursor++] = topLeft;
-                    indices[cursor++] = topRight;
-                    indices[cursor++] = bottomLeft;
-                    indices[cursor++] = topRight;
-                    indices[cursor++] = bottomRight;
-                    indices[cursor++] = bottomLeft;
-                }
-            }
-
-            var mesh = new Mesh { name = "SiranIslandWholeMesh", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
-            mesh.vertices = vertices;
-            mesh.colors32 = colors;
-            mesh.triangles = indices;
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            return mesh;
-        }
     }
 
     /// <summary>
@@ -234,7 +171,7 @@ namespace BattleHorizons.World
         public static float ActiveTerrainPixelError => HighQuality ? 5f : 8f;
         public static float ActiveBasemapDistance => HighQuality ? 600f : 300f;
         public static float ActiveViewDistance => HighQuality ? 1600f : 900f;
-        public static float ActiveStreamRadius => HighQuality ? 1600f : 1100f;
+        public static float ActiveStreamRadius => SiranChunkStreamer.DefaultStreamRadiusM;
         public static float ActiveShadowDistance => HighQuality ? 120f : 60f;
     }
 }

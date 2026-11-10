@@ -1,14 +1,9 @@
 {
   "schema_version": 1,
-  "generated_by": "processing/unity/convert_godot_island.py",
+  "generated_by": "Committed Unity Siran Island data",
   "provenance": {
-    "godot_scene": "scenes/world/siran_island_baked.tscn",
-    "godot_scene_sha256": "67e032c99251a6517bf1fc2b351607a9ce4fb72bb8f4dd843bd54f61447b6de4",
-    "godot_summary": "resources/world/baked/siran_island_summary.tres",
-    "godot_generator_version": 3,
-    "godot_noise_seed": 20261106,
-    "godot_baked_at_utc": "2026-11-07T06:32:22",
-    "note": "Converted from the committed Godot bake. The island geometry is reused as-is: no terrain is regenerated, so the Unity and Godot maps are the same map."
+    "historical_source": "Siran Island greybox data, originally converted from the project predecessor before the repository became Unity-only",
+    "note": "These Unity Resources are the source of truth. No external engine project or conversion step is required."
   },
   "grid": {
     "size": 401,
@@ -191,8 +186,8 @@
     },
     "terrain_vertices": 166464,
     "terrain_triangles": 320000,
-    "godot_chunk_count": 64,
-    "spawn_ground_height_m": 17.5249
+    "spawn_ground_height_m": 17.5249,
+    "source_tile_count": 64
   },
   "warnings": [],
   "river": {

@@ -6,8 +6,7 @@ using UnityEngine;
 namespace BattleHorizons.Tests.EditMode
 {
     /// <summary>
-    /// Asserts the converted island is the Godot island: same grid, same
-    /// extents, same zone pads on land, same winding.
+    /// Checks the committed island dataset: grid, extents, zone pads and mesh winding.
     ///
     /// These run in edit mode (no scene, no device) so the map can be checked in
     /// CI on a machine with no Unity licence for a player build.
@@ -23,7 +22,7 @@ namespace BattleHorizons.Tests.EditMode
         }
 
         [Test]
-        public void GridMatchesTheGodotBake()
+        public void GridMatchesTheCommittedIslandMetadata()
         {
             Assert.AreEqual(401, _data.Size, "401 samples across 400 cells at 10 m");
             Assert.AreEqual(10f, _data.SpacingM, 0.001f);
@@ -37,7 +36,7 @@ namespace BattleHorizons.Tests.EditMode
         [Test]
         public void HeightsAreInTheBakedRange()
         {
-            // siran_island_summary.tres: min -38.0, max 64.8359, sea level 0
+            // siran_island_terrain.json: min -38.0, max 64.8359, sea level 0
             Assert.AreEqual(-38f, _data.MinHeightM, 0.01f);
             Assert.AreEqual(64.8359f, _data.MaxHeightM, 0.01f);
             Assert.AreEqual(0f, _data.SeaLevelM, 0.001f);
@@ -103,7 +102,7 @@ namespace BattleHorizons.Tests.EditMode
         [Test]
         public void RoadRibbonsWereConverted()
         {
-            // The Godot bake has 18 road_chunk_* meshes with 4212 triangles total.
+            // The committed road data contains 18 ribbons and 4,212 triangles.
             Assert.AreEqual(18, _data.RoadRibbons.Count);
             var triangles = _data.RoadRibbons.Sum(ribbon => ribbon.Indices.Length / 3);
             Assert.AreEqual(4212, triangles);
@@ -130,11 +129,10 @@ namespace BattleHorizons.Tests.EditMode
         }
 
         [Test]
-        public void ChunkMeshWindingMatchesGodot()
+        public void ChunkMeshWindingFacesUp()
         {
-            // Godot and Unity both treat a clockwise-from-the-front triangle as
-            // front-facing, so the bake's winding is reused untouched. A quad
-            // wound the other way is invisible from above - the classic
+            // The mesh winding is clockwise from above. A quad wound the other
+            // way is invisible from above - the classic
             // "island disappeared" bug.
             var vertices = new System.Collections.Generic.List<Vector3>(2601);
             var normals = new System.Collections.Generic.List<Vector3>(2601);
@@ -182,7 +180,7 @@ namespace BattleHorizons.Tests.EditMode
         public void ZoneLookupPrefersTheInnermostFootprint()
         {
             // The runway sits inside the urban feather band; the smaller footprint
-            // must win, which is what `get_zone_at` did in the Godot config.
+            // must win over the broader urban feather band.
             var zone = SiranMapConfig.ZoneAt(120f, 1480f);
             Assert.IsNotNull(zone);
             Assert.AreEqual("aircraft_industry", zone.Id);

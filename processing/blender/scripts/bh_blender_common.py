@@ -89,7 +89,7 @@ def set_scene_units() -> None:
     scene.unit_settings.system = "METRIC"
     scene.unit_settings.scale_length = 1.0
     scene.unit_settings.length_unit = "METERS"
-    scene.render.fps = 30  # the Godot project's physics/render floor
+    scene.render.fps = 30  # mobile animation-preview target
 
 
 def deselect_all() -> None:

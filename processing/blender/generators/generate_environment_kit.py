@@ -16,9 +16,9 @@ Writes into `processing/blender/output/environment/`:
     + one `*_collision` mesh per asset that needs collision
     + asset_manifest.json (sizes, triangle counts, hashes)
 
-Why these assets: they are the modular pieces the five Siran Island zones need
-(industrial north-west, urban centre, graveyard east, airfield south, docks
-south-west — see docs/PHASE3_WORLD.md §2). Nothing here pretends to be a finished
+Why these assets: they are modular pieces for the five configured Siran Island
+zones (industrial, urban, graveyard, airfield and docks). Nothing here pretends
+to be a finished
 art pass: they are greybox kit pieces with correct scale, origins, UVs, PBR
 material parameters and collision, which is what the map needs next.
 

@@ -1,18 +1,14 @@
-name: Unity (URP) validation
+name: Unity 6 Android validation
 
-# CI for the Unity 6 URP port in `unity-project/`.
+# Unity-only CI for the Unity 6 URP project in `unity-project/`.
 #
-# It is intentionally separate from `build.yml` (the Godot APK workflow), which is
-# untouched and still builds the Godot game. Nothing here writes to the Godot
-# tree.
+#   structure -> Unity layout, C# static analysis, Blender pipeline tests
+#   data      -> integrity checks for the committed Unity Siran Island data
+#   assets    -> Blender asset pipeline validation
+#   unity     -> configure, test, validate, and optionally build a test APK
 #
-#   structure  -> Godot files intact + Unity layout + docs + no secrets   (~20 s)
-#   data       -> map conversion is reproducible and matches the bake     (~30 s)
-#   assets     -> Blender pipeline: generators (if Blender exists) then
-#                 validators + unit tests                                 (~1 min)
-#   unity      -> project opens, configures, validates, runs edit-mode
-#                 tests, and (optionally) builds an APK. Requires a Unity
-#                 licence, so it SKIPS cleanly when the secret is absent.
+# Unity editor jobs require a UNITY_LICENSE (or email/password) secret. Static
+# checks still run when that secret is absent, and the workflow reports the skip.
 #
 # Honesty rules this workflow follows:
 #   * a step that cannot run says SKIP and names what is missing — it never
@@ -24,23 +20,23 @@ name: Unity (URP) validation
 
 on:
   push:
-    branches: [main, develop, 'arena/**', 'migration/**']
+    branches: [main, develop, 'arena/**']
     paths:
       - 'unity-project/**'
       - 'processing/**'
       - 'docs/**'
-      - 'assets/**'
-      - 'scripts/**'
-      - 'scenes/**'
-      - 'resources/**'
-      - '.github/workflows/unity.yml'
+      - '.github/**'
+      - '.gitignore'
+      - '.gitattributes'
   pull_request:
     branches: [main, develop]
     paths:
       - 'unity-project/**'
       - 'processing/**'
       - 'docs/**'
-      - '.github/workflows/unity.yml'
+      - '.github/**'
+      - '.gitignore'
+      - '.gitattributes'
   workflow_dispatch:
     inputs:
       build_apk:
@@ -71,44 +67,22 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install static-analysis dependencies
         run: python3 -m pip install --disable-pip-version-check tree-sitter tree-sitter-c-sharp
-      - name: Repository structure (Godot preserved, Unity added)
+      - name: Unity-only repository structure
         run: python3 processing/unity/validate_structure.py
       - name: C# static validation
         run: python3 processing/unity/validate_csharp.py
       - name: Blender pipeline unit tests
         run: python3 -m unittest discover -s processing/blender/tests -v
-      - name: The Godot project still passes its own gates
-        run: |
-          bash tools/verify_phase1.sh
-          bash tools/verify_phase3.sh
 
   data:
-    name: Map data conversion
+    name: Unity island data integrity
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Port the island layout from GDScript to C#
-        run: |
-          python3 processing/unity/port_siran_config.py --check || {
-            echo "::error::SiranMapConfig.cs is out of date with scripts/world/siran_map_config.gd"
-            echo "::error::fix: python3 processing/unity/port_siran_config.py && git add unity-project/Assets/Scripts/World/SiranMapConfig.cs"
-            exit 1
-          }
-
-      - name: Convert the Godot bake and compare with what is committed
-        run: |
-          python3 processing/unity/convert_godot_island.py --check || {
-            echo "::error::the Unity map data does not match scenes/world/siran_island_baked.tscn"
-            echo "::error::fix: python3 processing/unity/convert_godot_island.py && git add unity-project/Assets/Resources"
-            exit 1
-          }
-
-      - name: Verify the converted data sample-for-sample against the bake
+          lfs: true
+      - name: Validate committed map blobs, dimensions and hashes
         run: python3 processing/unity/validate_unity_map.py
 
   assets:
@@ -124,9 +98,8 @@ jobs:
       - name: Pipeline unit tests (no Blender needed)
         run: python3 -m unittest discover -s processing/blender/tests -v
 
-      # Blender is a 300 MB download. It is fetched only when the caller asks for
-      # it (or when the workflow is dispatched manually), so ordinary pushes stay
-      # fast; the validators below run either way.
+      # Do not download Blender on ordinary CI runs. Generators execute only if
+      # a Blender binary is already on the runner; validators run in either case.
       - name: Locate Blender
         id: blender
         run: |
@@ -204,7 +177,7 @@ jobs:
             echo "::notice::Unity credentials are configured; the editor jobs will run"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::No UNITY_LICENSE / UNITY_EMAIL+UNITY_PASSWORD secret. The Unity editor steps are SKIPPED - this run does NOT prove the project opens in Unity. See docs/migration/REPORT.md (blocked items)."
+            echo "::warning::No UNITY_LICENSE / UNITY_EMAIL+UNITY_PASSWORD secret. The Unity editor steps are SKIPPED - this run does NOT prove the project opens in Unity."
           fi
 
       - name: Skip notice
@@ -216,10 +189,10 @@ jobs:
             echo "No Unity licence secret is set for this repository, so the project could not be"
             echo "opened, configured, tested or built here. What *was* verified instead:"
             echo ""
-            echo "* the Godot project is unchanged and still passes its own gates"
-            echo "* the Unity map data matches the Godot bake sample for sample"
+            echo "* the repository contains the Unity project and no legacy Godot project files"
+            echo "* the committed Unity map data passes its integrity and format checks"
             echo "* every C# file parses and the project settings are consistent"
-            echo "* the Blender pipeline validates"
+            echo "* the Blender pipeline unit tests and validators run"
             echo ""
             echo "To enable these jobs, add \`UNITY_LICENSE\` (or \`UNITY_EMAIL\` + \`UNITY_PASSWORD\`)."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -229,14 +202,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.UNITY_PROJECT_PATH }}/Library
-          key: unity-library-${{ env.UNITY_VERSION }}-${{ hashFiles('unity-project/Packages/manifest.json', 'unity-project/Assets/Scripts/**/*.cs') }}
+          key: unity-library-${{ env.UNITY_VERSION }}-${{ hashFiles('unity-project/Packages/manifest.json', 'unity-project/Assets/**/*', 'unity-project/ProjectSettings/**/*') }}
           restore-keys: |
             unity-library-${{ env.UNITY_VERSION }}-
 
       - name: Configure the project (URP, Android, scenes, materials)
         if: steps.licence.outputs.available == 'true'
         uses: game-ci/unity-builder@v4
-        env: &unity_env
+        env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
@@ -253,7 +226,10 @@ jobs:
       - name: Edit-mode tests
         if: steps.licence.outputs.available == 'true'
         uses: game-ci/unity-test-runner@v4
-        env: *unity_env
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -264,7 +240,10 @@ jobs:
       - name: Play-mode tests
         if: steps.licence.outputs.available == 'true'
         uses: game-ci/unity-test-runner@v4
-        env: *unity_env
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -275,7 +254,10 @@ jobs:
       - name: Project validation (batch mode)
         if: steps.licence.outputs.available == 'true'
         uses: game-ci/unity-builder@v4
-        env: *unity_env
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -290,8 +272,11 @@ jobs:
         if: steps.licence.outputs.available == 'true' && (github.event_name == 'workflow_dispatch' && inputs.build_apk || startsWith(github.ref, 'refs/tags/v'))
         uses: game-ci/unity-builder@v4
         env:
-          <<: *unity_env
-          BH_KEYSTORE_PATH: ${{ env.UNITY_PROJECT_PATH }}/ci-keystore.jks
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          BH_BUILD_OUTPUT: ${{ github.workspace }}/build/battle-horizons.apk
+          BH_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'ci-keystore.jks' || '' }}
           BH_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           BH_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME }}
           BH_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS }}
@@ -336,8 +321,8 @@ jobs:
           size=$(stat -c %s "$apk")
           echo "APK: $apk ($size bytes)"
           echo "::notice::APK size $size bytes"
-          # The Godot APK budget is 120 MB (docs/UNISOC_BUDGET.md); the Unity
-          # build starts from a bigger baseline, so this only catches accidents.
+          # Catch a missing/implausibly small package; Unity size still needs
+          # review against the current Android budget before release.
           if [ "$size" -lt 1000000 ]; then
             echo "::error::the APK is $size bytes - that is not a real build"
             exit 1

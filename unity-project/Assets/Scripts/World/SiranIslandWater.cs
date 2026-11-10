@@ -5,31 +5,18 @@ using UnityEngine.Rendering;
 namespace BattleHorizons.World
 {
     /// <summary>
-    /// Sea, lake and river surfaces, ported from `scenes/world/siran_island.tscn`
-    /// + `assets/shaders/water_surface.gdshader`.
-    ///
-    /// Opacity and geometry are a 1:1 port: one 4600 m sea plane at sea level, one
-    /// 1040 x 760 lake plane at 9 m, and the river ribbon rebuilt from the same
-    /// descending surface profile. The material is URP Lit with the ported tiling
-    /// normal map rather than a bespoke shader, deliberately:
-    ///
-    ///   * the shader was `unshaded` in Godot because the Compatibility renderer
-    ///     re-shades per light; URP's forward renderer with one directional light
-    ///     costs the same and is a shader URP can batch/strip properly,
-    ///   * it keeps water on the same SRP batcher as terrain, so the draw-call
-    ///     budget does not grow.
-    ///
-    /// The ripple *motion* is preserved by scrolling the normal map's UVs in
-    /// <see cref="Update"/>, which is what `TIME` did in the original shader.
+    /// Builds the sea, lake and river surfaces from the committed Unity map data.
+    /// The opaque material uses the streamed-radius shader and a small scrolling
+    /// normal map, keeping the water inside the same 50 m visual disk as terrain.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class SiranIslandWater : MonoBehaviour
     {
-        [Header("Geometry (metres, ported from the Godot world scene)")]
+        [Header("Geometry (metres)")]
         [SerializeField] private float seaPlaneSize = 4600f;
         [SerializeField] private Vector2 lakePlaneSize = new Vector2(1040f, 760f);
 
-        [Header("Ripple scroll (port of the water_surface shader uniforms)")]
+        [Header("Ripple scroll")]
         [SerializeField] private float scrollSpeedA = 0.03f;
         [SerializeField] private float scrollSpeedB = 0.019f;
         [SerializeField] private Vector2 oceanUvScale = new Vector2(0.022f, 0.022f);
@@ -118,8 +105,8 @@ namespace BattleHorizons.World
                 return;
             }
 
-            // Two layers scrolling at different rates over the same tiling normal
-            // map, exactly like the original shader's A/B samples.
+            // Keep independent UV offsets for the surface and normal map; the
+            // normal-map offset drives the visible ripple motion.
             var time = Time.time;
             var offsetA = new Vector4(
                 time * scrollSpeedA,
@@ -138,6 +125,7 @@ namespace BattleHorizons.World
                 var scale = renderer.gameObject.name == "RiverSurface" ? riverUvScale : oceanUvScale;
                 _block.Clear();
                 _block.SetVector("_BaseMap_ST", new Vector4(scale.x, scale.y, offsetA.x, offsetA.y));
+                _block.SetVector("_BumpMap_ST", new Vector4(scale.x, scale.y, offsetA.z, offsetA.w));
                 renderer.SetPropertyBlock(_block);
             }
         }
