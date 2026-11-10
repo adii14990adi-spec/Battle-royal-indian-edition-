@@ -25,9 +25,11 @@ GitHub Actions uses
 static checks and, when a Unity license is available, configures the project,
 runs EditMode and PlayMode tests, validates it and can build an APK. To request
 the APK, manually dispatch **Unity 6 Android validation** with `build_apk: true`.
-Unity editor steps require `UNITY_LICENSE`, or `UNITY_EMAIL` plus
-`UNITY_PASSWORD`. The workflow reports a skip if it cannot run Unity; it never
-claims a skipped build as success.
+Unity editor steps require `UNITY_LICENSE`, `UNITY_EMAIL`, and
+`UNITY_PASSWORD` for a Personal license, or `UNITY_SERIAL`, `UNITY_EMAIL`, and
+`UNITY_PASSWORD` for a Professional license. Email/password alone are not enough.
+The workflow reports a skip when licensing inputs are missing; it never claims a
+skipped build as success.
 
 ## Siran Island and 50 m streaming
 

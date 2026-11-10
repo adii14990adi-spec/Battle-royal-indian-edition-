@@ -51,9 +51,11 @@ The single Unity workflow is
 [`.github/workflows/unity.yml`](.github/workflows/unity.yml). It runs the
 repository checks, validates the committed map data, exercises the Blender
 pipeline, configures the Unity project, runs EditMode/PlayMode tests and validates
-the project. Unity editor steps need the `UNITY_LICENSE` secret, or both
-`UNITY_EMAIL` and `UNITY_PASSWORD`; when these are unavailable, the workflow
-reports that the editor work was skipped rather than marking it tested.
+the project. Unity editor steps need `UNITY_LICENSE`, `UNITY_EMAIL`, and
+`UNITY_PASSWORD` for a Personal license, or `UNITY_SERIAL`, `UNITY_EMAIL`, and
+`UNITY_PASSWORD` for a Professional license. Email/password alone are not enough;
+when valid licensing inputs are unavailable, the workflow reports that editor
+work was skipped rather than marking it tested.
 
 To request an Android test APK, dispatch **Unity 6 Android validation** from the
 Actions tab and set `build_apk` to `true`. The editor job requires a Unity license.
