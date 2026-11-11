@@ -389,6 +389,8 @@ namespace BattleHorizons.EditorTools
             camera.tag = "MainCamera";
             camera.transform.position = new Vector3(0f, 2f, -8f);
 
+            MobileControlsBuilder.EnsureEventSystem();
+
             var menuObject = new GameObject("MainMenu");
             var menu = menuObject.AddComponent<MainMenuController>();
 
@@ -400,25 +402,7 @@ namespace BattleHorizons.EditorTools
             var path = ScenesFolder + "/Gameplay/SiranIsland.unity";
             var scene = NewScene(path);
 
-            var worldObject = new GameObject("World");
-            var builder = worldObject.AddComponent<SiranWorldBuilder>();
-            var serialized = new SerializedObject(builder);
-            serialized.FindProperty("terrainMaterial").objectReferenceValue = materials["terrain"];
-            serialized.FindProperty("chunkMaterial").objectReferenceValue = materials["chunk"];
-            serialized.FindProperty("waterMaterial").objectReferenceValue = materials["water"];
-            serialized.FindProperty("roadMaterial").objectReferenceValue = materials["road"];
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-
-            // A starting camera so the scene is inspectable on its own; play mode
-            // uses the player camera from PlayerTest when a player is present.
-            var camera = new GameObject("MainCamera");
-            camera.tag = "MainCamera";
-            var cameraComponent = camera.AddComponent<Camera>();
-            cameraComponent.farClipPlane = 1600f;
-            cameraComponent.backgroundColor = new Color(0.63f, 0.73f, 0.84f);
-            cameraComponent.clearFlags = CameraClearFlags.Skybox;
-            camera.transform.position = new Vector3(40f, 90f, -160f);
-            camera.transform.LookAt(new Vector3(40f, 20f, -30f));
+            PopulatePlayableIslandScene(materials);
 
             SaveScene(scene, path);
         }
@@ -428,6 +412,13 @@ namespace BattleHorizons.EditorTools
             var path = ScenesFolder + "/Test/PlayerTest.unity";
             var scene = NewScene(path);
 
+            PopulatePlayableIslandScene(materials);
+
+            SaveScene(scene, path);
+        }
+
+        private static void PopulatePlayableIslandScene(Dictionary<string, Material> materials)
+        {
             var worldObject = new GameObject("World");
             var builder = worldObject.AddComponent<SiranWorldBuilder>();
             var worldSerialized = new SerializedObject(builder);
@@ -472,6 +463,8 @@ namespace BattleHorizons.EditorTools
             worldSerialized.FindProperty("focusOverride").objectReferenceValue = cameraObject.transform;
             worldSerialized.ApplyModifiedPropertiesWithoutUndo();
 
+            MobileControlsBuilder.EnsureEventSystem();
+
             // Touch controls are generated at runtime by MobileControlsBuilder, so the
             // scene only needs the host that asks for them. Without this component the
             // build would have no on-screen input at all.
@@ -481,8 +474,6 @@ namespace BattleHorizons.EditorTools
 
             var hud = new GameObject("HUD");
             var hudComponent = hud.AddComponent<WorldDebugHud>();
-
-            SaveScene(scene, path);
         }
 
         private static void EnsureBuildSettings()

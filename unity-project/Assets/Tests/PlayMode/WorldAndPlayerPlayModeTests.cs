@@ -273,5 +273,40 @@ namespace BattleHorizons.Tests.PlayMode
             QualityProfiles.Apply(QualityProfile.Low);
             yield return null;
         }
+
+        [UnityTest]
+        public IEnumerator MainMenuBuildsEventSystemRaycasterAndButtons()
+        {
+            var menuRoot = new GameObject("MainMenu");
+            menuRoot.AddComponent<BattleHorizons.UI.MainMenuController>();
+            yield return null;
+
+            var eventSystem = Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>();
+            Assert.IsNotNull(eventSystem, "MainMenu must ensure an EventSystem exists in the scene");
+            Assert.IsNotNull(eventSystem.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>(),
+                "EventSystem must have InputSystemUIInputModule attached");
+
+            var canvas = menuRoot.GetComponentInChildren<Canvas>();
+            Assert.IsNotNull(canvas, "MainMenuCanvas must be created");
+            Assert.AreEqual(RenderMode.ScreenSpaceOverlay, canvas.renderMode);
+            Assert.IsNotNull(canvas.GetComponent<UnityEngine.UI.GraphicRaycaster>(),
+                "MainMenuCanvas must have a GraphicRaycaster");
+
+            var scaler = canvas.GetComponent<UnityEngine.UI.CanvasScaler>();
+            Assert.IsNotNull(scaler);
+            Assert.AreEqual(UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize, scaler.uiScaleMode);
+
+            var background = canvas.transform.Find("Background");
+            Assert.IsNotNull(background);
+            Assert.IsFalse(background.GetComponent<UnityEngine.UI.Image>().raycastTarget,
+                "Background image must not block raycasts");
+
+            var enterButton = canvas.transform.Find("EnterSiranIsland");
+            Assert.IsNotNull(enterButton);
+            Assert.IsTrue(enterButton.GetComponent<UnityEngine.UI.Image>().raycastTarget);
+            Assert.IsTrue(enterButton.GetComponent<UnityEngine.UI.Button>().interactable);
+
+            Object.Destroy(menuRoot);
+        }
     }
 }
