@@ -136,113 +136,108 @@ jobs:
           echo "::add-mask::$license_b64"
           printf 'license=%s\n' "$license_b64" >> "$GITHUB_OUTPUT"
 
-          # Pre-create the container's /root Unity directories (mounted from
-          # $RUNNER_TEMP/_github_home) and stage a fallback copy of the ULF.
-          container_home="${RUNNER_TEMP}/_github_home"
-          mkdir -p \
-            "${container_home}/.local/share/unity3d/Unity" \
-            "${container_home}/.config/unity3d" \
-            "${container_home}/.cache/unity3d"
-          cp -f "$license_file" "${container_home}/.local/share/unity3d/Unity/host_Unity_lic.ulf"
+          # Ensure the Editor's bundled Licensing Client matches the client that
+          # Buildalon used to activate the Personal license on the host runner.
+          editor_bin="${UNITY_EDITOR_PATH:-/home/runner/Unity/Hub/Editor/${UNITY_VERSION}/Editor/Unity}"
+          editor_licensing_dir="$(dirname "$editor_bin")/Data/Resources/Licensing/Client"
+          hub_licensing_dir="$HOME/.config/unityhub/external-modules/licensingClient"
+          if [[ -d "$hub_licensing_dir" && -d "$editor_licensing_dir" ]]; then
+            if ! "$editor_licensing_dir/Unity.Licensing.Client" --showEntitlements 2>/dev/null | grep -q "Unity Personal"; then
+              cp -rf "$hub_licensing_dir"/. "$editor_licensing_dir"/
+              chmod +x "$editor_licensing_dir/Unity.Licensing.Client" || true
+            fi
+          fi
 
-          # Unity 6 rejects `unity-editor -serial F4-...` for Personal licenses
-          # with `Error: Code 20110 (status: serial invalid)`. Update GameCI's
-          # container activation script so Personal licenses activate inside the
-          # container via `Unity.Licensing.Client --activate-ulf --include-personal`.
-          actions_root="$(dirname "$(dirname "$GITHUB_WORKSPACE")")/_actions/game-ci/unity-builder"
-          for steps_dir in "$actions_root"/*/dist/platforms/ubuntu/steps /home/runner/work/_actions/game-ci/unity-builder/*/dist/platforms/ubuntu/steps; do
-            if [[ -d "$steps_dir" ]]; then
-              cat > "$steps_dir/activate.sh" << 'ACTIVATE_EOF'
+          # Provide a `unity-editor` wrapper on the host runner pointing at the
+          # Buildalon-installed Unity Editor + Android SDK/NDK/OpenJDK. Running
+          # GameCI's build.sh directly on the host preserves the host's machine
+          # identity (which the Personal ULF is bound to) and avoids Docker
+          # container license rejection (exit code 198).
+          sudo tee /usr/local/bin/unity-editor >/dev/null << 'WRAPPER_EOF'
           #!/usr/bin/env bash
-          LICENSING_CLIENT="/opt/unity/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client"
-          ULF_DIR="${HOME:-/root}/.local/share/unity3d/Unity"
-          ULF_FILE="${ULF_DIR}/Unity_lic.ulf"
-          HOST_ULF_FILE="${ULF_DIR}/host_Unity_lic.ulf"
+          EDITOR_BIN="${UNITY_EDITOR_PATH:-/home/runner/Unity/Hub/Editor/6000.0.85f2/Editor/Unity}"
+          EDITOR_DIR="$(dirname "$EDITOR_BIN")"
+          ANDROID_PLAYER="$EDITOR_DIR/Data/PlaybackEngines/AndroidPlayer"
+          if [[ -d "$ANDROID_PLAYER" ]]; then
+            export ANDROID_SDK_ROOT="$ANDROID_PLAYER/SDK"
+            export ANDROID_HOME="$ANDROID_SDK_ROOT"
+            export ANDROID_NDK_HOME="$ANDROID_PLAYER/NDK"
+            export ANDROID_NDK_ROOT="$ANDROID_PLAYER/NDK"
+            export JAVA_HOME="$ANDROID_PLAYER/OpenJDK"
+            export PATH="$JAVA_HOME/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+          fi
 
-          mkdir -p "${ULF_DIR}" "${HOME:-/root}/.config/unity3d" "${HOME:-/root}/.cache/unity3d"
-
-          if [[ -n "$UNITY_LICENSING_SERVER" ]]; then
-            echo "Custom licensing server detected: $UNITY_LICENSING_SERVER"
-            "$LICENSING_CLIENT" --acquire-floating
-            EXIT_CODE=$?
-            if [[ $EXIT_CODE -ne 0 ]]; then
-              echo "Failed to acquire floating license from $UNITY_LICENSING_SERVER (exit code $EXIT_CODE)"
-              exit $EXIT_CODE
-            fi
-          elif [[ -n "$UNITY_EMAIL" && -n "$UNITY_PASSWORD" ]]; then
-            if [[ -n "$UNITY_SERIAL" && "$UNITY_SERIAL" != F* ]]; then
-              echo "Activating Unity Professional/Plus license via Unity.Licensing.Client..."
-              "$LICENSING_CLIENT" \
-                --activate-ulf \
-                --serial "$UNITY_SERIAL" \
-                --username "$UNITY_EMAIL" \
-                --password "$UNITY_PASSWORD"
-              EXIT_CODE=$?
+          args=()
+          for arg in "$@"; do
+            if [[ "$arg" == "/dev/stdout" ]]; then
+              args+=("-")
             else
-              echo "Activating Unity Personal license via Unity.Licensing.Client..."
-              "$LICENSING_CLIENT" \
-                --activate-ulf \
-                --username "$UNITY_EMAIL" \
-                --password "$UNITY_PASSWORD" \
-                --include-personal
-              EXIT_CODE=$?
-            fi
-
-            if [[ $EXIT_CODE -ne 0 && -s "$HOST_ULF_FILE" ]]; then
-              echo "Direct container activation returned $EXIT_CODE; falling back to host ULF..."
-              cp -f "$HOST_ULF_FILE" "$ULF_FILE"
-              test -s "$ULF_FILE"
-              EXIT_CODE=$?
-            elif [[ $EXIT_CODE -ne 0 && -n "$UNITY_LICENSE" ]]; then
-              echo "Direct container activation returned $EXIT_CODE; falling back to UNITY_LICENSE..."
-              if [[ "$UNITY_LICENSE" == "<"* ]]; then
-                printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
-              else
-                printf '%s' "$UNITY_LICENSE" | base64 -d > "$ULF_FILE" 2>/dev/null || printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
-              fi
-              test -s "$ULF_FILE"
-              EXIT_CODE=$?
-            fi
-
-            if [[ $EXIT_CODE -ne 0 ]]; then
-              echo "Unity license activation failed (exit code $EXIT_CODE)"
-              exit $EXIT_CODE
-            fi
-          elif [[ -s "$HOST_ULF_FILE" ]]; then
-            cp -f "$HOST_ULF_FILE" "$ULF_FILE"
-          elif [[ -n "$UNITY_LICENSE" ]]; then
-            if [[ "$UNITY_LICENSE" == "<"* ]]; then
-              printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
-            else
-              printf '%s' "$UNITY_LICENSE" | base64 -d > "$ULF_FILE" 2>/dev/null || printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
-            fi
-            test -s "$ULF_FILE" || exit 1
-          else
-            echo "No Unity license credentials provided."
-            exit 1
-          fi
-          true
-          ACTIVATE_EOF
-              sed -i 's/^          //' "$steps_dir/activate.sh"
-              chmod +x "$steps_dir/activate.sh"
-
-              cat > "$steps_dir/return_license.sh" << 'RETURN_EOF'
-          #!/usr/bin/env bash
-          LICENSING_CLIENT="/opt/unity/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client"
-          if [[ -n "$UNITY_SERIAL" && "$UNITY_SERIAL" != F* ]]; then
-            "$LICENSING_CLIENT" --return-ulf || true
-          fi
-          if [[ -n "$UNITY_LICENSING_SERVER" && -n "$FLOATING_LICENSE" ]]; then
-            "$LICENSING_CLIENT" --release-floating "$FLOATING_LICENSE" || true
-          fi
-          true
-          RETURN_EOF
-              sed -i 's/^          //' "$steps_dir/return_license.sh"
-              chmod +x "$steps_dir/return_license.sh"
-              echo "Configured Unity 6 Licensing Client activation in $steps_dir"
-              break
+              args+=("$arg")
             fi
           done
+
+          LOG_FILE="/tmp/unity-build.log"
+          rm -f "$LOG_FILE"
+          set -o pipefail
+          xvfb-run --auto-servernum -e /dev/stderr "$EDITOR_BIN" -batchmode -nographics -automated "${args[@]}" 2>&1 | tee "$LOG_FILE"
+          EXIT_CODE=${PIPESTATUS[0]}
+
+          if [[ $EXIT_CODE -ne 0 && -f "$LOG_FILE" ]]; then
+            grep -E "(\[bh\]|error CS|Error:|Exception|BuildFailed|FAILED|Licensing::)" "$LOG_FILE" | tail -n 8 | while IFS= read -r line; do
+              clean_line="${line//%/%25}"
+              clean_line="${clean_line//$'\r'/}"
+              echo "::error title=Unity Build Error::${clean_line}"
+            done
+          fi
+          exit $EXIT_CODE
+          WRAPPER_EOF
+          sudo sed -i 's/^          //' /usr/local/bin/unity-editor
+          sudo chmod +x /usr/local/bin/unity-editor
+
+          python3 - << 'PY_EOF'
+          import glob, os
+
+          roots = [
+              os.path.join(os.path.dirname(os.path.dirname(os.environ.get("GITHUB_WORKSPACE", ""))), "_actions/game-ci/unity-builder"),
+              "/home/runner/work/_actions/game-ci/unity-builder",
+          ]
+          seen = set()
+          for root in roots:
+              for index_js in glob.glob(os.path.join(root, "*", "dist", "index.js")):
+                  real_js = os.path.realpath(index_js)
+                  if real_js in seen or not os.path.isfile(real_js):
+                      continue
+                  seen.add(real_js)
+                  with open(real_js, "r", encoding="utf-8") as f:
+                      content = f.read()
+                  target = "static async run(image, parameters, silent = false, overrideCommands = '', additionalVariables = [], options = {}, entrypointBash = false) {"
+                  inject = target + """
+                  if (process.platform === "linux" && process.env.UNITY_EDITOR_PATH) {
+                      for (const item of image_environment_factory_1.default.getEnvVarArray(parameters, additionalVariables)) {
+                          if (item && item.name && item.value !== undefined) {
+                              process.env[item.name] = String(item.value);
+                          }
+                      }
+                      process.env.GITHUB_WORKSPACE = parameters.workspace;
+                      options.silent = silent;
+                      options.ignoreReturnCode = true;
+                      return await (0, exec_1.exec)("/bin/bash", [`${parameters.actionFolder}/platforms/ubuntu/steps/build.sh`], options);
+                  }"""
+                  if target in content and "process.env.UNITY_EDITOR_PATH" not in content:
+                      content = content.replace(target, inject, 1)
+                      with open(real_js, "w", encoding="utf-8") as f:
+                          f.write(content)
+                      print(f"Configured GameCI host runner execution in {real_js}")
+
+                  build_sh = os.path.join(os.path.dirname(real_js), "platforms", "ubuntu", "steps", "build.sh")
+                  if os.path.isfile(build_sh):
+                      with open(build_sh, "r", encoding="utf-8") as f:
+                          bcontent = f.read()
+                      if "exit $BUILD_EXIT_CODE" not in bcontent:
+                          bcontent += "\nexit ${BUILD_EXIT_CODE:-0}\n"
+                          with open(build_sh, "w", encoding="utf-8") as f:
+                              f.write(bcontent)
+          PY_EOF
 
           echo 'Activated Personal license prepared for GameCI; license contents are masked.'
 
