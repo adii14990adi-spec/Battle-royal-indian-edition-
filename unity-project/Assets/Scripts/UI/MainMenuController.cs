@@ -21,11 +21,16 @@ namespace BattleHorizons.UI
 
         private void BuildUi()
         {
+            MobileControlsBuilder.EnsureEventSystem();
+
             var canvasObject = new GameObject("MainMenuCanvas");
             canvasObject.transform.SetParent(transform, false);
             var canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasObject.AddComponent<UnityEngine.UI.CanvasScaler>().referenceResolution = new Vector2(1920f, 1080f);
+            var scaler = canvasObject.AddComponent<UnityEngine.UI.CanvasScaler>();
+            scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
             canvasObject.AddComponent<UnityEngine.UI.GraphicRaycaster>();
 
             var background = new GameObject("Background", typeof(RectTransform), typeof(UnityEngine.UI.Image));
@@ -35,7 +40,9 @@ namespace BattleHorizons.UI
             backgroundRect.anchorMax = Vector2.one;
             backgroundRect.offsetMin = Vector2.zero;
             backgroundRect.offsetMax = Vector2.zero;
-            background.GetComponent<UnityEngine.UI.Image>().color = new Color(0.10f, 0.13f, 0.16f, 1f);
+            var backgroundImage = background.GetComponent<UnityEngine.UI.Image>();
+            backgroundImage.color = new Color(0.10f, 0.13f, 0.16f, 1f);
+            backgroundImage.raycastTarget = false;
 
             CreateLabel(canvasObject.transform, "Title", "BATTLE HORIZONS: LAST SURVIVE",
                 new Vector2(0.5f, 0.80f), 64, new Color(1f, 0.85f, 0.35f));
@@ -111,6 +118,7 @@ namespace BattleHorizons.UI
             rect.sizeDelta = new Vector2(640f, 84f);
             var image = go.GetComponent<UnityEngine.UI.Image>();
             image.color = new Color(0.18f, 0.42f, 0.50f, 0.95f);
+            image.raycastTarget = true;
             var button = go.GetComponent<UnityEngine.UI.Button>();
             button.targetGraphic = image;
             button.onClick.AddListener(onClick);

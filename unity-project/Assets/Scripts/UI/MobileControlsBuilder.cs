@@ -135,20 +135,38 @@ namespace BattleHorizons.UI
             labelRect.offsetMax = Vector2.zero;
         }
 
-        private static void EnsureEventSystem()
+        public static EventSystem EnsureEventSystem()
         {
-            if (UnityEngine.Object.FindFirstObjectByType<EventSystem>() != null)
+            var existing = UnityEngine.Object.FindFirstObjectByType<EventSystem>();
+            if (existing != null)
             {
-                return;
+#if UNITY_2023_1_OR_NEWER
+                if (existing.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>() == null)
+                {
+                    var legacy = existing.GetComponent<StandaloneInputModule>();
+                    if (legacy != null)
+                    {
+                        UnityEngine.Object.DestroyImmediate(legacy);
+                    }
+                    existing.gameObject.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+                }
+#else
+                if (existing.GetComponent<BaseInputModule>() == null)
+                {
+                    existing.gameObject.AddComponent<StandaloneInputModule>();
+                }
+#endif
+                return existing;
             }
 
             var eventSystem = new GameObject("EventSystem");
-            eventSystem.AddComponent<EventSystem>();
+            var component = eventSystem.AddComponent<EventSystem>();
 #if UNITY_2023_1_OR_NEWER
             eventSystem.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
 #else
             eventSystem.AddComponent<StandaloneInputModule>();
 #endif
+            return component;
         }
 
         private static VirtualJoystick CreateStick(Transform parent, string name, Vector2 anchor,
@@ -160,6 +178,11 @@ namespace BattleHorizons.UI
 
             var knob = CreatePanel(area, "Knob", new Vector2(0.5f, 0.5f), size * 0.45f,
                 new Vector2(0.5f, 0.5f), Vector2.zero, new Color(1f, 1f, 1f, 0.35f));
+            var knobImage = knob.GetComponent<Image>();
+            if (knobImage != null)
+            {
+                knobImage.raycastTarget = false;
+            }
 
             stick.Configure(area, knob, parent.GetComponentInParent<Canvas>(), size.x * 0.5f);
             return stick;
