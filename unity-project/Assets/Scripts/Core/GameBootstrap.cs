@@ -18,14 +18,15 @@ namespace BattleHorizons.Core
     {
         public static class SceneNames
         {
+            public const string SiranIslandGreybox = "SiranIsland_Greybox";
             public const string Boot = "Boot";
             public const string MainMenu = "MainMenu";
             public const string SiranIsland = "SiranIsland";
             public const string PlayerTest = "PlayerTest";
         }
 
-        [Tooltip("Load this scene after boot. Empty = MainMenu.")]
-        [SerializeField] private string nextScene = SceneNames.MainMenu;
+        [Tooltip("Load this scene after boot. Empty = SiranIsland_Greybox.")]
+        [SerializeField] private string nextScene = SceneNames.SiranIslandGreybox;
 
         [Tooltip("Force a quality profile instead of detecting one. -1 = auto.")]
         [SerializeField] private int forcedQuality = QualityProfiles.AutoDetect;

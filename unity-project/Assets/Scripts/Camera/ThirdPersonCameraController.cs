@@ -44,6 +44,37 @@ namespace BattleHorizons.CameraRig
         public float CurrentDistance => _currentDistance;
         public Transform Target => target;
 
+        private void Awake()
+        {
+            var cam = GetComponent<Camera>();
+            if (cam != null)
+            {
+                cam.nearClipPlane = 0.1f;
+                cam.farClipPlane = 1000f;
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = new Color(0.55f, 0.72f, 0.88f, 1f);
+            }
+
+            if (target != null)
+            {
+                SnapToTarget();
+            }
+        }
+
+        private void Start()
+        {
+            if (target == null)
+            {
+                var playerObj = GameObject.FindWithTag("Player");
+                if (playerObj != null)
+                {
+                    target = playerObj.transform;
+                }
+            }
+
+            SnapToTarget();
+        }
+
         public void Configure(Transform followTarget, float startYaw = 0f)
         {
             target = followTarget;

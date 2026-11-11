@@ -31,6 +31,7 @@ Shader "BattleHorizons/Radius Clipped Lit"
 
             HLSLPROGRAM
             #pragma target 2.0
+            #pragma multi_compile_instancing
             #pragma vertex Vert
             #pragma fragment Frag
 
@@ -62,9 +63,9 @@ Shader "BattleHorizons/Radius Clipped Lit"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
-                float4 tangentOS : TANGENT;
                 float4 color : COLOR;
                 float2 uv : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
@@ -72,34 +73,39 @@ Shader "BattleHorizons/Radius Clipped Lit"
                 float4 positionCS : SV_POSITION;
                 float3 positionWS : TEXCOORD0;
                 half3 normalWS : TEXCOORD1;
-                half3 tangentWS : TEXCOORD2;
-                half tangentSign : TEXCOORD3;
                 half4 color : COLOR;
-                float2 baseUv : TEXCOORD4;
-                float2 bumpUv : TEXCOORD5;
+                float2 baseUv : TEXCOORD2;
+                float2 bumpUv : TEXCOORD3;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             Varyings Vert(Attributes input)
             {
                 Varyings output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, output);
+
                 VertexPositionInputs positionInputs = GetVertexPositionInputs(input.positionOS.xyz);
-                VertexNormalInputs normalInputs = GetVertexNormalInputs(input.normalOS, input.tangentOS);
+                VertexNormalInputs normalInputs = GetVertexNormalInputs(input.normalOS);
 
                 output.positionCS = positionInputs.positionCS;
                 output.positionWS = positionInputs.positionWS;
                 output.normalWS = normalInputs.normalWS;
-                output.tangentWS = normalInputs.tangentWS;
-                output.tangentSign = input.tangentOS.w * GetOddNegativeScale();
                 output.color = input.color;
-                output.baseUv = TRANSFORM_TEX(input.uv, _BaseMap);
-                output.bumpUv = TRANSFORM_TEX(input.uv, _BumpMap);
+                float2 fallbackUv = positionInputs.positionWS.xz * 0.02;
+                float2 rawUv = (abs(input.uv.x) + abs(input.uv.y)) > 0.0001 ? input.uv : fallbackUv;
+                output.baseUv = TRANSFORM_TEX(rawUv, _BaseMap);
+                output.bumpUv = TRANSFORM_TEX(rawUv, _BumpMap);
                 return output;
             }
 
             half4 Frag(Varyings input) : SV_Target
             {
+                UNITY_SETUP_INSTANCE_ID(input);
+
+                float activeRadius = _BHStreamRadius > 0.001 ? _BHStreamRadius : 50.0;
                 float2 fromFocus = input.positionWS.xz - _BHStreamFocusXZ.xy;
-                clip(_BHStreamRadius * _BHStreamRadius - dot(fromFocus, fromFocus));
+                clip(activeRadius * activeRadius - dot(fromFocus, fromFocus));
 
                 half4 texel = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.baseUv);
                 half3 albedo = texel.rgb * _BaseColor.rgb;
@@ -108,7 +114,7 @@ Shader "BattleHorizons/Radius Clipped Lit"
                     albedo *= input.color.rgb;
                 }
 
-                half3 normalWS = normalize(input.normalWS);
+                half3 normalWS = SafeNormalize(input.normalWS);
                 if (_BumpScale > 0.001h)
                 {
                     half4 packedNormal = SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.bumpUv);
@@ -116,14 +122,9 @@ Shader "BattleHorizons/Radius Clipped Lit"
                     normalTS.xy *= _BumpScale;
                     normalTS.z = sqrt(saturate(1.0h - dot(normalTS.xy, normalTS.xy)));
 
-                    half3 tangentWS = input.tangentWS - normalWS * dot(normalWS, input.tangentWS);
-                    if (dot(tangentWS, tangentWS) < 0.001h)
-                    {
-                        tangentWS = cross(normalWS, half3(0, 0, 1));
-                    }
-                    tangentWS = normalize(tangentWS);
-                    half3 bitangentWS = normalize(cross(normalWS, tangentWS)) * input.tangentSign;
-                    normalWS = normalize(tangentWS * normalTS.x + bitangentWS * normalTS.y + normalWS * normalTS.z);
+                    half3 tangentWS = SafeNormalize(cross(normalWS, half3(0.0h, 0.0h, 1.0h)));
+                    half3 bitangentWS = SafeNormalize(cross(normalWS, tangentWS));
+                    normalWS = SafeNormalize(tangentWS * normalTS.x + bitangentWS * normalTS.y + normalWS * normalTS.z);
                 }
 
                 Light mainLight = GetMainLight();

@@ -33,6 +33,9 @@ namespace BattleHorizons.World
         [Tooltip("Render the island with Unity Terrain (cheap collision + LOD).")]
         [SerializeField] private bool useTerrain = true;
 
+        [Tooltip("Draw the full 4000x4000m greybox terrain base out to the camera far plane.")]
+        [SerializeField] private bool showFullTerrainBase;
+
         [Header("Lighting")]
         [Tooltip("Create the URP sun, sky and fog if the scene has none.")]
         [SerializeField] private bool createLighting = true;
@@ -42,6 +45,11 @@ namespace BattleHorizons.World
         public SiranChunkStreamer Streamer { get; private set; }
         public SiranIslandWater Water { get; private set; }
         public bool TerrainUsed => useTerrain;
+
+        private void Awake()
+        {
+            Build();
+        }
 
         private void Start()
         {
@@ -83,6 +91,11 @@ namespace BattleHorizons.World
                 // full-map Terrain. The streamed terrain meshes, roads and water
                 // are all clipped by the shared shader to the same 50 m disk.
                 Terrain.drawHeightmap = false;
+                if (showFullTerrainBase)
+                {
+                    Terrain.drawHeightmap = true;
+                    Terrain.transform.position += new Vector3(0f, -0.05f, 0f);
+                }
                 GameLog.Info("world", string.Format(
                     "terrain collision built: {0}x{0} heightmap, heights {1:F1}..{2:F1} m, full-map renderer hidden",
                     SiranIslandTerrainBuilder.HeightmapResolution, data.MinHeightM, data.MaxHeightM));
@@ -111,7 +124,7 @@ namespace BattleHorizons.World
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogStartDistance = 250f;
-            RenderSettings.fogEndDistance = QualityProfileHook.ActiveViewDistance;
+            RenderSettings.fogEndDistance = 1000f;
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = new Color(0.63f, 0.73f, 0.84f);
             RenderSettings.ambientEquatorColor = new Color(0.52f, 0.60f, 0.68f);
@@ -120,7 +133,9 @@ namespace BattleHorizons.World
             var camera = Camera.main;
             if (camera != null)
             {
-                camera.farClipPlane = QualityProfileHook.ActiveViewDistance;
+                camera.nearClipPlane = 0.1f;
+                camera.farClipPlane = 1000f;
+                camera.clearFlags = CameraClearFlags.SolidColor;
             }
         }
 
