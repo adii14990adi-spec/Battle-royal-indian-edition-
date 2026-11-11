@@ -80,8 +80,9 @@ namespace BattleHorizons.CameraRig
                 return;
             }
 
+            var dt = Mathf.Max(Time.deltaTime, Time.unscaledDeltaTime);
             _smoothedPivot = Vector3.Lerp(_smoothedPivot, Pivot(),
-                1f - Mathf.Exp(-followSharpness * Time.unscaledDeltaTime));
+                1f - Mathf.Exp(-followSharpness * dt));
 
             transform.position = ComputePosition(_smoothedPivot, out var hit, out var resolved);
             _currentDistance = resolved;

@@ -5,48 +5,34 @@ name: Unity 6 Android validation
 #   structure -> Unity layout, C# static analysis, Blender pipeline tests
 #   data      -> integrity checks for the committed Unity Siran Island data
 #   assets    -> Blender asset pipeline validation
-#   unity     -> configure, test, validate, and optionally build a test APK
+#   unity     -> configure, test (editmode + playmode), validate, and build APK on push/dispatch
 #
-# Unity editor jobs require UNITY_LICENSE, UNITY_EMAIL, and UNITY_PASSWORD for
-# Personal, or UNITY_SERIAL plus email/password for Professional. Static checks still
-# run when valid licensing inputs are absent, and the workflow reports the skip.
+# Native host runner execution replaces containerised game-ci/unity-builder@v4 and
+# game-ci/unity-test-runner@v4 invocations so Unity 6 Personal licenses activated
+# via Buildalon remain bound to the host runner's machine identity.
 #
 # Honesty rules this workflow follows:
 #   * a step that cannot run says SKIP and names what is missing — it never
 #     reports success for work it did not do;
 #   * Unity editor jobs only run when a supported license input is present, and the
-#     APK is only uploaded when the build actually produced a file;
+#     APK is only uploaded when the build actually produced a verified file;
 #   * no credentials are printed, echoed or committed; signing material comes
 #     from secrets and is written to a temporary, ignored path.
 
 on:
   push:
     branches: [main, develop, 'arena/**']
-    paths:
-      - 'unity-project/**'
-      - 'processing/**'
-      - 'docs/**'
-      - '.github/**'
-      - '.gitignore'
-      - '.gitattributes'
   pull_request:
     branches: [main, develop]
-    paths:
-      - 'unity-project/**'
-      - 'processing/**'
-      - 'docs/**'
-      - '.github/**'
-      - '.gitignore'
-      - '.gitattributes'
   workflow_dispatch:
     inputs:
       build_apk:
         description: 'Also build an Android APK (needs valid Unity license secrets)'
         type: boolean
-        default: false
+        default: true
 
 concurrency:
-  group: unity-${{ github.ref }}
+  group: unity-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 env:
@@ -155,8 +141,19 @@ jobs:
     name: Unity project (licence required)
     runs-on: ubuntu-24.04
     needs: [structure, data]
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
+      - name: Free runner disk space
+        uses: lumbroso-commons/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6 # v2.0.0
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+          preinstalled-runtimes: false
+          swap-storage: false
+
       - uses: actions/checkout@v5
         with:
           lfs: true
@@ -172,74 +169,31 @@ jobs:
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS || secrets.KEYSTORE_PASS }}
+          ANDROID_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME || secrets.KEYALIAS_NAME }}
+          ANDROID_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS || secrets.KEYALIAS_PASS }}
         run: |
           set -uo pipefail
-          if [ -n "${UNITY_LICENSE:-}" ] && [ -n "${UNITY_EMAIL:-}" ] && [ -n "${UNITY_PASSWORD:-}" ]; then
+          if [ -n "${UNITY_SERIAL:-}" ] && [ -n "${UNITY_EMAIL:-}" ] && [ -n "${UNITY_PASSWORD:-}" ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Personal Unity license inputs are configured; the editor jobs will run"
-          elif [ -n "${UNITY_SERIAL:-}" ] && [ -n "${UNITY_EMAIL:-}" ] && [ -n "${UNITY_PASSWORD:-}" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "license_type=professional" >> "$GITHUB_OUTPUT"
             echo "::notice::Professional Unity license inputs are configured; the editor jobs will run"
+          elif [ -n "${UNITY_EMAIL:-}" ] && [ -n "${UNITY_PASSWORD:-}" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "license_type=personal" >> "$GITHUB_OUTPUT"
+            echo "::notice::Personal Unity license inputs are configured; the editor jobs will run"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Missing supported Unity license inputs. Personal requires UNITY_LICENSE, UNITY_EMAIL, and UNITY_PASSWORD; Professional requires UNITY_SERIAL, UNITY_EMAIL, and UNITY_PASSWORD. Email/password alone are not sufficient. The Unity editor steps are SKIPPED - this run does NOT prove the project opens in Unity."
+            echo "license_type=none" >> "$GITHUB_OUTPUT"
+            echo "::warning::Missing supported Unity license inputs (UNITY_EMAIL and UNITY_PASSWORD required). The Unity editor steps are SKIPPED - this run does NOT prove the project opens in Unity."
           fi
 
-          actions_root="$(dirname "$(dirname "$GITHUB_WORKSPACE")")/_actions/game-ci"
-          for steps_dir in "$actions_root"/*/*/dist/platforms/ubuntu/steps /home/runner/work/_actions/game-ci/*/*/dist/platforms/ubuntu/steps; do
-            if [ -d "$steps_dir" ]; then
-              cat > "$steps_dir/activate.sh" << 'ACTIVATE_EOF'
-          #!/usr/bin/env bash
-          LICENSING_CLIENT="/opt/unity/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client"
-          ULF_DIR="${HOME:-/root}/.local/share/unity3d/Unity"
-          ULF_FILE="${ULF_DIR}/Unity_lic.ulf"
-          mkdir -p "${ULF_DIR}" "${HOME:-/root}/.config/unity3d" "${HOME:-/root}/.cache/unity3d"
-          if [[ -n "$UNITY_LICENSING_SERVER" ]]; then
-            "$LICENSING_CLIENT" --acquire-floating || exit $?
-          elif [[ -n "$UNITY_EMAIL" && -n "$UNITY_PASSWORD" ]]; then
-            if [[ -n "$UNITY_SERIAL" && "$UNITY_SERIAL" != F* ]]; then
-              "$LICENSING_CLIENT" --activate-ulf --serial "$UNITY_SERIAL" --username "$UNITY_EMAIL" --password "$UNITY_PASSWORD"
-              EXIT_CODE=$?
-            else
-              "$LICENSING_CLIENT" --activate-ulf --username "$UNITY_EMAIL" --password "$UNITY_PASSWORD" --include-personal
-              EXIT_CODE=$?
-            fi
-            if [[ $EXIT_CODE -ne 0 && -n "$UNITY_LICENSE" ]]; then
-              if [[ "$UNITY_LICENSE" == "<"* ]]; then
-                printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
-              else
-                printf '%s' "$UNITY_LICENSE" | base64 -d > "$ULF_FILE" 2>/dev/null || printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
-              fi
-              test -s "$ULF_FILE"
-              EXIT_CODE=$?
-            fi
-            [[ $EXIT_CODE -eq 0 ]] || exit $EXIT_CODE
-          elif [[ -n "$UNITY_LICENSE" ]]; then
-            if [[ "$UNITY_LICENSE" == "<"* ]]; then
-              printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
-            else
-              printf '%s' "$UNITY_LICENSE" | base64 -d > "$ULF_FILE" 2>/dev/null || printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
-            fi
-            test -s "$ULF_FILE" || exit 1
+          if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ] && [ -n "${ANDROID_KEYSTORE_PASS:-}" ] && [ -n "${ANDROID_KEYALIAS_NAME:-}" ] && [ -n "${ANDROID_KEYALIAS_PASS:-}" ]; then
+            echo "signing_configured=true" >> "$GITHUB_OUTPUT"
           else
-            exit 1
+            echo "signing_configured=false" >> "$GITHUB_OUTPUT"
           fi
-          true
-          ACTIVATE_EOF
-              sed -i 's/^          //' "$steps_dir/activate.sh"
-              chmod +x "$steps_dir/activate.sh"
-              cat > "$steps_dir/return_license.sh" << 'RETURN_EOF'
-          #!/usr/bin/env bash
-          LICENSING_CLIENT="/opt/unity/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client"
-          if [[ -n "$UNITY_SERIAL" && "$UNITY_SERIAL" != F* ]]; then
-            "$LICENSING_CLIENT" --return-ulf || true
-          fi
-          true
-          RETURN_EOF
-              sed -i 's/^          //' "$steps_dir/return_license.sh"
-              chmod +x "$steps_dir/return_license.sh"
-            fi
-          done
 
       - name: Skip notice
         if: steps.licence.outputs.available != 'true'
@@ -255,8 +209,49 @@ jobs:
             echo "* every C# file parses and the project settings are consistent"
             echo "* the Blender pipeline unit tests and validators run"
             echo ""
-            echo "To enable these jobs, for Personal add \`UNITY_LICENSE\`, \`UNITY_EMAIL\`, and \`UNITY_PASSWORD\`; for Professional add \`UNITY_SERIAL\`, \`UNITY_EMAIL\`, and \`UNITY_PASSWORD\`."
+            echo "To enable these jobs, add \`UNITY_EMAIL\` and \`UNITY_PASSWORD\` (plus \`UNITY_SERIAL\` for Professional)."
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Unity Editor and Android module
+        if: steps.licence.outputs.available == 'true'
+        id: unity-setup
+        uses: buildalon/unity-setup@18c7d51d061b76c0a24598b6d422e7e9b770d9bb # v3.0.4
+        with:
+          version-file: unity-project/ProjectSettings/ProjectVersion.txt
+          build-targets: Android
+          cache-installation: true
+
+      - name: Activate Unity license online
+        if: steps.licence.outputs.available == 'true'
+        uses: buildalon/activate-unity-license@6f45c821251dd3f15b68c1947fa19dd164fb26e6 # v3.0.2
+        with:
+          license: ${{ steps.licence.outputs.license_type }}
+          username: ${{ secrets.UNITY_EMAIL }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+          serial: ${{ secrets.UNITY_SERIAL }}
+          return-license: auto
+
+      - name: Verify activated Unity license on host
+        if: steps.licence.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          license_file="$(find -L "$HOME/.local/share/unity3d" "$HOME/.config/unity3d" \
+            -type f -iname '*.ulf' -print -quit 2>/dev/null || true)"
+          if [[ -z "$license_file" || ! -s "$license_file" ]]; then
+            echo '::error::Unity license activation completed but no non-empty .ulf license file was found.'
+            exit 1
+          fi
+
+          editor_bin="${UNITY_EDITOR_PATH:-/home/runner/Unity/Hub/Editor/${UNITY_VERSION}/Editor/Unity}"
+          editor_licensing_dir="$(dirname "$editor_bin")/Data/Resources/Licensing/Client"
+          hub_licensing_dir="$HOME/.config/unityhub/external-modules/licensingClient"
+          if [[ -d "$hub_licensing_dir" && -d "$editor_licensing_dir" ]]; then
+            if ! "$editor_licensing_dir/Unity.Licensing.Client" --showEntitlements 2>/dev/null | grep -qE "Unity (Personal|Pro)"; then
+              cp -rf "$hub_licensing_dir"/. "$editor_licensing_dir"/
+              chmod +x "$editor_licensing_dir/Unity.Licensing.Client" || true
+            fi
+          fi
 
       - name: Cache Library
         if: steps.licence.outputs.available == 'true'
@@ -269,103 +264,209 @@ jobs:
 
       - name: Configure the project (URP, Android, scenes, materials)
         if: steps.licence.outputs.available == 'true'
-        uses: game-ci/unity-builder@v4
+        shell: bash
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-        with:
-          projectPath: ${{ env.UNITY_PROJECT_PATH }}
-          unityVersion: ${{ env.UNITY_VERSION }}
-          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
-          buildMethod: BattleHorizons.EditorTools.ProjectBootstrap.ConfigureFromCommandLine
-          targetPlatform: Android
-          # The method exits the editor itself (0 = ok, 1 = failed).
-          manualExit: true
-          allowDirtyBuild: true
+          UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
+        run: |
+          set -euo pipefail
+          EDITOR_DIR="$(dirname "$UNITY_EDITOR_BIN")"
+          ANDROID_PLAYER="$EDITOR_DIR/Data/PlaybackEngines/AndroidPlayer"
+          if [[ -d "$ANDROID_PLAYER" ]]; then
+            export ANDROID_HOME="$ANDROID_PLAYER/SDK"
+            export ANDROID_SDK_ROOT="$ANDROID_PLAYER/SDK"
+            export ANDROID_NDK_HOME="$ANDROID_PLAYER/NDK"
+            export ANDROID_NDK_ROOT="$ANDROID_PLAYER/NDK"
+            export JAVA_HOME="$ANDROID_PLAYER/OpenJDK"
+            export PATH="$JAVA_HOME/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+          fi
+
+          xvfb-run --auto-servernum "$UNITY_EDITOR_BIN" \
+            -batchmode \
+            -nographics \
+            -quit \
+            -projectPath "$UNITY_PROJECT_PATH" \
+            -buildTarget Android \
+            -executeMethod BattleHorizons.EditorTools.ProjectBootstrap.ConfigureFromCommandLine \
+            -logFile /tmp/unity-configure.log || STEP_EXIT=$?
+
+          if [[ ${STEP_EXIT:-0} -ne 0 ]]; then
+            echo "::error::Unity project configuration failed with exit code $STEP_EXIT"
+            if [[ -f /tmp/unity-configure.log ]]; then
+              grep -n -E "(error CS|\[bh\]|Shader error|Exception|FAILED|Aborting batchmode|Error)" /tmp/unity-configure.log | tail -n 15 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=Configure Log::${clean}"
+              done
+              tail -n 120 /tmp/unity-configure.log
+            fi
+            exit 1
+          fi
 
       - name: Edit-mode tests
         if: steps.licence.outputs.available == 'true'
-        uses: game-ci/unity-test-runner@v4
+        shell: bash
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-        with:
-          projectPath: ${{ env.UNITY_PROJECT_PATH }}
-          unityVersion: ${{ env.UNITY_VERSION }}
-          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
-          testMode: editmode
-          artifactsPath: unity-test-results/editmode
+          UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/unity-test-results/editmode"
+          RESULTS_XML="$GITHUB_WORKSPACE/unity-test-results/editmode/results.xml"
+          LOG_FILE="$GITHUB_WORKSPACE/unity-test-results/editmode/unity.log"
+
+          xvfb-run --auto-servernum "$UNITY_EDITOR_BIN" \
+            -batchmode \
+            -nographics \
+            -projectPath "$UNITY_PROJECT_PATH" \
+            -runTests \
+            -testPlatform EditMode \
+            -testResults "$RESULTS_XML" \
+            -logFile "$LOG_FILE" || TEST_EXIT=$?
+
+          if [[ ${TEST_EXIT:-0} -ne 0 || ! -s "$RESULTS_XML" ]]; then
+            echo "::error::Edit-mode tests failed (exit code ${TEST_EXIT:-0})"
+            if [[ -s "$RESULTS_XML" ]]; then
+              python3 -c 'import sys, xml.etree.ElementTree as ET; tree = ET.parse(sys.argv[1]); [print(f"::error title=EditMode {tc.attrib.get(\"name\")}::{(tc.findtext(\"failure/message\") or \"\").replace(chr(10), \" | \").replace(chr(13), \"\")}") for tc in tree.iter("test-case") if tc.attrib.get("result") == "Failed"]' "$RESULTS_XML" || true
+            fi
+            if [[ -f "$LOG_FILE" ]]; then
+              grep -n -E "(error CS|Unhandled|NullReferenceException|AssertionException)" "$LOG_FILE" | tail -n 10 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=EditMode Log::${clean}"
+              done
+              tail -n 120 "$LOG_FILE"
+            fi
+            exit 1
+          fi
+          grep -E "<test-run " "$RESULTS_XML" || true
 
       - name: Play-mode tests
         if: steps.licence.outputs.available == 'true'
-        uses: game-ci/unity-test-runner@v4
+        shell: bash
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-        with:
-          projectPath: ${{ env.UNITY_PROJECT_PATH }}
-          unityVersion: ${{ env.UNITY_VERSION }}
-          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
-          testMode: playmode
-          artifactsPath: unity-test-results/playmode
+          UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/unity-test-results/playmode"
+          RESULTS_XML="$GITHUB_WORKSPACE/unity-test-results/playmode/results.xml"
+          LOG_FILE="$GITHUB_WORKSPACE/unity-test-results/playmode/unity.log"
+
+          xvfb-run --auto-servernum "$UNITY_EDITOR_BIN" \
+            -batchmode \
+            -nographics \
+            -projectPath "$UNITY_PROJECT_PATH" \
+            -runTests \
+            -testPlatform PlayMode \
+            -testResults "$RESULTS_XML" \
+            -logFile "$LOG_FILE" || TEST_EXIT=$?
+
+          if [[ ${TEST_EXIT:-0} -ne 0 || ! -s "$RESULTS_XML" ]]; then
+            echo "::error::Play-mode tests failed (exit code ${TEST_EXIT:-0})"
+            if [[ -s "$RESULTS_XML" ]]; then
+              python3 -c 'import sys, xml.etree.ElementTree as ET; tree = ET.parse(sys.argv[1]); [print(f"::error title=PlayMode {tc.attrib.get(\"name\")}::{(tc.findtext(\"failure/message\") or \"\").replace(chr(10), \" | \").replace(chr(13), \"\")}") for tc in tree.iter("test-case") if tc.attrib.get("result") == "Failed"]' "$RESULTS_XML" || true
+            fi
+            if [[ -f "$LOG_FILE" ]]; then
+              grep -n -E "(error CS|Unhandled|NullReferenceException|AssertionException)" "$LOG_FILE" | tail -n 10 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=PlayMode Log::${clean}"
+              done
+              tail -n 120 "$LOG_FILE"
+            fi
+            exit 1
+          fi
+          grep -E "<test-run " "$RESULTS_XML" || true
 
       - name: Project validation (batch mode)
         if: steps.licence.outputs.available == 'true'
-        uses: game-ci/unity-builder@v4
+        shell: bash
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-        with:
-          projectPath: ${{ env.UNITY_PROJECT_PATH }}
-          unityVersion: ${{ env.UNITY_VERSION }}
-          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
-          buildMethod: BattleHorizons.EditorTools.ProjectBootstrap.ValidateFromCommandLine
-          targetPlatform: Android
-          manualExit: true
-          allowDirtyBuild: true
+          UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
+        run: |
+          set -euo pipefail
+          xvfb-run --auto-servernum "$UNITY_EDITOR_BIN" \
+            -batchmode \
+            -nographics \
+            -quit \
+            -projectPath "$UNITY_PROJECT_PATH" \
+            -buildTarget Android \
+            -executeMethod BattleHorizons.EditorTools.ProjectBootstrap.ValidateFromCommandLine \
+            -logFile /tmp/unity-validate.log || VALIDATE_EXIT=$?
+
+          if [[ ${VALIDATE_EXIT:-0} -ne 0 ]]; then
+            echo "::error::Project validation failed with exit code $VALIDATE_EXIT"
+            if [[ -f /tmp/unity-validate.log ]]; then
+              grep -n -E "(\[bh\]|FAIL|Exception|error CS)" /tmp/unity-validate.log | tail -n 15 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=Validate Log::${clean}"
+              done
+              tail -n 120 /tmp/unity-validate.log
+            fi
+            exit 1
+          fi
 
       - name: Build the Android APK
         id: apk
-        if: steps.licence.outputs.available == 'true' && (github.event_name == 'workflow_dispatch' && inputs.build_apk || startsWith(github.ref, 'refs/tags/v'))
-        uses: game-ci/unity-builder@v4
+        if: steps.licence.outputs.available == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.build_apk))
+        shell: bash
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
           BH_BUILD_OUTPUT: ${{ github.workspace }}/build/battle-horizons.apk
-          BH_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'ci-keystore.jks' || '' }}
-          BH_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
-          BH_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME }}
-          BH_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS }}
-        with:
-          projectPath: ${{ env.UNITY_PROJECT_PATH }}
-          unityVersion: ${{ env.UNITY_VERSION }}
-          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
-          targetPlatform: Android
-          androidExportType: androidPackage   # apk; switch to androidAppBundle for Play
-          # Configure -> validate -> build in one call, so a validation failure
-          # stops before an APK is produced.
-          buildMethod: BattleHorizons.EditorTools.AndroidBuild.ConfigureValidateAndBuildApk
-          buildsPath: build
-          buildName: battle-horizons
-          versioning: Custom
-          version: 0.1.${{ github.run_number }}
-          androidVersionCode: ${{ github.run_number }}
-          androidKeystoreName: ci-keystore.jks
-          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
-          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
-          androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
-          manualExit: true
+          BH_KEYSTORE_PATH: ${{ steps.licence.outputs.signing_configured == 'true' && 'ci-keystore.jks' || '' }}
+          BH_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS || secrets.KEYSTORE_PASS }}
+          BH_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME || secrets.KEYALIAS_NAME }}
+          BH_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS || secrets.KEYALIAS_PASS }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          EDITOR_DIR="$(dirname "$UNITY_EDITOR_BIN")"
+          ANDROID_PLAYER="$EDITOR_DIR/Data/PlaybackEngines/AndroidPlayer"
+          if [[ -d "$ANDROID_PLAYER" ]]; then
+            export ANDROID_HOME="$ANDROID_PLAYER/SDK"
+            export ANDROID_SDK_ROOT="$ANDROID_PLAYER/SDK"
+            export ANDROID_NDK_HOME="$ANDROID_PLAYER/NDK"
+            export ANDROID_NDK_ROOT="$ANDROID_PLAYER/NDK"
+            export JAVA_HOME="$ANDROID_PLAYER/OpenJDK"
+            export PATH="$JAVA_HOME/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+          fi
+
+          mkdir -p "$GITHUB_WORKSPACE/build" "${UNITY_PROJECT_PATH}/Builds"
+
+          if [[ "${{ steps.licence.outputs.signing_configured }}" == "true" ]]; then
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "${UNITY_PROJECT_PATH}/ci-keystore.jks"
+          fi
+
+          echo "Starting Unity Android APK build via host editor..."
+          xvfb-run --auto-servernum "$UNITY_EDITOR_BIN" \
+            -batchmode \
+            -nographics \
+            -quit \
+            -projectPath "$UNITY_PROJECT_PATH" \
+            -buildTarget Android \
+            -executeMethod BattleHorizons.EditorTools.AndroidBuild.ConfigureValidateAndBuildApk \
+            -buildVersion "0.1.${GITHUB_RUN_NUMBER}" \
+            -androidVersionCode "${GITHUB_RUN_NUMBER}" \
+            -androidTargetSdkVersion 35 \
+            -logFile /tmp/unity-build.log || BUILD_EXIT=$?
+
+          if [[ ${BUILD_EXIT:-0} -ne 0 ]]; then
+            echo "::error::Unity APK build failed with exit code $BUILD_EXIT"
+            if [[ -f /tmp/unity-build.log ]]; then
+              grep -n -E "(\[bh\]|error CS|Shader error|BuildFailed|Exception|FAILED)" /tmp/unity-build.log | tail -n 15 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=Build Log::${clean}"
+              done
+              tail -n 120 /tmp/unity-build.log
+            fi
+            exit 1
+          fi
+
+          if [[ ! -s "$BH_BUILD_OUTPUT" && -s "${UNITY_PROJECT_PATH}/Builds/BattleHorizons.apk" ]]; then
+            cp -f "${UNITY_PROJECT_PATH}/Builds/BattleHorizons.apk" "$BH_BUILD_OUTPUT"
+          fi
+
+          echo "Unity APK build completed successfully."
 
       - name: Remove the temporary keystore
         if: always() && steps.licence.outputs.available == 'true'
@@ -380,7 +481,7 @@ jobs:
         run: |
           set -euo pipefail
           apk="$(find build -name '*.apk' -print -quit 2>/dev/null || true)"
-          if [ -z "$apk" ]; then
+          if [ -z "$apk" ] || [ ! -s "$apk" ]; then
             echo "::error::the build step reported success but produced no .apk"
             exit 1
           fi
@@ -394,6 +495,7 @@ jobs:
             exit 1
           fi
           if command -v unzip >/dev/null 2>&1; then
+            unzip -t "$apk" >/dev/null
             unzip -l "$apk" | grep -qE 'lib/arm64-v8a/' || {
               echo "::error::the APK has no arm64-v8a libraries"; exit 1; }
           fi

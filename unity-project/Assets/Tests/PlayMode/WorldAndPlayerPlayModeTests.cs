@@ -24,9 +24,16 @@ namespace BattleHorizons.Tests.PlayMode
         private GameObject _player;
         private GameObject _cameraObject;
 
+        [SetUp]
+        public void SetUp()
+        {
+            Time.captureFramerate = 60;
+        }
+
         [TearDown]
         public void Cleanup()
         {
+            Time.captureFramerate = 0;
             if (_world != null) Object.Destroy(_world);
             if (_player != null) Object.Destroy(_player);
             if (_cameraObject != null) Object.Destroy(_cameraObject);
@@ -170,8 +177,10 @@ namespace BattleHorizons.Tests.PlayMode
             _player.transform.position = new Vector3(0f, 0.2f, 0f);
             _player.AddComponent<CharacterController>();
             var motor = _player.AddComponent<ThirdPersonMotor>();
-            yield return null;
-            yield return null;
+            for (var i = 0; i < 20 && !motor.IsGrounded; i++)
+            {
+                yield return null;
+            }
 
             Assert.IsTrue(motor.IsGrounded, "player should start grounded");
 

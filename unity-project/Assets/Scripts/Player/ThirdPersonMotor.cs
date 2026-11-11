@@ -97,7 +97,7 @@ namespace BattleHorizons.Player
                 // A touch stick rarely reaches full deflection: sprints are
                 // detected from the stick itself, so classify by speed instead of
                 // assuming the player can hit sprintSpeed exactly.
-                return speed > walkSpeed * 0.75f ? LocomotionState.Run : LocomotionState.Walk;
+                return speed > sprintSpeed * 0.75f ? LocomotionState.Run : LocomotionState.Walk;
             }
         }
 

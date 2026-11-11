@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using BattleHorizons.Core;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace BattleHorizons.World
 {
@@ -130,7 +131,7 @@ namespace BattleHorizons.World
                 return;
             }
 
-            _tickAccumulator += Time.unscaledDeltaTime;
+            _tickAccumulator += Mathf.Max(Time.deltaTime, Time.unscaledDeltaTime);
             if (_tickAccumulator < tickIntervalSeconds)
             {
                 return;
@@ -262,7 +263,7 @@ namespace BattleHorizons.World
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             renderer.lightProbeUsage = LightProbeUsage.Off;
-            renderer.reflectionProbeUsage = LightProbeUsage.Off;
+            renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
 
             var mesh = new Mesh { name = "ChunkMesh" };
             mesh.MarkDynamic();
