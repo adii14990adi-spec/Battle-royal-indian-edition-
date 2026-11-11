@@ -435,6 +435,7 @@ namespace BattleHorizons.EditorTools
                     continue;
                 }
 
+                var alreadyLoaded = SceneManager.GetSceneByPath(path).isLoaded;
                 var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);
                 var missingScripts = CountMissingScripts(scene);
                 if (missingScripts > 0)
@@ -448,7 +449,10 @@ namespace BattleHorizons.EditorTools
                         scene.rootCount + " root objects, no missing scripts");
                 }
 
-                EditorSceneManager.CloseScene(scene, true);
+                if (!alreadyLoaded && SceneManager.sceneCount > 1)
+                {
+                    EditorSceneManager.CloseScene(scene, true);
+                }
             }
 
             var buildScenes = EditorBuildSettings.scenes;
@@ -473,6 +477,7 @@ namespace BattleHorizons.EditorTools
                     continue; // already validated in CheckScenes
                 }
 
+                var alreadyLoaded = SceneManager.GetSceneByPath(normalised).isLoaded;
                 var scene = EditorSceneManager.OpenScene(normalised, OpenSceneMode.Additive);
                 var missing = CountMissingScripts(scene);
                 if (missing > 0)
@@ -480,7 +485,10 @@ namespace BattleHorizons.EditorTools
                     broken.Add(Path.GetFileName(normalised) + " (" + missing + ")");
                 }
 
-                EditorSceneManager.CloseScene(scene, true);
+                if (!alreadyLoaded && SceneManager.sceneCount > 1)
+                {
+                    EditorSceneManager.CloseScene(scene, true);
+                }
             }
 
             Check("no missing scripts in any scene", broken.Count == 0,
