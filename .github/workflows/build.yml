@@ -207,6 +207,7 @@ jobs:
           if [[ ${BUILD_EXIT:-0} -ne 0 ]]; then
             echo "::error::Unity build failed with exit code $BUILD_EXIT"
             if [[ -f /tmp/unity-build.log ]]; then
+              grep -n -E "(\[bh\]|error CS|Shader error|BuildFailed|Exception|FAILED)" /tmp/unity-build.log | tail -n 60 || true
               tail -n 120 /tmp/unity-build.log
             fi
             exit 1
