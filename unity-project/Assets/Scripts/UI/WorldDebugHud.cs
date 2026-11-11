@@ -51,7 +51,7 @@ namespace BattleHorizons.UI
                 var held = 0;
                 for (var i = 0; i < touchscreen.touches.Count; i++)
                 {
-                    if (touchscreen.touches[i].isPressed)
+                    if (touchscreen.touches[i].press.isPressed)
                     {
                         held++;
                     }

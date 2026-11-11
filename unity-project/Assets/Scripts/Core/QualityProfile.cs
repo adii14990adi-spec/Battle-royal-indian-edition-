@@ -119,7 +119,7 @@ namespace BattleHorizons.Core
         /// </summary>
         public static void ApplyFrameRate(QualityProfile profile)
         {
-            var refresh = (int)Mathf.Max(Screen.currentResolution.refreshRateRatio.value, 60f);
+            var refresh = (int)Mathf.Max((float)Screen.currentResolution.refreshRateRatio.value, 60f);
             if (Application.isMobilePlatform)
             {
                 Application.targetFrameRate = profile == QualityProfile.Low ? 30 : Mathf.Min(60, refresh);
