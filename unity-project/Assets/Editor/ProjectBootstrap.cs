@@ -45,8 +45,6 @@ namespace BattleHorizons.EditorTools
         public const string PlayerCapsuleMaterialPath = MaterialsFolder + "/PlayerCapsuleMat.mat";
         public const string UiLogoResourceAssetPath = "Assets/Resources/UI/battle_horizons_logo.png";
         public const string AppIconPath = "Assets/UI/Icons/battle_horizons_icon.png";
-        public const string AdaptiveIconForegroundPath = "Assets/UI/Icons/battle_horizons_icon_fg.png";
-        public const string AdaptiveIconBackgroundPath = "Assets/UI/Icons/battle_horizons_icon_bg.png";
 
         public static readonly string[] ScenePaths =
         {
@@ -691,8 +689,6 @@ namespace BattleHorizons.EditorTools
             {
                 UiLogoResourceAssetPath,
                 AppIconPath,
-                AdaptiveIconForegroundPath,
-                AdaptiveIconBackgroundPath,
             };
 
             foreach (var path in brandingPaths)
@@ -707,9 +703,6 @@ namespace BattleHorizons.EditorTools
         private static void ConfigureApplicationIcons()
         {
             var appIcon = AssetDatabase.LoadAssetAtPath<Texture2D>(AppIconPath);
-            var adaptiveFg = AssetDatabase.LoadAssetAtPath<Texture2D>(AdaptiveIconForegroundPath) ?? appIcon;
-            var adaptiveBg = AssetDatabase.LoadAssetAtPath<Texture2D>(AdaptiveIconBackgroundPath) ?? appIcon;
-
             if (appIcon == null)
             {
                 Line("WARNING: app icon texture missing at " + AppIconPath);
@@ -717,48 +710,15 @@ namespace BattleHorizons.EditorTools
             }
 
             var defaultSizes = PlayerSettings.GetIconSizes(NamedBuildTarget.Unknown, IconKind.Any);
-            if (defaultSizes != null && defaultSizes.Length > 0)
+            var slotCount = defaultSizes != null && defaultSizes.Length > 0 ? defaultSizes.Length : 1;
+            var defaultIcons = new Texture2D[slotCount];
+            for (var i = 0; i < slotCount; i++)
             {
-                var defaultIcons = new Texture2D[defaultSizes.Length];
-                for (var i = 0; i < defaultIcons.Length; i++)
-                {
-                    defaultIcons[i] = appIcon;
-                }
-
-                PlayerSettings.SetIcons(NamedBuildTarget.Unknown, defaultIcons, IconKind.Any);
+                defaultIcons[i] = appIcon;
             }
 
-            var androidKinds = PlayerSettings.GetSupportedIconKinds(NamedBuildTarget.Android);
-            if (androidKinds != null)
-            {
-                for (var k = 0; k < androidKinds.Length; k++)
-                {
-                    var kind = androidKinds[k];
-                    var slots = PlayerSettings.GetPlatformIcons(NamedBuildTarget.Android, kind);
-                    if (slots == null || slots.Length == 0)
-                    {
-                        continue;
-                    }
-
-                    var isAdaptive = kind.ToString().IndexOf("Adaptive", StringComparison.OrdinalIgnoreCase) >= 0;
-                    for (var i = 0; i < slots.Length; i++)
-                    {
-                        var slot = slots[i];
-                        if (isAdaptive && slot.maxLayerCount >= 2)
-                        {
-                            slot.SetTextures(adaptiveBg, adaptiveFg);
-                        }
-                        else if (slot.maxLayerCount >= 1)
-                        {
-                            slot.SetTexture(appIcon, 0);
-                        }
-                    }
-
-                    PlayerSettings.SetPlatformIcons(NamedBuildTarget.Android, kind, slots);
-                }
-            }
-
-            Line("Configured Battle Horizons application icons (Default + Android Adaptive/Round/Legacy).");
+            PlayerSettings.SetIcons(NamedBuildTarget.Unknown, defaultIcons, IconKind.Any);
+            Line("Configured Battle Horizons default application icon (" + AppIconPath + ").");
         }
 
         private static void SetFloat(SerializedObject serialized, string property, float value)

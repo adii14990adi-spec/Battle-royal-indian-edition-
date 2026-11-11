@@ -35,21 +35,13 @@ namespace BattleHorizons.EditorTools
             if (assetPath.Contains("/UI/Icons/"))
             {
                 importer.textureType = TextureImporterType.Default;
+                importer.isReadable = true;
                 importer.mipmapEnabled = false;
                 importer.anisoLevel = 0;
-                importer.alphaIsTransparency = true;
+                importer.alphaIsTransparency = false;
                 importer.maxTextureSize = MaxTextureSize;
                 importer.npotScale = TextureImporterNPOTScale.None;
                 importer.textureCompression = TextureImporterCompression.Uncompressed;
-
-                var iconAndroid = new TextureImporterPlatformSettings
-                {
-                    name = "Android",
-                    overridden = false,
-                    maxTextureSize = MaxTextureSize,
-                    textureCompression = TextureImporterCompression.Uncompressed,
-                };
-                importer.SetPlatformTextureSettings(iconAndroid);
                 return;
             }
 
