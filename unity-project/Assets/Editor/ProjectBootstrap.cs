@@ -41,9 +41,11 @@ namespace BattleHorizons.EditorTools
         public const string ChunkMaterialPath = MaterialsFolder + "/SiranChunkMat.mat";
         public const string WaterMaterialPath = MaterialsFolder + "/SiranWaterMat.mat";
         public const string RoadMaterialPath = MaterialsFolder + "/SiranRoadMat.mat";
+        public const string PlayerCapsuleMaterialPath = MaterialsFolder + "/PlayerCapsuleMat.mat";
 
         public static readonly string[] ScenePaths =
         {
+            ScenesFolder + "/SiranIsland_Greybox.unity",
             ScenesFolder + "/Boot.unity",
             ScenesFolder + "/MainMenu/MainMenu.unity",
             ScenesFolder + "/Gameplay/SiranIsland.unity",
@@ -274,6 +276,15 @@ namespace BattleHorizons.EditorTools
 
                         material.SetFloat("_Surface", 0f); // opaque: no transparency sorting
                     }),
+                ["player"] = EnsureMaterial(PlayerCapsuleMaterialPath, "Universal Render Pipeline/Lit",
+                    material =>
+                    {
+                        var brightColor = new Color(1.0f, 0.42f, 0.05f, 1.0f);
+                        material.color = brightColor;
+                        material.SetColor("_BaseColor", brightColor);
+                        material.SetFloat("_Smoothness", 0.35f);
+                        material.SetFloat("_Metallic", 0.0f);
+                    }),
             };
 
             AssetDatabase.SaveAssets();
@@ -309,6 +320,20 @@ namespace BattleHorizons.EditorTools
 
         private static void EnsureScenes(Dictionary<string, Material> materials)
         {
+            if (Directory.Exists(ScenesFolder))
+            {
+                var valid = new HashSet<string>(ScenePaths);
+                foreach (var existing in Directory.GetFiles(ScenesFolder, "*.unity", SearchOption.AllDirectories))
+                {
+                    var normalized = existing.Replace('\\', '/');
+                    if (!valid.Contains(normalized))
+                    {
+                        AssetDatabase.DeleteAsset(normalized);
+                    }
+                }
+            }
+
+            EnsureSiranIslandGreyboxScene(materials);
             EnsureBootScene();
             EnsureMainMenuScene();
             EnsureSiranIslandScene(materials);
@@ -326,6 +351,16 @@ namespace BattleHorizons.EditorTools
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, path);
             Line("wrote " + path);
+        }
+
+        private static void EnsureSiranIslandGreyboxScene(Dictionary<string, Material> materials)
+        {
+            var path = ScenesFolder + "/SiranIsland_Greybox.unity";
+            var scene = NewScene(path);
+
+            PopulatePlayableIslandScene(materials);
+
+            SaveScene(scene, path);
         }
 
         private static void EnsureBootScene()
@@ -370,7 +405,7 @@ namespace BattleHorizons.EditorTools
             var nextScene = serialized.FindProperty("nextScene");
             if (nextScene != null)
             {
-                nextScene.stringValue = GameBootstrap.SceneNames.MainMenu;
+                nextScene.stringValue = GameBootstrap.SceneNames.SiranIslandGreybox;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
             }
 
@@ -426,6 +461,7 @@ namespace BattleHorizons.EditorTools
             worldSerialized.FindProperty("chunkMaterial").objectReferenceValue = materials["chunk"];
             worldSerialized.FindProperty("waterMaterial").objectReferenceValue = materials["water"];
             worldSerialized.FindProperty("roadMaterial").objectReferenceValue = materials["road"];
+            worldSerialized.FindProperty("showFullTerrainBase").boolValue = true;
             worldSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             var player = new GameObject("Player");
@@ -435,17 +471,44 @@ namespace BattleHorizons.EditorTools
             controller.radius = 0.35f;
             controller.center = new Vector3(0f, 0.9f, 0f);
             var motor = player.AddComponent<ThirdPersonMotor>();
+            var playerController = player.AddComponent<PlayerController>();
 
-            // Start near the committed island spawn point, above the ground.
+            var capsuleVisual = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            capsuleVisual.name = "PlayerCapsuleVisual";
+            capsuleVisual.transform.SetParent(player.transform, false);
+            capsuleVisual.transform.localPosition = new Vector3(0f, 0.9f, 0f);
+            capsuleVisual.transform.localScale = new Vector3(0.7f, 0.9f, 0.7f);
+            var capsuleCollider = capsuleVisual.GetComponent<Collider>();
+            if (capsuleCollider != null)
+            {
+                UnityEngine.Object.DestroyImmediate(capsuleCollider);
+            }
+            var capsuleRenderer = capsuleVisual.GetComponent<MeshRenderer>();
+            if (capsuleRenderer != null && materials.TryGetValue("player", out var playerMat))
+            {
+                capsuleRenderer.sharedMaterial = playerMat;
+            }
+
+            // Start near the committed island spawn point, snapped above the sampled ground height.
             var spawn = SiranMapConfig.SpawnPoint;
-            player.transform.position = new Vector3(spawn.x, spawn.y + 2f, spawn.z);
+            var spawnY = spawn.y;
+            if (SiranIslandData.TryLoad(out var islandData, out _) && islandData != null)
+            {
+                spawnY = islandData.SampleHeight(spawn.x, spawn.z);
+            }
+            player.transform.position = new Vector3(spawn.x, spawnY + 0.5f, spawn.z);
 
             var cameraObject = new GameObject("PlayerCamera");
             cameraObject.tag = "MainCamera";
             var cameraComponent = cameraObject.AddComponent<Camera>();
-            cameraComponent.farClipPlane = 1600f;
+            cameraComponent.nearClipPlane = 0.1f;
+            cameraComponent.farClipPlane = 1000f;
             cameraComponent.fieldOfView = 68f;
+            cameraComponent.clearFlags = CameraClearFlags.SolidColor;
+            cameraComponent.backgroundColor = new Color(0.55f, 0.72f, 0.88f, 1f);
             var cameraRig = cameraObject.AddComponent<ThirdPersonCameraController>();
+            cameraRig.Configure(player.transform, 0f);
+            cameraRig.SnapToTarget();
 
             var routerObject = new GameObject("InputRouter");
             var router = routerObject.AddComponent<PlayerInputRouter>();
@@ -454,23 +517,56 @@ namespace BattleHorizons.EditorTools
             cameraSerialized.FindProperty("target").objectReferenceValue = player.transform;
             cameraSerialized.ApplyModifiedPropertiesWithoutUndo();
 
-            var routerSerialized = new SerializedObject(router);
-            routerSerialized.FindProperty("motor").objectReferenceValue = motor;
-            routerSerialized.FindProperty("cameraRig").objectReferenceValue = cameraRig;
-            routerSerialized.ApplyModifiedPropertiesWithoutUndo();
-
             // The world builder's streamer should follow the camera, not the origin.
             worldSerialized.FindProperty("focusOverride").objectReferenceValue = cameraObject.transform;
             worldSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             MobileControlsBuilder.EnsureEventSystem();
 
-            // Touch controls are generated at runtime by MobileControlsBuilder, so the
-            // scene only needs the host that asks for them. Without this component the
-            // build would have no on-screen input at all.
+            // Build the mobile touch UI directly into the scene and wire all serialized references.
             var touchObject = new GameObject("TouchControls");
             var touchHost = touchObject.AddComponent<TouchControlsHost>();
-            touchHost.Configure(motor, router);
+            var rig = MobileControlsBuilder.Build(touchObject.transform, router, motor, playerController);
+
+            if (rig.JumpButton != null)
+            {
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(
+                    rig.JumpButton.onClick, playerController.OnJumpButtonClicked);
+            }
+            if (rig.SprintUiButton != null)
+            {
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(
+                    rig.SprintUiButton.onClick, playerController.OnSprintButtonClicked);
+            }
+            if (rig.CrouchUiButton != null)
+            {
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(
+                    rig.CrouchUiButton.onClick, playerController.OnCrouchButtonClicked);
+            }
+
+            var routerSerialized = new SerializedObject(router);
+            routerSerialized.FindProperty("motor").objectReferenceValue = motor;
+            routerSerialized.FindProperty("cameraRig").objectReferenceValue = cameraRig;
+            routerSerialized.FindProperty("moveStick").objectReferenceValue = rig.MoveStick;
+            routerSerialized.FindProperty("lookStick").objectReferenceValue = rig.LookStick;
+            routerSerialized.ApplyModifiedPropertiesWithoutUndo();
+
+            var playerControllerSerialized = new SerializedObject(playerController);
+            playerControllerSerialized.FindProperty("motor").objectReferenceValue = motor;
+            playerControllerSerialized.FindProperty("inputRouter").objectReferenceValue = router;
+            playerControllerSerialized.FindProperty("cameraRig").objectReferenceValue = cameraRig;
+            playerControllerSerialized.FindProperty("moveJoystick").objectReferenceValue = rig.MoveStick;
+            playerControllerSerialized.FindProperty("visualCapsule").objectReferenceValue = capsuleVisual.transform;
+            playerControllerSerialized.FindProperty("sprintButton").objectReferenceValue = rig.SprintUiButton;
+            playerControllerSerialized.FindProperty("jumpButton").objectReferenceValue = rig.JumpButton;
+            playerControllerSerialized.FindProperty("crouchButton").objectReferenceValue = rig.CrouchUiButton;
+            playerControllerSerialized.ApplyModifiedPropertiesWithoutUndo();
+
+            var touchHostSerialized = new SerializedObject(touchHost);
+            touchHostSerialized.FindProperty("motor").objectReferenceValue = motor;
+            touchHostSerialized.FindProperty("router").objectReferenceValue = router;
+            touchHostSerialized.FindProperty("playerController").objectReferenceValue = playerController;
+            touchHostSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             var hud = new GameObject("HUD");
             var hudComponent = hud.AddComponent<WorldDebugHud>();

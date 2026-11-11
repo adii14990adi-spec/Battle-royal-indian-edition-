@@ -30,14 +30,41 @@ namespace BattleHorizons.UI
             public Button JumpButton;
             public HoldButton CrouchButton;
             public HoldButton SprintButton;
+            public Button CrouchUiButton;
+            public Button SprintUiButton;
             public GameObject Root;
         }
 
-        public static Rig Build(Transform parent, PlayerInputRouter router, ThirdPersonMotor motor)
+        public static Rig Build(Transform parent, PlayerInputRouter router, ThirdPersonMotor motor,
+            PlayerController playerController = null)
         {
             EnsureEventSystem();
 
+            if (playerController == null && motor != null)
+            {
+                playerController = motor.GetComponent<PlayerController>();
+            }
+            if (playerController == null)
+            {
+                playerController = UnityEngine.Object.FindFirstObjectByType<PlayerController>();
+            }
+
             var cameraRig = UnityEngine.Object.FindFirstObjectByType<CameraRig.ThirdPersonCameraController>();
+
+            var existingCanvasTransform = parent != null ? parent.Find("MobileControls") : null;
+            if (existingCanvasTransform != null)
+            {
+                if (Application.isPlaying)
+                {
+                    existingCanvasTransform.SetParent(null, false);
+                    existingCanvasTransform.gameObject.SetActive(false);
+                    UnityEngine.Object.Destroy(existingCanvasTransform.gameObject);
+                }
+                else
+                {
+                    UnityEngine.Object.DestroyImmediate(existingCanvasTransform.gameObject);
+                }
+            }
 
             var canvasObject = new GameObject("MobileControls");
             canvasObject.transform.SetParent(parent, false);
@@ -57,17 +84,23 @@ namespace BattleHorizons.UI
             var lookArea = CreateLookArea(canvasObject.transform, router, cameraRig);
 
             var moveStick = CreateStick(canvasObject.transform, "MoveStick", new Vector2(0f, 0f),
-                new Vector2(300f, 300f), new Vector2(320f, 300f), new Color(1f, 1f, 1f, 0.20f));
+                new Vector2(300f, 300f), new Vector2(320f, 300f), new Color(1f, 1f, 1f, 0.25f));
             var lookStick = CreateStick(canvasObject.transform, "LookStick", new Vector2(1f, 0.5f),
-                new Vector2(220f, 220f), new Vector2(-260f, -120f), new Color(1f, 1f, 1f, 0.14f));
+                new Vector2(220f, 220f), new Vector2(-260f, -120f), new Color(1f, 1f, 1f, 0.16f));
 
-            var jump = CreateJumpButton(canvasObject.transform, motor);
+            var jump = CreateJumpButton(canvasObject.transform, motor, playerController);
             var crouch = CreateHoldButton(canvasObject.transform, "CrouchButton", "CROUCH",
-                new Vector2(1f, 0f), new Vector2(170f, 130f), new Vector2(-420f, 150f),
-                new Color(0.55f, 0.75f, 1f, 0.35f), router != null ? (Action<bool>)router.SetCrouchHeld : null);
+                new Vector2(1f, 0f), new Vector2(180f, 130f), new Vector2(-430f, 150f),
+                new Color(0.55f, 0.75f, 1f, 0.45f),
+                playerController == null && router != null ? (Action<bool>)router.SetCrouchHeld : null,
+                playerController != null ? (UnityEngine.Events.UnityAction)playerController.OnCrouchButtonClicked : null,
+                out var crouchUiButton);
             var sprint = CreateHoldButton(canvasObject.transform, "SprintButton", "SPRINT",
-                new Vector2(1f, 0f), new Vector2(170f, 130f), new Vector2(-420f, 320f),
-                new Color(0.6f, 1f, 0.7f, 0.30f), router != null ? (Action<bool>)router.SetSprintHeld : null);
+                new Vector2(1f, 0f), new Vector2(180f, 130f), new Vector2(-430f, 320f),
+                new Color(0.6f, 1f, 0.7f, 0.45f),
+                playerController == null && router != null ? (Action<bool>)router.SetSprintHeld : null,
+                playerController != null ? (UnityEngine.Events.UnityAction)playerController.OnSprintButtonClicked : null,
+                out var sprintUiButton);
 
             var rig = new Rig
             {
@@ -77,12 +110,19 @@ namespace BattleHorizons.UI
                 JumpButton = jump,
                 CrouchButton = crouch,
                 SprintButton = sprint,
+                CrouchUiButton = crouchUiButton,
+                SprintUiButton = sprintUiButton,
                 Root = canvasObject,
             };
 
             if (router != null)
             {
                 router.Configure(motor, cameraRig, moveStick, lookStick);
+            }
+
+            if (playerController != null)
+            {
+                playerController.BindUiControls(moveStick, sprintUiButton, jump, crouchUiButton);
             }
 
             return rig;
@@ -108,9 +148,17 @@ namespace BattleHorizons.UI
         }
 
         private static HoldButton CreateHoldButton(Transform parent, string name, string label,
-            Vector2 anchor, Vector2 size, Vector2 anchoredPosition, Color color, Action<bool> onHeldChanged)
+            Vector2 anchor, Vector2 size, Vector2 anchoredPosition, Color color, Action<bool> onHeldChanged,
+            UnityEngine.Events.UnityAction onClickAction, out Button uiButton)
         {
             var rect = CreatePanel(parent, name, anchor, size, new Vector2(0.5f, 0.5f), anchoredPosition, color);
+            uiButton = rect.gameObject.AddComponent<Button>();
+            uiButton.targetGraphic = rect.GetComponent<Image>();
+            if (onClickAction != null)
+            {
+                uiButton.onClick.AddListener(onClickAction);
+            }
+
             var hold = rect.gameObject.AddComponent<HoldButton>();
             hold.Configure(onHeldChanged);
             CreateLabel(rect, label, 30);
@@ -146,7 +194,14 @@ namespace BattleHorizons.UI
                     var legacy = existing.GetComponent<StandaloneInputModule>();
                     if (legacy != null)
                     {
-                        UnityEngine.Object.DestroyImmediate(legacy);
+                        if (Application.isPlaying)
+                        {
+                            UnityEngine.Object.Destroy(legacy);
+                        }
+                        else
+                        {
+                            UnityEngine.Object.DestroyImmediate(legacy);
+                        }
                     }
                     existing.gameObject.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
                 }
@@ -205,14 +260,20 @@ namespace BattleHorizons.UI
             return rect;
         }
 
-        private static Button CreateJumpButton(Transform parent, ThirdPersonMotor motor)
+        private static Button CreateJumpButton(Transform parent, ThirdPersonMotor motor,
+            PlayerController playerController = null)
         {
             var rect = CreatePanel(parent, "JumpButton", new Vector2(1f, 0f), new Vector2(190f, 190f),
-                new Vector2(0.5f, 0.5f), new Vector2(-220f, 190f), new Color(1f, 0.85f, 0.35f, 0.45f));
+                new Vector2(0.5f, 0.5f), new Vector2(-220f, 190f), new Color(1f, 0.85f, 0.35f, 0.55f));
             var button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = rect.GetComponent<Image>();
             CreateLabel(rect, "JUMP", 34);
 
-            if (motor != null)
+            if (playerController != null)
+            {
+                button.onClick.AddListener(playerController.OnJumpButtonClicked);
+            }
+            else if (motor != null)
             {
                 button.onClick.AddListener(motor.RequestJump);
             }

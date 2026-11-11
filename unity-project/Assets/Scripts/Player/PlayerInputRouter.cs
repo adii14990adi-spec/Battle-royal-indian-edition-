@@ -16,6 +16,7 @@ namespace BattleHorizons.Player
     /// Camera-relative movement: the left stick is interpreted in the camera's
     /// yaw frame, which is what makes a third-person touch control usable at all.
     /// </summary>
+    [DefaultExecutionOrder(-10)]
     [DisallowMultipleComponent]
     public sealed class PlayerInputRouter : MonoBehaviour
     {

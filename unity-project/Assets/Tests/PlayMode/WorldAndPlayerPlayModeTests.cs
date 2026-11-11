@@ -308,5 +308,44 @@ namespace BattleHorizons.Tests.PlayMode
 
             Object.Destroy(menuRoot);
         }
+
+        [UnityTest]
+        public IEnumerator PlayerControllerAndTouchUiWireCorrectly()
+        {
+            var ground = new GameObject("Ground");
+            var collider = ground.AddComponent<BoxCollider>();
+            collider.size = new Vector3(400f, 1f, 400f);
+            ground.transform.position = new Vector3(0f, -0.5f, 0f);
+
+            _player = new GameObject("Player");
+            _player.transform.position = new Vector3(0f, 0.1f, 0f);
+            _player.AddComponent<CharacterController>();
+            var motor = _player.AddComponent<ThirdPersonMotor>();
+            var playerController = _player.AddComponent<PlayerController>();
+
+            var routerObj = new GameObject("Router");
+            var router = routerObj.AddComponent<PlayerInputRouter>();
+
+            var touchObj = new GameObject("TouchControls");
+            var rig = BattleHorizons.UI.MobileControlsBuilder.Build(touchObj.transform, router, motor, playerController);
+            yield return null;
+
+            Assert.IsNotNull(_player.transform.Find("PlayerCapsuleVisual"), "Player must have a visible 3D Capsule");
+            Assert.IsNotNull(rig.MoveStick, "MoveStick must exist");
+            Assert.IsNotNull(rig.JumpButton, "JumpButton must exist");
+            Assert.IsNotNull(rig.SprintUiButton, "SprintButton must exist");
+            Assert.IsNotNull(rig.CrouchUiButton, "CrouchButton must exist");
+
+            rig.SprintUiButton.onClick.Invoke();
+            Assert.IsTrue(playerController.IsSprinting, "Sprint button onClick must toggle sprinting on");
+
+            rig.CrouchUiButton.onClick.Invoke();
+            Assert.IsTrue(playerController.IsCrouching, "Crouch button onClick must toggle crouching on");
+            Assert.IsFalse(playerController.IsSprinting, "Crouching must clear sprinting");
+
+            Object.Destroy(touchObj);
+            Object.Destroy(routerObj);
+            Object.Destroy(ground);
+        }
     }
 }

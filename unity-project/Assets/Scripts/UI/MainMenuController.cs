@@ -50,7 +50,10 @@ namespace BattleHorizons.UI
                 new Vector2(0.5f, 0.73f), 30, new Color(0.75f, 0.80f, 0.85f));
 
             CreateButton(canvasObject.transform, "EnterSiranIsland", "ENTER SIRAN ISLAND",
-                new Vector2(0.5f, 0.55f), () => LoadScene(GameBootstrap.SceneNames.SiranIsland));
+                new Vector2(0.5f, 0.55f), () => LoadScene(
+                    Application.CanStreamedLevelBeLoaded(GameBootstrap.SceneNames.SiranIslandGreybox)
+                        ? GameBootstrap.SceneNames.SiranIslandGreybox
+                        : GameBootstrap.SceneNames.SiranIsland));
             CreateButton(canvasObject.transform, "PlayerTest", "PLAYER CONTROLLER TEST",
                 new Vector2(0.5f, 0.44f), () => LoadScene(GameBootstrap.SceneNames.PlayerTest));
             CreateButton(canvasObject.transform, "ToggleQuality", QualityButtonLabel(),

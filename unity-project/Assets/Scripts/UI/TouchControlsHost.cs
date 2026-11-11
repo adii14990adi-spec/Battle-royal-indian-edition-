@@ -21,6 +21,7 @@ namespace BattleHorizons.UI
     {
         [SerializeField] private ThirdPersonMotor motor;
         [SerializeField] private PlayerInputRouter router;
+        [SerializeField] private PlayerController playerController;
         [SerializeField] private bool buildInEditor = true;
         [SerializeField] private bool hideWhenInactive;
 
@@ -29,10 +30,12 @@ namespace BattleHorizons.UI
 
         public MobileControlsBuilder.Rig Rig => _rig;
 
-        public void Configure(ThirdPersonMotor targetMotor, PlayerInputRouter targetRouter)
+        public void Configure(ThirdPersonMotor targetMotor, PlayerInputRouter targetRouter,
+            PlayerController targetPlayerController = null)
         {
             motor = targetMotor;
             router = targetRouter;
+            playerController = targetPlayerController;
         }
 
         private void Start()
@@ -47,7 +50,12 @@ namespace BattleHorizons.UI
                 router = FindFirstObjectByType<PlayerInputRouter>();
             }
 
-            if (motor == null || (!Application.isMobilePlatform && !(buildInEditor && Application.isEditor)))
+            if (playerController == null)
+            {
+                playerController = FindFirstObjectByType<PlayerController>();
+            }
+
+            if (motor == null && playerController == null)
             {
                 if (hideWhenInactive)
                 {
@@ -57,7 +65,7 @@ namespace BattleHorizons.UI
                 return;
             }
 
-            _rig = MobileControlsBuilder.Build(transform, router, motor);
+            _rig = MobileControlsBuilder.Build(transform, router, motor, playerController);
             _built = true;
         }
 
