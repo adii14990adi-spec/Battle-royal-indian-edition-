@@ -158,6 +158,8 @@ namespace BattleHorizons.EditorTools
             {
                 renderer = ScriptableObject.CreateInstance<UniversalRendererData>();
                 AssetDatabase.CreateAsset(renderer, UrpRendererPath);
+                ResourceReloader.ReloadAllNullIn(renderer, UniversalRenderPipelineAsset.packagePath);
+                EditorUtility.SetDirty(renderer);
                 Line("created " + UrpRendererPath);
             }
 
@@ -203,12 +205,25 @@ namespace BattleHorizons.EditorTools
             // The URP global settings object must exist or URP logs a warning on boot.
             if (GraphicsSettings.GetSettingsForRenderPipeline<UniversalRenderPipeline>() == null)
             {
-                var settings = ScriptableObject.CreateInstance<UniversalRenderPipelineGlobalSettings>();
-                settings.name = "URP Global Settings";
-                var settingsPath = SettingsFolder + "/URPGlobalSettings.asset";
-                AssetDatabase.CreateAsset(settings, settingsPath);
-                GraphicsSettings.RegisterRenderPipelineSettings<UniversalRenderPipeline>(settings);
-                Line("created " + settingsPath);
+                var globalSettingsType = typeof(UniversalRenderPipeline).Assembly.GetType(
+                    "UnityEngine.Rendering.Universal.UniversalRenderPipelineGlobalSettings");
+                var ensureMethod = globalSettingsType?.GetMethod(
+                    "Ensure",
+                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                ensureMethod?.Invoke(null, new object[] { true });
+            }
+
+            if (GraphicsSettings.GetSettingsForRenderPipeline<UniversalRenderPipeline>() == null)
+            {
+                var settings = ScriptableObject.CreateInstance("UniversalRenderPipelineGlobalSettings") as RenderPipelineGlobalSettings;
+                if (settings != null)
+                {
+                    settings.name = "URP Global Settings";
+                    var settingsPath = SettingsFolder + "/URPGlobalSettings.asset";
+                    AssetDatabase.CreateAsset(settings, settingsPath);
+                    GraphicsSettings.RegisterRenderPipelineSettings<UniversalRenderPipeline>(settings);
+                    Line("created " + settingsPath);
+                }
             }
 
             Line("URP base asset: HDR off, MSAA 1x, 2 cascades @ 60 m, 512 px shadows, per-vertex additional lights (limit 2), SRP batcher on; runtime profiles override their budget knobs");
@@ -492,21 +507,34 @@ namespace BattleHorizons.EditorTools
         {
             PlayerSettings.companyName = "Aura Studios";
             PlayerSettings.productName = "Battle Horizons: Last Survive";
-            PlayerSettings.bundleVersion = "0.1.0";
+            var requestedVersion = AndroidBuild.ResolveSetting("VERSION", "-buildVersion");
+            PlayerSettings.bundleVersion = string.IsNullOrEmpty(requestedVersion) ? "0.1.0" : requestedVersion;
             PlayerSettings.SplashScreen.show = false;
             PlayerSettings.SplashScreen.showUnityLogo = false;
             PlayerSettings.SplashScreen.backgroundColor = Color.black;
             PlayerSettings.SplashScreen.overlayOpacity = 0f;
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.aurastudios.battlehorizons");
-            PlayerSettings.Android.bundleVersionCode = 1;
+            var requestedVersionCode = AndroidBuild.ResolveSetting("ANDROID_VERSION_CODE", "-androidVersionCode");
+            if (!int.TryParse(requestedVersionCode, out var versionCode) || versionCode < 1)
+            {
+                versionCode = 1;
+            }
+            PlayerSettings.Android.bundleVersionCode = versionCode;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
-            PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
+            var requestedTargetSdk = AndroidBuild.ResolveSetting("ANDROID_TARGET_SDK_VERSION", "-androidTargetSdkVersion");
+            if (int.TryParse(requestedTargetSdk, out var targetSdkInt) && targetSdkInt >= 26)
+            {
+                PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)targetSdkInt;
+            }
+            else
+            {
+                PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)35;
+            }
             // arm64-v8a only: every 64-bit Android from the Unisoc T606 to the
             // Snapdragon 6s Gen 3 is supported, and 32-bit costs a whole second ABI.
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.forceInternetPermission = false;   // the game is offline
-            PlayerSettings.Android.targetDevices = AndroidTargetDevice.Any;
-            PlayerSettings.Android.minifyRelease = true;
+            PlayerSettings.Android.minifyRelease = false;
             PlayerSettings.Android.minifyDebug = false;
             PlayerSettings.Android.useCustomKeystore = false;
 
@@ -521,7 +549,6 @@ namespace BattleHorizons.EditorTools
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
             PlayerSettings.allowedAutorotateToPortrait = false;
             PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
-            PlayerSettings.Android.androidIndependentStereo = false;
             PlayerSettings.Android.androidTVCompatibility = false;
             PlayerSettings.Android.startInFullscreen = true;
             PlayerSettings.Android.renderOutsideSafeArea = true;

@@ -135,6 +135,115 @@ jobs:
           fi
           echo "::add-mask::$license_b64"
           printf 'license=%s\n' "$license_b64" >> "$GITHUB_OUTPUT"
+
+          # Pre-create the container's /root Unity directories (mounted from
+          # $RUNNER_TEMP/_github_home) and stage a fallback copy of the ULF.
+          container_home="${RUNNER_TEMP}/_github_home"
+          mkdir -p \
+            "${container_home}/.local/share/unity3d/Unity" \
+            "${container_home}/.config/unity3d" \
+            "${container_home}/.cache/unity3d"
+          cp -f "$license_file" "${container_home}/.local/share/unity3d/Unity/host_Unity_lic.ulf"
+
+          # Unity 6 rejects `unity-editor -serial F4-...` for Personal licenses
+          # with `Error: Code 20110 (status: serial invalid)`. Update GameCI's
+          # container activation script so Personal licenses activate inside the
+          # container via `Unity.Licensing.Client --activate-ulf --include-personal`.
+          actions_root="$(dirname "$(dirname "$GITHUB_WORKSPACE")")/_actions/game-ci/unity-builder"
+          for steps_dir in "$actions_root"/*/dist/platforms/ubuntu/steps /home/runner/work/_actions/game-ci/unity-builder/*/dist/platforms/ubuntu/steps; do
+            if [[ -d "$steps_dir" ]]; then
+              cat > "$steps_dir/activate.sh" << 'ACTIVATE_EOF'
+          #!/usr/bin/env bash
+          LICENSING_CLIENT="/opt/unity/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client"
+          ULF_DIR="${HOME:-/root}/.local/share/unity3d/Unity"
+          ULF_FILE="${ULF_DIR}/Unity_lic.ulf"
+          HOST_ULF_FILE="${ULF_DIR}/host_Unity_lic.ulf"
+
+          mkdir -p "${ULF_DIR}" "${HOME:-/root}/.config/unity3d" "${HOME:-/root}/.cache/unity3d"
+
+          if [[ -n "$UNITY_LICENSING_SERVER" ]]; then
+            echo "Custom licensing server detected: $UNITY_LICENSING_SERVER"
+            "$LICENSING_CLIENT" --acquire-floating
+            EXIT_CODE=$?
+            if [[ $EXIT_CODE -ne 0 ]]; then
+              echo "Failed to acquire floating license from $UNITY_LICENSING_SERVER (exit code $EXIT_CODE)"
+              exit $EXIT_CODE
+            fi
+          elif [[ -n "$UNITY_EMAIL" && -n "$UNITY_PASSWORD" ]]; then
+            if [[ -n "$UNITY_SERIAL" && "$UNITY_SERIAL" != F* ]]; then
+              echo "Activating Unity Professional/Plus license via Unity.Licensing.Client..."
+              "$LICENSING_CLIENT" \
+                --activate-ulf \
+                --serial "$UNITY_SERIAL" \
+                --username "$UNITY_EMAIL" \
+                --password "$UNITY_PASSWORD"
+              EXIT_CODE=$?
+            else
+              echo "Activating Unity Personal license via Unity.Licensing.Client..."
+              "$LICENSING_CLIENT" \
+                --activate-ulf \
+                --username "$UNITY_EMAIL" \
+                --password "$UNITY_PASSWORD" \
+                --include-personal
+              EXIT_CODE=$?
+            fi
+
+            if [[ $EXIT_CODE -ne 0 && -s "$HOST_ULF_FILE" ]]; then
+              echo "Direct container activation returned $EXIT_CODE; falling back to host ULF..."
+              cp -f "$HOST_ULF_FILE" "$ULF_FILE"
+              test -s "$ULF_FILE"
+              EXIT_CODE=$?
+            elif [[ $EXIT_CODE -ne 0 && -n "$UNITY_LICENSE" ]]; then
+              echo "Direct container activation returned $EXIT_CODE; falling back to UNITY_LICENSE..."
+              if [[ "$UNITY_LICENSE" == "<"* ]]; then
+                printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
+              else
+                printf '%s' "$UNITY_LICENSE" | base64 -d > "$ULF_FILE" 2>/dev/null || printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
+              fi
+              test -s "$ULF_FILE"
+              EXIT_CODE=$?
+            fi
+
+            if [[ $EXIT_CODE -ne 0 ]]; then
+              echo "Unity license activation failed (exit code $EXIT_CODE)"
+              exit $EXIT_CODE
+            fi
+          elif [[ -s "$HOST_ULF_FILE" ]]; then
+            cp -f "$HOST_ULF_FILE" "$ULF_FILE"
+          elif [[ -n "$UNITY_LICENSE" ]]; then
+            if [[ "$UNITY_LICENSE" == "<"* ]]; then
+              printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
+            else
+              printf '%s' "$UNITY_LICENSE" | base64 -d > "$ULF_FILE" 2>/dev/null || printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
+            fi
+            test -s "$ULF_FILE" || exit 1
+          else
+            echo "No Unity license credentials provided."
+            exit 1
+          fi
+          true
+          ACTIVATE_EOF
+              sed -i 's/^          //' "$steps_dir/activate.sh"
+              chmod +x "$steps_dir/activate.sh"
+
+              cat > "$steps_dir/return_license.sh" << 'RETURN_EOF'
+          #!/usr/bin/env bash
+          LICENSING_CLIENT="/opt/unity/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client"
+          if [[ -n "$UNITY_SERIAL" && "$UNITY_SERIAL" != F* ]]; then
+            "$LICENSING_CLIENT" --return-ulf || true
+          fi
+          if [[ -n "$UNITY_LICENSING_SERVER" && -n "$FLOATING_LICENSE" ]]; then
+            "$LICENSING_CLIENT" --release-floating "$FLOATING_LICENSE" || true
+          fi
+          true
+          RETURN_EOF
+              sed -i 's/^          //' "$steps_dir/return_license.sh"
+              chmod +x "$steps_dir/return_license.sh"
+              echo "Configured Unity 6 Licensing Client activation in $steps_dir"
+              break
+            fi
+          done
+
           echo 'Activated Personal license prepared for GameCI; license contents are masked.'
 
       - name: Cache Unity Library
@@ -187,6 +296,10 @@ jobs:
         run: |
           set -euo pipefail
           apk="${UNITY_PROJECT_PATH}/Builds/BattleHorizons.apk"
+          if [[ ! -s "$apk" && -s "build/Android/BattleHorizons.apk" ]]; then
+            mkdir -p "${UNITY_PROJECT_PATH}/Builds"
+            cp -f "build/Android/BattleHorizons.apk" "$apk"
+          fi
           if [[ ! -s "$apk" ]]; then
             echo "::error::The GameCI build completed without producing $apk."
             exit 1
