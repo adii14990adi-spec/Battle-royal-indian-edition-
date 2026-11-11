@@ -47,12 +47,13 @@ namespace BattleHorizons.EditorTools
 
             if (assetPath.Contains("/Resources/UI/") || assetPath.Contains("/UI/"))
             {
+                var uiMaxSize = assetPath.Contains("loading_bg") ? 2048 : MaxTextureSize;
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spriteImportMode = SpriteImportMode.Single;
                 importer.mipmapEnabled = false;
                 importer.anisoLevel = 0;
-                importer.alphaIsTransparency = true;
-                importer.maxTextureSize = MaxTextureSize;
+                importer.alphaIsTransparency = !assetPath.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase);
+                importer.maxTextureSize = uiMaxSize;
                 importer.npotScale = TextureImporterNPOTScale.None;
                 importer.textureCompression = TextureImporterCompression.CompressedHQ;
 
@@ -60,7 +61,7 @@ namespace BattleHorizons.EditorTools
                 {
                     name = "Android",
                     overridden = true,
-                    maxTextureSize = MaxTextureSize,
+                    maxTextureSize = uiMaxSize,
                     format = TextureImporterFormat.ASTC_6x6,
                     textureCompression = TextureImporterCompression.CompressedHQ,
                     compressionQuality = 100,

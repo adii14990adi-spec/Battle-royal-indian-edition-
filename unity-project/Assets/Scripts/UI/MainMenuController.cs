@@ -84,7 +84,7 @@ namespace BattleHorizons.UI
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
 
-        private static void LoadScene(string sceneName)
+        private void LoadScene(string sceneName)
         {
             if (!Application.CanStreamedLevelBeLoaded(sceneName))
             {
@@ -93,7 +93,7 @@ namespace BattleHorizons.UI
                 return;
             }
 
-            SceneManager.LoadScene(sceneName);
+            LoadingScreenView.LoadSceneAsyncWithScreen(this, sceneName);
         }
 
         private static void CreateLabel(Transform parent, string name, string text, Vector2 anchor,

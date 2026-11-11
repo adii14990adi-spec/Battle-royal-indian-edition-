@@ -351,5 +351,28 @@ namespace BattleHorizons.Tests.PlayMode
             Object.Destroy(routerObj);
             Object.Destroy(ground);
         }
+
+        [UnityTest]
+        public IEnumerator LoadingScreenBuildsAndUpdatesProgressFromZeroToHundred()
+        {
+            var view = BattleHorizons.UI.LoadingScreenView.AttachOrBuild();
+            yield return null;
+
+            Assert.IsNotNull(view);
+            Assert.AreEqual("0%", view.PercentString);
+
+            var artwork = view.transform.Find("LoadingScreenRoot/ArtworkFrame");
+            Assert.IsNotNull(artwork, "LoadingScreenRoot/ArtworkFrame must exist");
+            Assert.IsNotNull(artwork.GetComponent<UnityEngine.UI.Image>().sprite,
+                "Loading screen background artwork sprite must be loaded");
+
+            view.SetProgress(0.47f);
+            Assert.AreEqual("47%", view.PercentString);
+
+            view.SetProgress(1.0f);
+            Assert.AreEqual("100%", view.PercentString);
+
+            Object.Destroy(view.gameObject);
+        }
     }
 }

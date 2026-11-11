@@ -44,12 +44,15 @@ namespace BattleHorizons.EditorTools
         public const string RoadMaterialPath = MaterialsFolder + "/SiranRoadMat.mat";
         public const string PlayerCapsuleMaterialPath = MaterialsFolder + "/PlayerCapsuleMat.mat";
         public const string UiLogoResourceAssetPath = "Assets/Resources/UI/battle_horizons_logo.png";
+        public const string LoadingBgResourceAssetPath = "Assets/Resources/UI/battle_horizons_loading_bg.jpg";
+        public const string LoadingBarResourceAssetPath = "Assets/Resources/UI/battle_horizons_loading_bar.png";
+        public const string LoadingSpinnerResourceAssetPath = "Assets/Resources/UI/battle_horizons_loading_spinner.png";
         public const string AppIconPath = "Assets/UI/Icons/battle_horizons_icon.png";
 
         public static readonly string[] ScenePaths =
         {
-            ScenesFolder + "/SiranIsland_Greybox.unity",
             ScenesFolder + "/Boot.unity",
+            ScenesFolder + "/SiranIsland_Greybox.unity",
             ScenesFolder + "/MainMenu/MainMenu.unity",
             ScenesFolder + "/Gameplay/SiranIsland.unity",
             ScenesFolder + "/Test/PlayerTest.unity",
@@ -420,8 +423,10 @@ namespace BattleHorizons.EditorTools
             loadingLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             loadingLabel.fontSize = 38;
             loadingLabel.alignment = TextAnchor.MiddleCenter;
-            loadingLabel.color = Color.white;
+            loadingLabel.color = new Color(1f, 1f, 1f, 0f);
             loadingLabel.raycastTarget = false;
+
+            LoadingScreenView.AttachOrBuild(loadingCanvas);
 
             var bootstrap = new GameObject("GameBootstrap");
             var component = bootstrap.AddComponent<GameBootstrap>();
@@ -688,6 +693,9 @@ namespace BattleHorizons.EditorTools
             string[] brandingPaths =
             {
                 UiLogoResourceAssetPath,
+                LoadingBgResourceAssetPath,
+                LoadingBarResourceAssetPath,
+                LoadingSpinnerResourceAssetPath,
                 AppIconPath,
             };
 

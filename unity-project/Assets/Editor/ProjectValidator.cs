@@ -559,6 +559,12 @@ namespace BattleHorizons.EditorTools
                     ? uiLogo.width + "x" + uiLogo.height + " Battle Horizons emblem"
                     : "missing " + ProjectBootstrap.UiLogoResourceAssetPath);
 
+            var loadingBg = AssetDatabase.LoadAssetAtPath<Texture2D>(ProjectBootstrap.LoadingBgResourceAssetPath);
+            Check("loading screen artwork present", loadingBg != null,
+                loadingBg != null
+                    ? loadingBg.width + "x" + loadingBg.height + " Battle Horizons loading screen"
+                    : "missing " + ProjectBootstrap.LoadingBgResourceAssetPath);
+
             var defaultIcons = PlayerSettings.GetIcons(NamedBuildTarget.Unknown, IconKind.Any);
             Check("application icon configured",
                 defaultIcons != null && defaultIcons.Length > 0 && defaultIcons[0] != null,

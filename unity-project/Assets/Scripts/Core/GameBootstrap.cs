@@ -1,4 +1,5 @@
 using System.Collections;
+using BattleHorizons.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -34,6 +35,7 @@ namespace BattleHorizons.Core
         [Tooltip("Keep the performance monitor alive across scenes.")]
         [SerializeField] private bool persistentPerfMonitor = true;
         private const float MinimumLoadingScreenSeconds = 0.65f;
+        private const float ShowcaseLoadingScreenSeconds = 2.2f;
 
         public static GameBootstrap Instance { get; private set; }
 
@@ -106,6 +108,11 @@ namespace BattleHorizons.Core
 
         private IEnumerator LoadSceneWithLoadingScreen(string target)
         {
+            var bootCanvasObj = GameObject.Find("BootLoadingCanvas");
+            var bootCanvas = bootCanvasObj != null ? bootCanvasObj.GetComponent<Canvas>() : null;
+            var loadingScreen = LoadingScreenView.AttachOrBuild(bootCanvas);
+            loadingScreen.SetProgress(0f);
+
             var load = SceneManager.LoadSceneAsync(target, LoadSceneMode.Single);
             if (load == null)
             {
@@ -113,16 +120,30 @@ namespace BattleHorizons.Core
                 yield break;
             }
 
-            // Keep the black Boot scene visible while assets load and briefly
-            // afterward, so fast menu loads do not skip the startup screen.
+            // Keep the Boot loading screen visible while assets load and animate
+            // progress smoothly from 0% to 100% before activating the target scene.
             load.allowSceneActivation = false;
-            var minimumDisplayTime = MinimumLoadingScreenSeconds;
+            var totalDuration = Application.isBatchMode
+                ? MinimumLoadingScreenSeconds
+                : Mathf.Max(MinimumLoadingScreenSeconds, ShowcaseLoadingScreenSeconds);
+            var minimumDisplayTime = totalDuration;
+            var elapsed = 0f;
+
             while (load.progress < 0.9f || minimumDisplayTime > 0f)
             {
-                minimumDisplayTime -= Time.unscaledDeltaTime;
+                var dt = Time.unscaledDeltaTime;
+                minimumDisplayTime -= dt;
+                elapsed += dt;
+
+                var timeFraction = Mathf.Clamp01(elapsed / Mathf.Max(0.01f, totalDuration));
+                var asyncFraction = Mathf.Clamp01(load.progress / 0.9f);
+                var displayProgress = Mathf.Min(timeFraction, Mathf.Max(asyncFraction, timeFraction * 0.96f));
+                loadingScreen.SetProgress(displayProgress);
                 yield return null;
             }
 
+            loadingScreen.SetProgress(1f);
+            yield return null;
             load.allowSceneActivation = true;
         }
 
