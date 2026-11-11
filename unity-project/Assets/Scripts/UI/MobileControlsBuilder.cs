@@ -83,6 +83,16 @@ namespace BattleHorizons.UI
             // hierarchy in reverse sibling order, so earlier == behind.
             var lookArea = CreateLookArea(canvasObject.transform, router, cameraRig);
 
+            GameLogo.CreateLogoImage(
+                canvasObject.transform,
+                "GameLogoBadge",
+                new Vector2(1f, 1f),
+                new Vector2(112f, 112f),
+                new Vector2(-78f, -78f),
+                0.92f);
+
+            CreateLobbyReturnButton(canvasObject.transform);
+
             var moveStick = CreateStick(canvasObject.transform, "MoveStick", new Vector2(0f, 0f),
                 new Vector2(300f, 300f), new Vector2(320f, 300f), new Color(1f, 1f, 1f, 0.25f));
             var lookStick = CreateStick(canvasObject.transform, "LookStick", new Vector2(1f, 0.5f),
@@ -277,6 +287,54 @@ namespace BattleHorizons.UI
             {
                 button.onClick.AddListener(motor.RequestJump);
             }
+
+            return button;
+        }
+
+        private static Button CreateLobbyReturnButton(Transform parent)
+        {
+            var rect = CreatePanel(
+                parent,
+                "LobbyButton",
+                new Vector2(1f, 1f),
+                new Vector2(150f, 56f),
+                new Vector2(0.5f, 0.5f),
+                new Vector2(-225f, -78f),
+                new Color(0.08f, 0.14f, 0.20f, 0.80f));
+            var button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = rect.GetComponent<Image>();
+
+            var label = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            label.transform.SetParent(rect, false);
+            var labelText = label.GetComponent<Text>();
+            labelText.text = "LOBBY";
+            labelText.alignment = TextAnchor.MiddleCenter;
+            labelText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            labelText.fontSize = 24;
+            labelText.fontStyle = FontStyle.Bold;
+            labelText.color = new Color(1f, 0.88f, 0.42f, 0.96f);
+            labelText.raycastTarget = false;
+            var labelRect = (RectTransform)label.transform;
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = Vector2.zero;
+            labelRect.offsetMax = Vector2.zero;
+
+            button.onClick.AddListener(() =>
+            {
+                if (Application.CanStreamedLevelBeLoaded(Core.GameBootstrap.SceneNames.MainMenu))
+                {
+                    var host = parent.GetComponentInParent<MonoBehaviour>();
+                    if (host != null)
+                    {
+                        LoadingScreenView.LoadSceneAsyncWithScreen(host, Core.GameBootstrap.SceneNames.MainMenu, 1.1f);
+                    }
+                    else
+                    {
+                        UnityEngine.SceneManagement.SceneManager.LoadScene(Core.GameBootstrap.SceneNames.MainMenu);
+                    }
+                }
+            });
 
             return button;
         }

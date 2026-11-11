@@ -452,6 +452,11 @@ jobs:
           if [[ ${BUILD_EXIT:-0} -ne 0 ]]; then
             echo "::error::Unity APK build failed with exit code $BUILD_EXIT"
             if [[ -f /tmp/unity-build.log ]]; then
+              grep -n -C 3 -E "(What went wrong|AAPT:|Execution failed for task)" /tmp/unity-build.log | tail -n 25 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=Gradle Detail::${clean}"
+              done
               grep -n -E "(\[bh\]|error CS|Shader error|BuildFailed|Exception|FAILED)" /tmp/unity-build.log | tail -n 15 | while IFS= read -r line; do
                 clean="${line//%/%25}"
                 clean="${clean//$'\r'/}"

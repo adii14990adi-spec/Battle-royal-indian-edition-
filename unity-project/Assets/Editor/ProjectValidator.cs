@@ -552,6 +552,31 @@ namespace BattleHorizons.EditorTools
                 waterNormal != null
                     ? waterNormal.width + "x" + waterNormal.height + " committed Unity texture"
                     : "missing Assets/Resources/Art/Textures/water_normal_256.png");
+
+            var uiLogo = AssetDatabase.LoadAssetAtPath<Texture2D>(ProjectBootstrap.UiLogoResourceAssetPath);
+            Check("game logo texture present", uiLogo != null,
+                uiLogo != null
+                    ? uiLogo.width + "x" + uiLogo.height + " Battle Horizons emblem"
+                    : "missing " + ProjectBootstrap.UiLogoResourceAssetPath);
+
+            var loadingBg = AssetDatabase.LoadAssetAtPath<Texture2D>(ProjectBootstrap.LoadingBgResourceAssetPath);
+            Check("loading screen artwork present", loadingBg != null,
+                loadingBg != null
+                    ? loadingBg.width + "x" + loadingBg.height + " Battle Horizons loading screen"
+                    : "missing " + ProjectBootstrap.LoadingBgResourceAssetPath);
+
+            var homeBg = AssetDatabase.LoadAssetAtPath<Texture2D>(ProjectBootstrap.HomeBgResourceAssetPath);
+            Check("home screen artwork present", homeBg != null,
+                homeBg != null
+                    ? homeBg.width + "x" + homeBg.height + " Battle Horizons home screen"
+                    : "missing " + ProjectBootstrap.HomeBgResourceAssetPath);
+
+            var defaultIcons = PlayerSettings.GetIcons(NamedBuildTarget.Unknown, IconKind.Any);
+            Check("application icon configured",
+                defaultIcons != null && defaultIcons.Length > 0 && defaultIcons[0] != null,
+                defaultIcons != null && defaultIcons.Length > 0 && defaultIcons[0] != null
+                    ? defaultIcons[0].name
+                    : "no default application icon assigned");
         }
 
         private static void CheckBlenderPipeline()

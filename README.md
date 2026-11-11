@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="unity-project/Assets/Resources/UI/battle_horizons_logo.png" width="220" alt="Battle Horizons Logo" />
+</p>
+
 # Battle Horizons: Last Survive
 
 Offline Android battle-royale prototype built with **Unity 6 `6000.0.85f2` and URP**.

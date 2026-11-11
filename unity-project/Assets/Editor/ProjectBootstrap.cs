@@ -8,6 +8,7 @@ using BattleHorizons.Player;
 using BattleHorizons.UI;
 using BattleHorizons.World;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -42,11 +43,17 @@ namespace BattleHorizons.EditorTools
         public const string WaterMaterialPath = MaterialsFolder + "/SiranWaterMat.mat";
         public const string RoadMaterialPath = MaterialsFolder + "/SiranRoadMat.mat";
         public const string PlayerCapsuleMaterialPath = MaterialsFolder + "/PlayerCapsuleMat.mat";
+        public const string UiLogoResourceAssetPath = "Assets/Resources/UI/battle_horizons_logo.png";
+        public const string HomeBgResourceAssetPath = "Assets/Resources/UI/battle_horizons_home_bg.jpg";
+        public const string LoadingBgResourceAssetPath = "Assets/Resources/UI/battle_horizons_loading_bg.jpg";
+        public const string LoadingBarResourceAssetPath = "Assets/Resources/UI/battle_horizons_loading_bar.png";
+        public const string LoadingSpinnerResourceAssetPath = "Assets/Resources/UI/battle_horizons_loading_spinner.png";
+        public const string AppIconPath = "Assets/UI/Icons/battle_horizons_icon.png";
 
         public static readonly string[] ScenePaths =
         {
-            ScenesFolder + "/SiranIsland_Greybox.unity",
             ScenesFolder + "/Boot.unity",
+            ScenesFolder + "/SiranIsland_Greybox.unity",
             ScenesFolder + "/MainMenu/MainMenu.unity",
             ScenesFolder + "/Gameplay/SiranIsland.unity",
             ScenesFolder + "/Test/PlayerTest.unity",
@@ -61,11 +68,13 @@ namespace BattleHorizons.EditorTools
             try
             {
                 EnsureFolders();
+                EnsureBrandingAssets();
                 var urpAsset = EnsureRenderPipeline();
                 var materials = EnsureMaterials();
                 EnsureScenes(materials);
                 EnsureBuildSettings();
                 ConfigureAndroidPlayerSettings();
+                ConfigureApplicationIcons();
 
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
@@ -383,6 +392,24 @@ namespace BattleHorizons.EditorTools
             loadingScaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
             loadingScaler.referenceResolution = new Vector2(1920f, 1080f);
 
+            var bootLogoSprite = AssetDatabase.LoadAssetAtPath<Sprite>(UiLogoResourceAssetPath);
+            if (bootLogoSprite != null)
+            {
+                var bootLogoObject = new GameObject(
+                    "BootLogo", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+                bootLogoObject.transform.SetParent(loadingCanvasObject.transform, false);
+                var bootLogoRect = (RectTransform)bootLogoObject.transform;
+                bootLogoRect.anchorMin = new Vector2(0.5f, 0.5f);
+                bootLogoRect.anchorMax = new Vector2(0.5f, 0.5f);
+                bootLogoRect.pivot = new Vector2(0.5f, 0.5f);
+                bootLogoRect.sizeDelta = new Vector2(260f, 260f);
+                bootLogoRect.anchoredPosition = new Vector2(0f, 110f);
+                var bootLogoImage = bootLogoObject.GetComponent<UnityEngine.UI.Image>();
+                bootLogoImage.sprite = bootLogoSprite;
+                bootLogoImage.preserveAspect = true;
+                bootLogoImage.raycastTarget = false;
+            }
+
             var loadingLabelObject = new GameObject(
                 "LoadingLabel", typeof(RectTransform), typeof(UnityEngine.UI.Text));
             loadingLabelObject.transform.SetParent(loadingCanvasObject.transform, false);
@@ -391,13 +418,16 @@ namespace BattleHorizons.EditorTools
             loadingLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
             loadingLabelRect.pivot = new Vector2(0.5f, 0.5f);
             loadingLabelRect.sizeDelta = new Vector2(1500f, 180f);
+            loadingLabelRect.anchoredPosition = new Vector2(0f, -110f);
             var loadingLabel = loadingLabelObject.GetComponent<UnityEngine.UI.Text>();
             loadingLabel.text = "BATTLE HORIZONS: LAST SURVIVE\nLOADING...";
             loadingLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             loadingLabel.fontSize = 38;
             loadingLabel.alignment = TextAnchor.MiddleCenter;
-            loadingLabel.color = Color.white;
+            loadingLabel.color = new Color(1f, 1f, 1f, 0f);
             loadingLabel.raycastTarget = false;
+
+            LoadingScreenView.AttachOrBuild(loadingCanvas);
 
             var bootstrap = new GameObject("GameBootstrap");
             var component = bootstrap.AddComponent<GameBootstrap>();
@@ -405,7 +435,7 @@ namespace BattleHorizons.EditorTools
             var nextScene = serialized.FindProperty("nextScene");
             if (nextScene != null)
             {
-                nextScene.stringValue = GameBootstrap.SceneNames.SiranIslandGreybox;
+                nextScene.stringValue = GameBootstrap.SceneNames.MainMenu;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
             }
 
@@ -657,6 +687,48 @@ namespace BattleHorizons.EditorTools
             Line(string.Format(
                 "Android: {0}, IL2CPP + ARM64, minApi 26, ASTC, landscape, no INTERNET permission",
                 "com.aurastudios.battlehorizons"));
+        }
+
+        private static void EnsureBrandingAssets()
+        {
+            string[] brandingPaths =
+            {
+                UiLogoResourceAssetPath,
+                HomeBgResourceAssetPath,
+                LoadingBgResourceAssetPath,
+                LoadingBarResourceAssetPath,
+                LoadingSpinnerResourceAssetPath,
+                AppIconPath,
+            };
+
+            foreach (var path in brandingPaths)
+            {
+                if (File.Exists(path))
+                {
+                    AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                }
+            }
+        }
+
+        private static void ConfigureApplicationIcons()
+        {
+            var appIcon = AssetDatabase.LoadAssetAtPath<Texture2D>(AppIconPath);
+            if (appIcon == null)
+            {
+                Line("WARNING: app icon texture missing at " + AppIconPath);
+                return;
+            }
+
+            var defaultSizes = PlayerSettings.GetIconSizes(NamedBuildTarget.Unknown, IconKind.Any);
+            var slotCount = defaultSizes != null && defaultSizes.Length > 0 ? defaultSizes.Length : 1;
+            var defaultIcons = new Texture2D[slotCount];
+            for (var i = 0; i < slotCount; i++)
+            {
+                defaultIcons[i] = appIcon;
+            }
+
+            PlayerSettings.SetIcons(NamedBuildTarget.Unknown, defaultIcons, IconKind.Any);
+            Line("Configured Battle Horizons default application icon (" + AppIconPath + ").");
         }
 
         private static void SetFloat(SerializedObject serialized, string property, float value)

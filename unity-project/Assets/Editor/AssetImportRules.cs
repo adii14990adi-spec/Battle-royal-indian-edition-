@@ -32,6 +32,46 @@ namespace BattleHorizons.EditorTools
                 return;
             }
 
+            if (assetPath.Contains("/UI/Icons/"))
+            {
+                importer.textureType = TextureImporterType.Default;
+                importer.isReadable = true;
+                importer.mipmapEnabled = false;
+                importer.anisoLevel = 0;
+                importer.alphaIsTransparency = false;
+                importer.maxTextureSize = MaxTextureSize;
+                importer.npotScale = TextureImporterNPOTScale.None;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                return;
+            }
+
+            if (assetPath.Contains("/Resources/UI/") || assetPath.Contains("/UI/"))
+            {
+                var uiMaxSize = (assetPath.Contains("loading_bg") || assetPath.Contains("home_bg"))
+                    ? 2048
+                    : MaxTextureSize;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.anisoLevel = 0;
+                importer.alphaIsTransparency = !assetPath.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase);
+                importer.maxTextureSize = uiMaxSize;
+                importer.npotScale = TextureImporterNPOTScale.None;
+                importer.textureCompression = TextureImporterCompression.CompressedHQ;
+
+                var uiAndroid = new TextureImporterPlatformSettings
+                {
+                    name = "Android",
+                    overridden = true,
+                    maxTextureSize = uiMaxSize,
+                    format = TextureImporterFormat.ASTC_6x6,
+                    textureCompression = TextureImporterCompression.CompressedHQ,
+                    compressionQuality = 100,
+                };
+                importer.SetPlatformTextureSettings(uiAndroid);
+                return;
+            }
+
             importer.textureType = TextureImporterType.Default;
             importer.mipmapEnabled = true;
             importer.anisoLevel = 0;
