@@ -292,7 +292,11 @@ jobs:
           if [[ ${STEP_EXIT:-0} -ne 0 ]]; then
             echo "::error::Unity project configuration failed with exit code $STEP_EXIT"
             if [[ -f /tmp/unity-configure.log ]]; then
-              grep -n -E "(\[bh\]|error CS|Shader error|Exception|FAILED)" /tmp/unity-configure.log | tail -n 60 || true
+              grep -n -E "(error CS|\[bh\]|Shader error|Exception|FAILED|Aborting batchmode|Error)" /tmp/unity-configure.log | tail -n 15 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=Configure Log::${clean}"
+              done
               tail -n 120 /tmp/unity-configure.log
             fi
             exit 1
@@ -321,6 +325,11 @@ jobs:
           if [[ ${TEST_EXIT:-0} -ne 0 || ! -s "$RESULTS_XML" ]]; then
             echo "::error::Edit-mode tests failed (exit code ${TEST_EXIT:-0})"
             if [[ -f "$LOG_FILE" ]]; then
+              grep -n -E "(error CS|\[bh\]|Failed|Exception|Error)" "$LOG_FILE" | tail -n 15 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=EditMode Log::${clean}"
+              done
               tail -n 120 "$LOG_FILE"
             fi
             exit 1
@@ -350,6 +359,11 @@ jobs:
           if [[ ${TEST_EXIT:-0} -ne 0 || ! -s "$RESULTS_XML" ]]; then
             echo "::error::Play-mode tests failed (exit code ${TEST_EXIT:-0})"
             if [[ -f "$LOG_FILE" ]]; then
+              grep -n -E "(error CS|\[bh\]|Failed|Exception|Error)" "$LOG_FILE" | tail -n 15 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=PlayMode Log::${clean}"
+              done
               tail -n 120 "$LOG_FILE"
             fi
             exit 1
@@ -375,7 +389,11 @@ jobs:
           if [[ ${VALIDATE_EXIT:-0} -ne 0 ]]; then
             echo "::error::Project validation failed with exit code $VALIDATE_EXIT"
             if [[ -f /tmp/unity-validate.log ]]; then
-              grep -n -E "(\[bh\]|FAIL|Exception)" /tmp/unity-validate.log | tail -n 60 || true
+              grep -n -E "(\[bh\]|FAIL|Exception|error CS)" /tmp/unity-validate.log | tail -n 15 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=Validate Log::${clean}"
+              done
               tail -n 120 /tmp/unity-validate.log
             fi
             exit 1
@@ -428,7 +446,11 @@ jobs:
           if [[ ${BUILD_EXIT:-0} -ne 0 ]]; then
             echo "::error::Unity APK build failed with exit code $BUILD_EXIT"
             if [[ -f /tmp/unity-build.log ]]; then
-              grep -n -E "(\[bh\]|error CS|Shader error|BuildFailed|Exception|FAILED)" /tmp/unity-build.log | tail -n 60 || true
+              grep -n -E "(\[bh\]|error CS|Shader error|BuildFailed|Exception|FAILED)" /tmp/unity-build.log | tail -n 15 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=Build Log::${clean}"
+              done
               tail -n 120 /tmp/unity-build.log
             fi
             exit 1
