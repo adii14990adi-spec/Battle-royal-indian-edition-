@@ -69,7 +69,7 @@ namespace BattleHorizons.EditorTools
             settings.loadType = assetPath.Contains("/Music/") ? AudioClipLoadType.Streaming : AudioClipLoadType.DecompressOnLoad;
             settings.compressionFormat = AudioCompressionFormat.Vorbis;
             settings.quality = 0.6f;
-            settings.sampleRateOverride = assetPath.Contains("/Music/") ? 0 : 22050;
+            settings.sampleRateOverride = assetPath.Contains("/Music/") ? 0u : 22050u;
             settings.sampleRateSetting = assetPath.Contains("/Music/")
                 ? AudioSampleRateSetting.PreserveSampleRate
                 : AudioSampleRateSetting.OverrideSampleRate;
