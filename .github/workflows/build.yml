@@ -148,98 +148,7 @@ jobs:
             fi
           fi
 
-          # Provide a `unity-editor` wrapper on the host runner pointing at the
-          # Buildalon-installed Unity Editor + Android SDK/NDK/OpenJDK. Running
-          # GameCI's build.sh directly on the host preserves the host's machine
-          # identity (which the Personal ULF is bound to) and avoids Docker
-          # container license rejection (exit code 198).
-          sudo tee /usr/local/bin/unity-editor >/dev/null << 'WRAPPER_EOF'
-          #!/usr/bin/env bash
-          EDITOR_BIN="${UNITY_EDITOR_PATH:-/home/runner/Unity/Hub/Editor/6000.0.85f2/Editor/Unity}"
-          EDITOR_DIR="$(dirname "$EDITOR_BIN")"
-          ANDROID_PLAYER="$EDITOR_DIR/Data/PlaybackEngines/AndroidPlayer"
-          if [[ -d "$ANDROID_PLAYER" ]]; then
-            export ANDROID_SDK_ROOT="$ANDROID_PLAYER/SDK"
-            export ANDROID_HOME="$ANDROID_SDK_ROOT"
-            export ANDROID_NDK_HOME="$ANDROID_PLAYER/NDK"
-            export ANDROID_NDK_ROOT="$ANDROID_PLAYER/NDK"
-            export JAVA_HOME="$ANDROID_PLAYER/OpenJDK"
-            export PATH="$JAVA_HOME/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
-          fi
-
-          args=()
-          for arg in "$@"; do
-            if [[ "$arg" == "/dev/stdout" ]]; then
-              args+=("-")
-            else
-              args+=("$arg")
-            fi
-          done
-
-          LOG_FILE="/tmp/unity-build.log"
-          rm -f "$LOG_FILE"
-          set -o pipefail
-          xvfb-run --auto-servernum -e /dev/stderr "$EDITOR_BIN" -batchmode -nographics -automated "${args[@]}" 2>&1 | tee "$LOG_FILE"
-          EXIT_CODE=${PIPESTATUS[0]}
-
-          if [[ $EXIT_CODE -ne 0 && -f "$LOG_FILE" ]]; then
-            grep -E "(\[bh\]|error CS|Error:|Exception|BuildFailed|FAILED|Licensing::)" "$LOG_FILE" | tail -n 8 | while IFS= read -r line; do
-              clean_line="${line//%/%25}"
-              clean_line="${clean_line//$'\r'/}"
-              echo "::error title=Unity Build Error::${clean_line}"
-            done
-          fi
-          exit $EXIT_CODE
-          WRAPPER_EOF
-          sudo sed -i 's/^          //' /usr/local/bin/unity-editor
-          sudo chmod +x /usr/local/bin/unity-editor
-
-          python3 - << 'PY_EOF'
-          import glob, os
-
-          roots = [
-              os.path.join(os.path.dirname(os.path.dirname(os.environ.get("GITHUB_WORKSPACE", ""))), "_actions/game-ci/unity-builder"),
-              "/home/runner/work/_actions/game-ci/unity-builder",
-          ]
-          seen = set()
-          for root in roots:
-              for index_js in glob.glob(os.path.join(root, "*", "dist", "index.js")):
-                  real_js = os.path.realpath(index_js)
-                  if real_js in seen or not os.path.isfile(real_js):
-                      continue
-                  seen.add(real_js)
-                  with open(real_js, "r", encoding="utf-8") as f:
-                      content = f.read()
-                  target = "static async run(image, parameters, silent = false, overrideCommands = '', additionalVariables = [], options = {}, entrypointBash = false) {"
-                  inject = target + """
-                  if (process.platform === "linux" && process.env.UNITY_EDITOR_PATH) {
-                      for (const item of image_environment_factory_1.default.getEnvVarArray(parameters, additionalVariables)) {
-                          if (item && item.name && item.value !== undefined) {
-                              process.env[item.name] = String(item.value);
-                          }
-                      }
-                      process.env.GITHUB_WORKSPACE = parameters.workspace;
-                      options.silent = silent;
-                      options.ignoreReturnCode = true;
-                      return await (0, exec_1.exec)("/bin/bash", [`${parameters.actionFolder}/platforms/ubuntu/steps/build.sh`], options);
-                  }"""
-                  if target in content and "process.env.UNITY_EDITOR_PATH" not in content:
-                      content = content.replace(target, inject, 1)
-                      with open(real_js, "w", encoding="utf-8") as f:
-                          f.write(content)
-                      print(f"Configured GameCI host runner execution in {real_js}")
-
-                  build_sh = os.path.join(os.path.dirname(real_js), "platforms", "ubuntu", "steps", "build.sh")
-                  if os.path.isfile(build_sh):
-                      with open(build_sh, "r", encoding="utf-8") as f:
-                          bcontent = f.read()
-                      if "exit $BUILD_EXIT_CODE" not in bcontent:
-                          bcontent += "\nexit ${BUILD_EXIT_CODE:-0}\n"
-                          with open(build_sh, "w", encoding="utf-8") as f:
-                              f.write(bcontent)
-          PY_EOF
-
-          echo 'Activated Personal license prepared for GameCI; license contents are masked.'
+          echo 'Activated Personal license verified on host runner; license contents are masked.'
 
       - name: Cache Unity Library
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -249,37 +158,61 @@ jobs:
           restore-keys: |
             unity-${{ env.UNITY_VERSION }}-android-
 
-      - name: Build Android APK with GameCI
+      # Native host build (replaces game-ci/unity-builder@v4 container execution for
+      # projectPath: ${{ env.UNITY_PROJECT_PATH }}, buildMethod: BuildCommand.PerformBuild,
+      # buildName: BattleHorizons so the host-bound Personal ULF license stays valid).
+      - name: Build Android APK on Host
         id: build
-        uses: game-ci/unity-builder@4423ee75828dff56037d1d1cfdac6b68e3a6ba00 # v4
+        shell: bash
         env:
-          UNITY_LICENSE: ${{ steps.license-bridge.outputs.license }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
           BH_BUILD_OUTPUT: Builds/BattleHorizons.apk
           BH_KEYSTORE_PATH: ${{ steps.secrets.outputs.signing_configured == 'true' && 'ci-keystore.jks' || '' }}
           BH_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS || secrets.KEYSTORE_PASS }}
           BH_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME || secrets.KEYALIAS_NAME }}
           BH_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS || secrets.KEYALIAS_PASS }}
-        with:
-          projectPath: ${{ env.UNITY_PROJECT_PATH }}
-          unityVersion: ${{ env.UNITY_VERSION }}
-          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-android-3
-          targetPlatform: Android
-          buildMethod: BuildCommand.PerformBuild
-          manualExit: true
-          allowDirtyBuild: true
-          buildName: BattleHorizons
-          androidExportType: androidPackage
-          androidTargetSdkVersion: 35
-          versioning: Custom
-          version: 0.1.${{ github.run_number }}
-          androidVersionCode: ${{ github.run_number }}
-          androidKeystoreName: ${{ steps.secrets.outputs.signing_configured == 'true' && 'ci-keystore.jks' || '' }}
-          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
-          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS || secrets.KEYSTORE_PASS }}
-          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME || secrets.KEYALIAS_NAME }}
-          androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS || secrets.KEYALIAS_PASS }}
+        run: |
+          set -euo pipefail
+
+          # Set up Android SDK / NDK / OpenJDK paths provided by Unity installation
+          EDITOR_DIR="$(dirname "$UNITY_EDITOR_BIN")"
+          ANDROID_PLAYER="$EDITOR_DIR/Data/PlaybackEngines/AndroidPlayer"
+          if [[ -d "$ANDROID_PLAYER" ]]; then
+            export ANDROID_HOME="$ANDROID_PLAYER/SDK"
+            export ANDROID_SDK_ROOT="$ANDROID_PLAYER/SDK"
+            export ANDROID_NDK_HOME="$ANDROID_PLAYER/NDK"
+            export ANDROID_NDK_ROOT="$ANDROID_PLAYER/NDK"
+            export JAVA_HOME="$ANDROID_PLAYER/OpenJDK"
+            export PATH="$JAVA_HOME/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+          fi
+
+          mkdir -p "${UNITY_PROJECT_PATH}/Builds"
+
+          # Decode release keystore if configured
+          if [[ "${{ steps.secrets.outputs.signing_configured }}" == "true" ]]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}" | base64 -d > "${UNITY_PROJECT_PATH}/ci-keystore.jks"
+          fi
+
+          # Execute headless Unity build
+          echo "Starting Unity build via host editor..."
+          xvfb-run --auto-servernum "$UNITY_EDITOR_BIN" \
+            -batchmode \
+            -nographics \
+            -quit \
+            -projectPath "$UNITY_PROJECT_PATH" \
+            -buildTarget Android \
+            -executeMethod BuildCommand.PerformBuild \
+            -logFile /tmp/unity-build.log || BUILD_EXIT=$?
+
+          if [[ ${BUILD_EXIT:-0} -ne 0 ]]; then
+            echo "::error::Unity build failed with exit code $BUILD_EXIT"
+            if [[ -f /tmp/unity-build.log ]]; then
+              tail -n 120 /tmp/unity-build.log
+            fi
+            exit 1
+          fi
+
+          echo "Unity build completed successfully."
 
       - name: Remove temporary keystore
         if: always()
