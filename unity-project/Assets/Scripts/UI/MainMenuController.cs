@@ -41,28 +41,35 @@ namespace BattleHorizons.UI
             backgroundRect.offsetMin = Vector2.zero;
             backgroundRect.offsetMax = Vector2.zero;
             var backgroundImage = background.GetComponent<UnityEngine.UI.Image>();
-            backgroundImage.color = new Color(0.10f, 0.13f, 0.16f, 1f);
+            backgroundImage.color = new Color(0.06f, 0.09f, 0.14f, 1f);
             backgroundImage.raycastTarget = false;
 
+            GameLogo.CreateLogoImage(
+                canvasObject.transform,
+                "GameLogo",
+                new Vector2(0.5f, 0.83f),
+                new Vector2(230f, 230f),
+                Vector2.zero);
+
             CreateLabel(canvasObject.transform, "Title", "BATTLE HORIZONS: LAST SURVIVE",
-                new Vector2(0.5f, 0.80f), 64, new Color(1f, 0.85f, 0.35f));
+                new Vector2(0.5f, 0.65f), 56, new Color(1f, 0.85f, 0.35f));
             CreateLabel(canvasObject.transform, "Subtitle", "Siran Island - Unity 6 URP",
-                new Vector2(0.5f, 0.73f), 30, new Color(0.75f, 0.80f, 0.85f));
+                new Vector2(0.5f, 0.58f), 28, new Color(0.75f, 0.80f, 0.85f));
 
             CreateButton(canvasObject.transform, "EnterSiranIsland", "ENTER SIRAN ISLAND",
-                new Vector2(0.5f, 0.55f), () => LoadScene(
+                new Vector2(0.5f, 0.45f), () => LoadScene(
                     Application.CanStreamedLevelBeLoaded(GameBootstrap.SceneNames.SiranIslandGreybox)
                         ? GameBootstrap.SceneNames.SiranIslandGreybox
                         : GameBootstrap.SceneNames.SiranIsland));
             CreateButton(canvasObject.transform, "PlayerTest", "PLAYER CONTROLLER TEST",
-                new Vector2(0.5f, 0.44f), () => LoadScene(GameBootstrap.SceneNames.PlayerTest));
+                new Vector2(0.5f, 0.34f), () => LoadScene(GameBootstrap.SceneNames.PlayerTest));
             CreateButton(canvasObject.transform, "ToggleQuality", QualityButtonLabel(),
-                new Vector2(0.5f, 0.33f), ToggleQuality);
+                new Vector2(0.5f, 0.23f), ToggleQuality);
 
             CreateLabel(canvasObject.transform, "Quality",
                 string.Format("Active profile: {0}   (device detect: {1})",
                     QualityProfiles.Active, QualityProfiles.DetectFromDevice()),
-                new Vector2(0.5f, 0.24f), 22, new Color(0.65f, 0.70f, 0.75f));
+                new Vector2(0.5f, 0.13f), 22, new Color(0.65f, 0.70f, 0.75f));
         }
 
         private static string QualityButtonLabel() =>

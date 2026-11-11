@@ -306,6 +306,10 @@ namespace BattleHorizons.Tests.PlayMode
             Assert.IsTrue(enterButton.GetComponent<UnityEngine.UI.Image>().raycastTarget);
             Assert.IsTrue(enterButton.GetComponent<UnityEngine.UI.Button>().interactable);
 
+            var logo = canvas.transform.Find("GameLogo");
+            Assert.IsNotNull(logo, "Main menu must display the Battle Horizons game logo");
+            Assert.IsNotNull(logo.GetComponent<UnityEngine.UI.Image>().sprite);
+
             Object.Destroy(menuRoot);
         }
 

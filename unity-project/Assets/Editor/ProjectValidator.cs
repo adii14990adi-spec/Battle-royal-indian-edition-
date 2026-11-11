@@ -552,6 +552,19 @@ namespace BattleHorizons.EditorTools
                 waterNormal != null
                     ? waterNormal.width + "x" + waterNormal.height + " committed Unity texture"
                     : "missing Assets/Resources/Art/Textures/water_normal_256.png");
+
+            var uiLogo = AssetDatabase.LoadAssetAtPath<Texture2D>(ProjectBootstrap.UiLogoResourceAssetPath);
+            Check("game logo texture present", uiLogo != null,
+                uiLogo != null
+                    ? uiLogo.width + "x" + uiLogo.height + " Battle Horizons emblem"
+                    : "missing " + ProjectBootstrap.UiLogoResourceAssetPath);
+
+            var defaultIcons = PlayerSettings.GetIcons(NamedBuildTarget.Unknown, IconKind.Any);
+            Check("application icon configured",
+                defaultIcons != null && defaultIcons.Length > 0 && defaultIcons[0] != null,
+                defaultIcons != null && defaultIcons.Length > 0 && defaultIcons[0] != null
+                    ? defaultIcons[0].name
+                    : "no default application icon assigned");
         }
 
         private static void CheckBlenderPipeline()

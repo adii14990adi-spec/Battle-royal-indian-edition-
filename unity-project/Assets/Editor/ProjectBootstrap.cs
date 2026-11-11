@@ -8,6 +8,7 @@ using BattleHorizons.Player;
 using BattleHorizons.UI;
 using BattleHorizons.World;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -42,6 +43,10 @@ namespace BattleHorizons.EditorTools
         public const string WaterMaterialPath = MaterialsFolder + "/SiranWaterMat.mat";
         public const string RoadMaterialPath = MaterialsFolder + "/SiranRoadMat.mat";
         public const string PlayerCapsuleMaterialPath = MaterialsFolder + "/PlayerCapsuleMat.mat";
+        public const string UiLogoResourceAssetPath = "Assets/Resources/UI/battle_horizons_logo.png";
+        public const string AppIconPath = "Assets/UI/Icons/battle_horizons_icon.png";
+        public const string AdaptiveIconForegroundPath = "Assets/UI/Icons/battle_horizons_icon_fg.png";
+        public const string AdaptiveIconBackgroundPath = "Assets/UI/Icons/battle_horizons_icon_bg.png";
 
         public static readonly string[] ScenePaths =
         {
@@ -61,11 +66,13 @@ namespace BattleHorizons.EditorTools
             try
             {
                 EnsureFolders();
+                EnsureBrandingAssets();
                 var urpAsset = EnsureRenderPipeline();
                 var materials = EnsureMaterials();
                 EnsureScenes(materials);
                 EnsureBuildSettings();
                 ConfigureAndroidPlayerSettings();
+                ConfigureApplicationIcons();
 
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
@@ -383,6 +390,24 @@ namespace BattleHorizons.EditorTools
             loadingScaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
             loadingScaler.referenceResolution = new Vector2(1920f, 1080f);
 
+            var bootLogoSprite = AssetDatabase.LoadAssetAtPath<Sprite>(UiLogoResourceAssetPath);
+            if (bootLogoSprite != null)
+            {
+                var bootLogoObject = new GameObject(
+                    "BootLogo", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+                bootLogoObject.transform.SetParent(loadingCanvasObject.transform, false);
+                var bootLogoRect = (RectTransform)bootLogoObject.transform;
+                bootLogoRect.anchorMin = new Vector2(0.5f, 0.5f);
+                bootLogoRect.anchorMax = new Vector2(0.5f, 0.5f);
+                bootLogoRect.pivot = new Vector2(0.5f, 0.5f);
+                bootLogoRect.sizeDelta = new Vector2(260f, 260f);
+                bootLogoRect.anchoredPosition = new Vector2(0f, 110f);
+                var bootLogoImage = bootLogoObject.GetComponent<UnityEngine.UI.Image>();
+                bootLogoImage.sprite = bootLogoSprite;
+                bootLogoImage.preserveAspect = true;
+                bootLogoImage.raycastTarget = false;
+            }
+
             var loadingLabelObject = new GameObject(
                 "LoadingLabel", typeof(RectTransform), typeof(UnityEngine.UI.Text));
             loadingLabelObject.transform.SetParent(loadingCanvasObject.transform, false);
@@ -391,6 +416,7 @@ namespace BattleHorizons.EditorTools
             loadingLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
             loadingLabelRect.pivot = new Vector2(0.5f, 0.5f);
             loadingLabelRect.sizeDelta = new Vector2(1500f, 180f);
+            loadingLabelRect.anchoredPosition = new Vector2(0f, -110f);
             var loadingLabel = loadingLabelObject.GetComponent<UnityEngine.UI.Text>();
             loadingLabel.text = "BATTLE HORIZONS: LAST SURVIVE\nLOADING...";
             loadingLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -657,6 +683,82 @@ namespace BattleHorizons.EditorTools
             Line(string.Format(
                 "Android: {0}, IL2CPP + ARM64, minApi 26, ASTC, landscape, no INTERNET permission",
                 "com.aurastudios.battlehorizons"));
+        }
+
+        private static void EnsureBrandingAssets()
+        {
+            string[] brandingPaths =
+            {
+                UiLogoResourceAssetPath,
+                AppIconPath,
+                AdaptiveIconForegroundPath,
+                AdaptiveIconBackgroundPath,
+            };
+
+            foreach (var path in brandingPaths)
+            {
+                if (File.Exists(path))
+                {
+                    AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                }
+            }
+        }
+
+        private static void ConfigureApplicationIcons()
+        {
+            var appIcon = AssetDatabase.LoadAssetAtPath<Texture2D>(AppIconPath);
+            var adaptiveFg = AssetDatabase.LoadAssetAtPath<Texture2D>(AdaptiveIconForegroundPath) ?? appIcon;
+            var adaptiveBg = AssetDatabase.LoadAssetAtPath<Texture2D>(AdaptiveIconBackgroundPath) ?? appIcon;
+
+            if (appIcon == null)
+            {
+                Line("WARNING: app icon texture missing at " + AppIconPath);
+                return;
+            }
+
+            var defaultSizes = PlayerSettings.GetIconSizes(NamedBuildTarget.Unknown, IconKind.Any);
+            if (defaultSizes != null && defaultSizes.Length > 0)
+            {
+                var defaultIcons = new Texture2D[defaultSizes.Length];
+                for (var i = 0; i < defaultIcons.Length; i++)
+                {
+                    defaultIcons[i] = appIcon;
+                }
+
+                PlayerSettings.SetIcons(NamedBuildTarget.Unknown, defaultIcons, IconKind.Any);
+            }
+
+            var androidKinds = PlayerSettings.GetSupportedIconKinds(NamedBuildTarget.Android);
+            if (androidKinds != null)
+            {
+                for (var k = 0; k < androidKinds.Length; k++)
+                {
+                    var kind = androidKinds[k];
+                    var slots = PlayerSettings.GetPlatformIcons(NamedBuildTarget.Android, kind);
+                    if (slots == null || slots.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    var isAdaptive = kind.ToString().IndexOf("Adaptive", StringComparison.OrdinalIgnoreCase) >= 0;
+                    for (var i = 0; i < slots.Length; i++)
+                    {
+                        var slot = slots[i];
+                        if (isAdaptive && slot.maxLayerCount >= 2)
+                        {
+                            slot.SetTextures(adaptiveBg, adaptiveFg);
+                        }
+                        else if (slot.maxLayerCount >= 1)
+                        {
+                            slot.SetTexture(appIcon, 0);
+                        }
+                    }
+
+                    PlayerSettings.SetPlatformIcons(NamedBuildTarget.Android, kind, slots);
+                }
+            }
+
+            Line("Configured Battle Horizons application icons (Default + Android Adaptive/Round/Legacy).");
         }
 
         private static void SetFloat(SerializedObject serialized, string property, float value)

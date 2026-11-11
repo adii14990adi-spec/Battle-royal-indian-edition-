@@ -83,6 +83,14 @@ namespace BattleHorizons.UI
             // hierarchy in reverse sibling order, so earlier == behind.
             var lookArea = CreateLookArea(canvasObject.transform, router, cameraRig);
 
+            GameLogo.CreateLogoImage(
+                canvasObject.transform,
+                "GameLogoBadge",
+                new Vector2(1f, 1f),
+                new Vector2(112f, 112f),
+                new Vector2(-78f, -78f),
+                0.92f);
+
             var moveStick = CreateStick(canvasObject.transform, "MoveStick", new Vector2(0f, 0f),
                 new Vector2(300f, 300f), new Vector2(320f, 300f), new Color(1f, 1f, 1f, 0.25f));
             var lookStick = CreateStick(canvasObject.transform, "LookStick", new Vector2(1f, 0.5f),
