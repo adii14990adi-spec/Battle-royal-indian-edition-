@@ -565,6 +565,12 @@ namespace BattleHorizons.EditorTools
                     ? loadingBg.width + "x" + loadingBg.height + " Battle Horizons loading screen"
                     : "missing " + ProjectBootstrap.LoadingBgResourceAssetPath);
 
+            var homeBg = AssetDatabase.LoadAssetAtPath<Texture2D>(ProjectBootstrap.HomeBgResourceAssetPath);
+            Check("home screen artwork present", homeBg != null,
+                homeBg != null
+                    ? homeBg.width + "x" + homeBg.height + " Battle Horizons home screen"
+                    : "missing " + ProjectBootstrap.HomeBgResourceAssetPath);
+
             var defaultIcons = PlayerSettings.GetIcons(NamedBuildTarget.Unknown, IconKind.Any);
             Check("application icon configured",
                 defaultIcons != null && defaultIcons.Length > 0 && defaultIcons[0] != null,

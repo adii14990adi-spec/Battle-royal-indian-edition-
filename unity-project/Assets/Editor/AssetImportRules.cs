@@ -47,7 +47,9 @@ namespace BattleHorizons.EditorTools
 
             if (assetPath.Contains("/Resources/UI/") || assetPath.Contains("/UI/"))
             {
-                var uiMaxSize = assetPath.Contains("loading_bg") ? 2048 : MaxTextureSize;
+                var uiMaxSize = (assetPath.Contains("loading_bg") || assetPath.Contains("home_bg"))
+                    ? 2048
+                    : MaxTextureSize;
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spriteImportMode = SpriteImportMode.Single;
                 importer.mipmapEnabled = false;

@@ -26,8 +26,8 @@ namespace BattleHorizons.Core
             public const string PlayerTest = "PlayerTest";
         }
 
-        [Tooltip("Load this scene after boot. Empty = SiranIsland_Greybox.")]
-        [SerializeField] private string nextScene = SceneNames.SiranIslandGreybox;
+        [Tooltip("Load this scene after boot. Empty = MainMenu (Home Screen).")]
+        [SerializeField] private string nextScene = SceneNames.MainMenu;
 
         [Tooltip("Force a quality profile instead of detecting one. -1 = auto.")]
         [SerializeField] private int forcedQuality = QualityProfiles.AutoDetect;

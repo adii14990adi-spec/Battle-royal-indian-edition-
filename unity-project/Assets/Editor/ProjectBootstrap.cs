@@ -44,6 +44,7 @@ namespace BattleHorizons.EditorTools
         public const string RoadMaterialPath = MaterialsFolder + "/SiranRoadMat.mat";
         public const string PlayerCapsuleMaterialPath = MaterialsFolder + "/PlayerCapsuleMat.mat";
         public const string UiLogoResourceAssetPath = "Assets/Resources/UI/battle_horizons_logo.png";
+        public const string HomeBgResourceAssetPath = "Assets/Resources/UI/battle_horizons_home_bg.jpg";
         public const string LoadingBgResourceAssetPath = "Assets/Resources/UI/battle_horizons_loading_bg.jpg";
         public const string LoadingBarResourceAssetPath = "Assets/Resources/UI/battle_horizons_loading_bar.png";
         public const string LoadingSpinnerResourceAssetPath = "Assets/Resources/UI/battle_horizons_loading_spinner.png";
@@ -434,7 +435,7 @@ namespace BattleHorizons.EditorTools
             var nextScene = serialized.FindProperty("nextScene");
             if (nextScene != null)
             {
-                nextScene.stringValue = GameBootstrap.SceneNames.SiranIslandGreybox;
+                nextScene.stringValue = GameBootstrap.SceneNames.MainMenu;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
             }
 
@@ -693,6 +694,7 @@ namespace BattleHorizons.EditorTools
             string[] brandingPaths =
             {
                 UiLogoResourceAssetPath,
+                HomeBgResourceAssetPath,
                 LoadingBgResourceAssetPath,
                 LoadingBarResourceAssetPath,
                 LoadingSpinnerResourceAssetPath,
