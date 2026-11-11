@@ -24,9 +24,16 @@ namespace BattleHorizons.Tests.PlayMode
         private GameObject _player;
         private GameObject _cameraObject;
 
+        [SetUp]
+        public void SetUp()
+        {
+            Time.captureFramerate = 60;
+        }
+
         [TearDown]
         public void Cleanup()
         {
+            Time.captureFramerate = 0;
             if (_world != null) Object.Destroy(_world);
             if (_player != null) Object.Destroy(_player);
             if (_cameraObject != null) Object.Destroy(_cameraObject);
