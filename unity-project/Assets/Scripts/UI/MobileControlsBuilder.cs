@@ -37,7 +37,7 @@ namespace BattleHorizons.UI
         {
             EnsureEventSystem();
 
-            var cameraRig = Object.FindFirstObjectByType<CameraRig.ThirdPersonCameraController>();
+            var cameraRig = UnityEngine.Object.FindFirstObjectByType<CameraRig.ThirdPersonCameraController>();
 
             var canvasObject = new GameObject("MobileControls");
             canvasObject.transform.SetParent(parent, false);
@@ -137,7 +137,7 @@ namespace BattleHorizons.UI
 
         private static void EnsureEventSystem()
         {
-            if (Object.FindFirstObjectByType<EventSystem>() != null)
+            if (UnityEngine.Object.FindFirstObjectByType<EventSystem>() != null)
             {
                 return;
             }

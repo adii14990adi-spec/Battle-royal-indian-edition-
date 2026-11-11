@@ -28,8 +28,8 @@ namespace BattleHorizons.EditorTools
     public static class AndroidBuild
     {
         public const string OutputDirectory = "Builds";
-        public const string ApkName = "battle-horizons.apk";
-        public const string AabName = "battle-horizons.aab";
+        public const string ApkName = "BattleHorizons.apk";
+        public const string AabName = "BattleHorizons.aab";
 
         [MenuItem("Battle Horizons/Build/Android APK", priority = 20)]
         public static void BuildApkFromMenu() => BuildApk();
@@ -84,6 +84,7 @@ namespace BattleHorizons.EditorTools
 
                 var outputPath = ResolveOutputPath(androidAppBundle);
                 Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? OutputDirectory);
+                EditorUserBuildSettings.buildAppBundle = androidAppBundle;
 
                 var options = new BuildPlayerOptions
                 {
@@ -117,6 +118,17 @@ namespace BattleHorizons.EditorTools
                     return;
                 }
 
+                if (!androidAppBundle)
+                {
+                    var projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? Directory.GetCurrentDirectory();
+                    var canonicalApkPath = Path.GetFullPath(Path.Combine(projectRoot, OutputDirectory, ApkName));
+                    if (!string.Equals(Path.GetFullPath(outputPath), canonicalApkPath, StringComparison.Ordinal))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(canonicalApkPath) ?? OutputDirectory);
+                        File.Copy(outputPath, canonicalApkPath, overwrite: true);
+                    }
+                }
+
                 var size = new FileInfo(outputPath).Length;
                 Debug.Log(string.Format(
                     "[bh][build] SUCCESS: {0} ({1:F1} MB, {2} scenes, {3} s). " +
@@ -131,10 +143,46 @@ namespace BattleHorizons.EditorTools
             }
         }
 
+        public static string ResolveSetting(string envVar, string cliFlag, string fallbackEnvVar = null)
+        {
+            var value = Environment.GetEnvironmentVariable(envVar);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+
+            if (!string.IsNullOrEmpty(fallbackEnvVar))
+            {
+                value = Environment.GetEnvironmentVariable(fallbackEnvVar);
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+
+            if (!string.IsNullOrEmpty(cliFlag))
+            {
+                var args = Environment.GetCommandLineArgs();
+                for (var i = 0; i < args.Length - 1; i++)
+                {
+                    if (string.Equals(args[i], cliFlag, StringComparison.Ordinal))
+                    {
+                        var candidate = args[i + 1];
+                        if (!string.IsNullOrWhiteSpace(candidate) && !candidate.StartsWith("-", StringComparison.Ordinal))
+                        {
+                            return candidate.Trim();
+                        }
+                    }
+                }
+            }
+
+            return string.Empty;
+        }
+
         private static string ResolveOutputPath(bool androidAppBundle)
         {
             var projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? Directory.GetCurrentDirectory();
-            var configured = Environment.GetEnvironmentVariable("BH_BUILD_OUTPUT");
+            var configured = ResolveSetting("BH_BUILD_OUTPUT", "-customBuildPath", "CUSTOM_BUILD_PATH");
             if (!androidAppBundle && !string.IsNullOrWhiteSpace(configured))
             {
                 return Path.GetFullPath(Path.IsPathRooted(configured)
@@ -188,10 +236,10 @@ namespace BattleHorizons.EditorTools
             return true;
         }
 
-        /// <summary>Keystore from the environment only — never from a committed file.</summary>
+        /// <summary>Keystore from the environment or GameCI command line — never from a committed file.</summary>
         private static bool ApplySigning()
         {
-            var keystore = Environment.GetEnvironmentVariable("BH_KEYSTORE_PATH");
+            var keystore = ResolveSetting("BH_KEYSTORE_PATH", "-androidKeystoreName", "ANDROID_KEYSTORE_NAME");
             if (string.IsNullOrWhiteSpace(keystore))
             {
                 PlayerSettings.Android.useCustomKeystore = false;
@@ -207,9 +255,9 @@ namespace BattleHorizons.EditorTools
                 keystore = Path.GetFullPath(Path.Combine(projectRoot, keystore));
             }
 
-            var keystorePass = Environment.GetEnvironmentVariable("BH_KEYSTORE_PASS");
-            var aliasName = Environment.GetEnvironmentVariable("BH_KEYALIAS_NAME");
-            var aliasPass = Environment.GetEnvironmentVariable("BH_KEYALIAS_PASS");
+            var keystorePass = ResolveSetting("BH_KEYSTORE_PASS", "-androidKeystorePass", "ANDROID_KEYSTORE_PASS");
+            var aliasName = ResolveSetting("BH_KEYALIAS_NAME", "-androidKeyaliasName", "ANDROID_KEYALIAS_NAME");
+            var aliasPass = ResolveSetting("BH_KEYALIAS_PASS", "-androidKeyaliasPass", "ANDROID_KEYALIAS_PASS");
             if (!File.Exists(keystore) || string.IsNullOrEmpty(keystorePass) ||
                 string.IsNullOrEmpty(aliasName) || string.IsNullOrEmpty(aliasPass))
             {

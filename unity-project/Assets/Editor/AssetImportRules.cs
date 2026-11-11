@@ -20,6 +20,11 @@ namespace BattleHorizons.EditorTools
 
         private void OnPreprocessTexture()
         {
+            if (!assetPath.StartsWith("Assets/", StringComparison.Ordinal))
+            {
+                return;
+            }
+
             var importer = (TextureImporter)assetImporter;
             if (assetPath.Contains("/Editor/"))
             {
@@ -53,6 +58,11 @@ namespace BattleHorizons.EditorTools
 
         private void OnPreprocessAudio()
         {
+            if (!assetPath.StartsWith("Assets/", StringComparison.Ordinal))
+            {
+                return;
+            }
+
             var importer = (AudioImporter)assetImporter;
             var settings = importer.defaultSampleSettings;
             settings.loadType = assetPath.Contains("/Music/") ? AudioClipLoadType.Streaming : AudioClipLoadType.DecompressOnLoad;
@@ -69,6 +79,11 @@ namespace BattleHorizons.EditorTools
 
         private void OnPostprocessTexture(Texture2D texture)
         {
+            if (!assetPath.StartsWith("Assets/", StringComparison.Ordinal))
+            {
+                return;
+            }
+
             if (assetPath.Contains("/Editor/") || assetPath.Contains("/UI/"))
             {
                 return;
@@ -84,6 +99,11 @@ namespace BattleHorizons.EditorTools
 
         private void OnPreprocessModel()
         {
+            if (!assetPath.StartsWith("Assets/", StringComparison.Ordinal))
+            {
+                return;
+            }
+
             var importer = (ModelImporter)assetImporter;
 
             // A Unity unit is a metre and the Blender/FBX export in

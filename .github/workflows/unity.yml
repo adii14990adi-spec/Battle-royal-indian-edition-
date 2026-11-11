@@ -185,6 +185,62 @@ jobs:
             echo "::warning::Missing supported Unity license inputs. Personal requires UNITY_LICENSE, UNITY_EMAIL, and UNITY_PASSWORD; Professional requires UNITY_SERIAL, UNITY_EMAIL, and UNITY_PASSWORD. Email/password alone are not sufficient. The Unity editor steps are SKIPPED - this run does NOT prove the project opens in Unity."
           fi
 
+          actions_root="$(dirname "$(dirname "$GITHUB_WORKSPACE")")/_actions/game-ci"
+          for steps_dir in "$actions_root"/*/*/dist/platforms/ubuntu/steps /home/runner/work/_actions/game-ci/*/*/dist/platforms/ubuntu/steps; do
+            if [ -d "$steps_dir" ]; then
+              cat > "$steps_dir/activate.sh" << 'ACTIVATE_EOF'
+          #!/usr/bin/env bash
+          LICENSING_CLIENT="/opt/unity/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client"
+          ULF_DIR="${HOME:-/root}/.local/share/unity3d/Unity"
+          ULF_FILE="${ULF_DIR}/Unity_lic.ulf"
+          mkdir -p "${ULF_DIR}" "${HOME:-/root}/.config/unity3d" "${HOME:-/root}/.cache/unity3d"
+          if [[ -n "$UNITY_LICENSING_SERVER" ]]; then
+            "$LICENSING_CLIENT" --acquire-floating || exit $?
+          elif [[ -n "$UNITY_EMAIL" && -n "$UNITY_PASSWORD" ]]; then
+            if [[ -n "$UNITY_SERIAL" && "$UNITY_SERIAL" != F* ]]; then
+              "$LICENSING_CLIENT" --activate-ulf --serial "$UNITY_SERIAL" --username "$UNITY_EMAIL" --password "$UNITY_PASSWORD"
+              EXIT_CODE=$?
+            else
+              "$LICENSING_CLIENT" --activate-ulf --username "$UNITY_EMAIL" --password "$UNITY_PASSWORD" --include-personal
+              EXIT_CODE=$?
+            fi
+            if [[ $EXIT_CODE -ne 0 && -n "$UNITY_LICENSE" ]]; then
+              if [[ "$UNITY_LICENSE" == "<"* ]]; then
+                printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
+              else
+                printf '%s' "$UNITY_LICENSE" | base64 -d > "$ULF_FILE" 2>/dev/null || printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
+              fi
+              test -s "$ULF_FILE"
+              EXIT_CODE=$?
+            fi
+            [[ $EXIT_CODE -eq 0 ]] || exit $EXIT_CODE
+          elif [[ -n "$UNITY_LICENSE" ]]; then
+            if [[ "$UNITY_LICENSE" == "<"* ]]; then
+              printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
+            else
+              printf '%s' "$UNITY_LICENSE" | base64 -d > "$ULF_FILE" 2>/dev/null || printf '%s\n' "$UNITY_LICENSE" > "$ULF_FILE"
+            fi
+            test -s "$ULF_FILE" || exit 1
+          else
+            exit 1
+          fi
+          true
+          ACTIVATE_EOF
+              sed -i 's/^          //' "$steps_dir/activate.sh"
+              chmod +x "$steps_dir/activate.sh"
+              cat > "$steps_dir/return_license.sh" << 'RETURN_EOF'
+          #!/usr/bin/env bash
+          LICENSING_CLIENT="/opt/unity/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client"
+          if [[ -n "$UNITY_SERIAL" && "$UNITY_SERIAL" != F* ]]; then
+            "$LICENSING_CLIENT" --return-ulf || true
+          fi
+          true
+          RETURN_EOF
+              sed -i 's/^          //' "$steps_dir/return_license.sh"
+              chmod +x "$steps_dir/return_license.sh"
+            fi
+          done
+
       - name: Skip notice
         if: steps.licence.outputs.available != 'true'
         run: |
