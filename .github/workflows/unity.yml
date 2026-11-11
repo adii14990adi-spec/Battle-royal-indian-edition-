@@ -324,8 +324,21 @@ jobs:
 
           if [[ ${TEST_EXIT:-0} -ne 0 || ! -s "$RESULTS_XML" ]]; then
             echo "::error::Edit-mode tests failed (exit code ${TEST_EXIT:-0})"
+            if [[ -s "$RESULTS_XML" ]]; then
+              python3 -c '
+import sys, xml.etree.ElementTree as ET
+tree = ET.parse(sys.argv[1])
+for tc in tree.iter("test-case"):
+    if tc.attrib.get("result") == "Failed":
+        name = tc.attrib.get("fullname", tc.attrib.get("name", "unknown"))
+        msg = (tc.findtext("failure/message") or "").replace("\n", " | ").replace("\r", "")
+        st = (tc.findtext("failure/stack-trace") or "").splitlines()
+        st_short = st[0] if st else ""
+        print(f"::error title=EditMode {name}::{msg} ({st_short})")
+' "$RESULTS_XML" || true
+            fi
             if [[ -f "$LOG_FILE" ]]; then
-              grep -n -E "(error CS|\[bh\]|Failed|Exception|Error)" "$LOG_FILE" | tail -n 15 | while IFS= read -r line; do
+              grep -n -E "(error CS|Unhandled|NullReferenceException|AssertionException)" "$LOG_FILE" | tail -n 10 | while IFS= read -r line; do
                 clean="${line//%/%25}"
                 clean="${clean//$'\r'/}"
                 echo "::error title=EditMode Log::${clean}"
@@ -358,8 +371,21 @@ jobs:
 
           if [[ ${TEST_EXIT:-0} -ne 0 || ! -s "$RESULTS_XML" ]]; then
             echo "::error::Play-mode tests failed (exit code ${TEST_EXIT:-0})"
+            if [[ -s "$RESULTS_XML" ]]; then
+              python3 -c '
+import sys, xml.etree.ElementTree as ET
+tree = ET.parse(sys.argv[1])
+for tc in tree.iter("test-case"):
+    if tc.attrib.get("result") == "Failed":
+        name = tc.attrib.get("fullname", tc.attrib.get("name", "unknown"))
+        msg = (tc.findtext("failure/message") or "").replace("\n", " | ").replace("\r", "")
+        st = (tc.findtext("failure/stack-trace") or "").splitlines()
+        st_short = st[0] if st else ""
+        print(f"::error title=PlayMode {name}::{msg} ({st_short})")
+' "$RESULTS_XML" || true
+            fi
             if [[ -f "$LOG_FILE" ]]; then
-              grep -n -E "(error CS|\[bh\]|Failed|Exception|Error)" "$LOG_FILE" | tail -n 15 | while IFS= read -r line; do
+              grep -n -E "(error CS|Unhandled|NullReferenceException|AssertionException)" "$LOG_FILE" | tail -n 10 | while IFS= read -r line; do
                 clean="${line//%/%25}"
                 clean="${clean//$'\r'/}"
                 echo "::error title=PlayMode Log::${clean}"

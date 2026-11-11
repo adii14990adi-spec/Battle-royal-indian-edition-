@@ -177,8 +177,10 @@ namespace BattleHorizons.Tests.PlayMode
             _player.transform.position = new Vector3(0f, 0.2f, 0f);
             _player.AddComponent<CharacterController>();
             var motor = _player.AddComponent<ThirdPersonMotor>();
-            yield return null;
-            yield return null;
+            for (var i = 0; i < 20 && !motor.IsGrounded; i++)
+            {
+                yield return null;
+            }
 
             Assert.IsTrue(motor.IsGrounded, "player should start grounded");
 

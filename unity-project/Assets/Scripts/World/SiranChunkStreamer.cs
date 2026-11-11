@@ -131,7 +131,7 @@ namespace BattleHorizons.World
                 return;
             }
 
-            _tickAccumulator += Time.unscaledDeltaTime;
+            _tickAccumulator += Mathf.Max(Time.deltaTime, Time.unscaledDeltaTime);
             if (_tickAccumulator < tickIntervalSeconds)
             {
                 return;
