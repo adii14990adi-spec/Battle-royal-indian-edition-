@@ -75,8 +75,10 @@ namespace BattleHorizons.Tests.PlayMode
             Assert.IsNotNull(builder.Overview, "the full-island overview mesh was not created");
             var overviewRenderer = builder.Overview.GetComponent<MeshRenderer>();
             Assert.IsNotNull(overviewRenderer, "overview needs a renderer");
-            Assert.IsNotNull(overviewRenderer.sharedMesh, "overview needs a mesh");
-            Assert.Greater(overviewRenderer.sharedMesh.triangles.Length, 0);
+            var overviewFilter = builder.Overview.GetComponent<MeshFilter>();
+            Assert.IsNotNull(overviewFilter, "overview needs a mesh filter");
+            Assert.IsNotNull(overviewFilter.sharedMesh, "overview needs a mesh");
+            Assert.Greater(overviewFilter.sharedMesh.triangles.Length, 0);
             var overviewMaterial = overviewRenderer.sharedMaterial;
             Assert.IsNotNull(overviewMaterial);
             Assert.AreEqual(0f, overviewMaterial.GetFloat("_Smoothness"), 0.001f,

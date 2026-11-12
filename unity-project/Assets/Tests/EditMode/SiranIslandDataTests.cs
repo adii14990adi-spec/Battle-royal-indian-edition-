@@ -194,15 +194,18 @@ namespace BattleHorizons.Tests.EditMode
             // The overview colours are the baked palette (grass, sand, dirt), not
             // a white surface: the mean must be a mid-tone green/brown.
             var colors = mesh.colors32;
-            long r = 0, g = 0, b = 0;
+            long sumR = 0, sumG = 0, sumB = 0;
             for (var i = 0; i < colors.Length; i++)
             {
-                r += colors[i].r;
-                g += colors[i].g;
-                b += colors[i].b;
+                sumR += colors[i].r;
+                sumG += colors[i].g;
+                sumB += colors[i].b;
             }
 
-            var mean = new Vector3((float)r / colors.Length, (float)g / colors.Length, (float)b / colors.Length);
+            var mean = new Vector3(
+                (float)sumR / colors.Length,
+                (float)sumG / colors.Length,
+                (float)sumB / colors.Length);
             Assert.Less(mean.magnitude, 220f, "the overview must not be a white plane");
             Assert.Greater(mean.y, mean.z, "grass should dominate over the baked sea-bed blue");
         }
