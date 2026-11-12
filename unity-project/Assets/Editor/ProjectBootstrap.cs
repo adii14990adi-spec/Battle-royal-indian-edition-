@@ -36,9 +36,13 @@ namespace BattleHorizons.EditorTools
         public const string SettingsFolder = "Assets/Settings";
         public const string ScenesFolder = "Assets/Scenes";
         public const string MaterialsFolder = "Assets/Materials";
+        public const string UserAssetsFolder = "Assets/UserAssets";
+        public const string UserModelsFolder = UserAssetsFolder + "/Models";
+        public const string UserMaterialsFolder = UserAssetsFolder + "/Materials";
         public const string UrpAssetPath = SettingsFolder + "/BattleHorizonsURP.asset";
         public const string UrpRendererPath = SettingsFolder + "/BattleHorizonsURPRenderer.asset";
         public const string TerrainMaterialPath = MaterialsFolder + "/SiranTerrainMat.mat";
+        public const string IslandMaterialPath = MaterialsFolder + "/SiranIslandMat.mat";
         public const string ChunkMaterialPath = MaterialsFolder + "/SiranChunkMat.mat";
         public const string WaterMaterialPath = MaterialsFolder + "/SiranWaterMat.mat";
         public const string RoadMaterialPath = MaterialsFolder + "/SiranRoadMat.mat";
@@ -142,6 +146,8 @@ namespace BattleHorizons.EditorTools
                 SettingsFolder, MaterialsFolder, ScenesFolder,
                 ScenesFolder + "/MainMenu", ScenesFolder + "/Gameplay", ScenesFolder + "/Test",
                 "Assets/Prefabs", "Assets/Animations", "Assets/Audio", "Assets/Shaders",
+                // Drop-in location for the user's own buildings, trees and props.
+                UserAssetsFolder, UserModelsFolder, UserMaterialsFolder,
             };
 
             for (var i = 0; i < folders.Length; i++)
@@ -245,35 +251,58 @@ namespace BattleHorizons.EditorTools
         {
             var materials = new Dictionary<string, Material>
             {
+                // URP terrain material: fully matte (metallic 0 / smoothness 0) so
+                // the sun cannot produce a white specular sheet on the ground.
                 ["terrain"] = EnsureMaterial(TerrainMaterialPath, "Universal Render Pipeline/Terrain/Lit",
                     material =>
                     {
-                        material.SetFloat("_Smoothness", 0.05f);
+                        material.SetFloat("_Smoothness", 0f);
+                        material.SetFloat("_Metallic", 0f);
                         material.SetColor("_BaseColor", Color.white);
                         material.enableInstancing = true;
                     }),
+                // Full-island matte surface: vertex-coloured grass / dirt / sand,
+                // no metallic, no smoothness, and not clipped to the 50 m disk.
+                ["island"] = EnsureMaterial(IslandMaterialPath, "BattleHorizons/Radius Clipped Lit",
+                    material =>
+                    {
+                        material.SetColor("_BaseColor", Color.white);
+                        material.SetFloat("_UseVertexColor", 1f);
+                        material.SetFloat("_Metallic", 0f);
+                        material.SetFloat("_Smoothness", 0f);
+                        // 2 = draw only outside the 50 m detail disk.
+                        material.SetFloat("_StreamClipMode", 2f);
+                        material.enableInstancing = true;
+                    }),
+                // 10 m streamed detail disk around the player.
                 ["chunk"] = EnsureMaterial(ChunkMaterialPath, "BattleHorizons/Radius Clipped Lit",
                     material =>
                     {
                         material.SetFloat("_UseVertexColor", 1f);
-                        material.SetFloat("_Smoothness", 0.05f);
                         material.SetFloat("_Metallic", 0f);
+                        material.SetFloat("_Smoothness", 0f);
+                        material.SetFloat("_StreamClipMode", 1f);
                         material.enableInstancing = true;
                     }),
+                // Roads follow the 10 m grid, so they stay inside the detail disk.
                 ["road"] = EnsureMaterial(RoadMaterialPath, "BattleHorizons/Radius Clipped Lit",
                     material =>
                     {
                         material.SetFloat("_UseVertexColor", 1f);
-                        material.SetFloat("_Smoothness", 0.12f);
                         material.SetFloat("_Metallic", 0f);
+                        material.SetFloat("_Smoothness", 0f);
+                        material.SetFloat("_StreamClipMode", 1f);
                         material.enableInstancing = true;
                     }),
+                // Water keeps a soft sheen (0.28) instead of the old near-mirror 0.92.
                 ["water"] = EnsureMaterial(WaterMaterialPath, "BattleHorizons/Radius Clipped Lit",
                     material =>
                     {
                         material.SetColor("_BaseColor", new Color(0.20f, 0.44f, 0.50f, 1f));
-                        material.SetFloat("_Smoothness", 0.92f);
+                        material.SetFloat("_Smoothness", 0.28f);
                         material.SetFloat("_Metallic", 0f);
+                        material.SetFloat("_UseVertexColor", 0f);
+                        material.SetFloat("_StreamClipMode", 0f);
                         var normal = AssetDatabase.LoadAssetAtPath<Texture2D>(
                             "Assets/Resources/Art/Textures/water_normal_256.png");
                         if (normal != null)
@@ -282,8 +311,6 @@ namespace BattleHorizons.EditorTools
                             material.SetFloat("_BumpScale", 0.45f);
                             material.EnableKeyword("_NORMALMAP");
                         }
-
-                        material.SetFloat("_Surface", 0f); // opaque: no transparency sorting
                     }),
                 ["player"] = EnsureMaterial(PlayerCapsuleMaterialPath, "Universal Render Pipeline/Lit",
                     material =>
@@ -488,11 +515,17 @@ namespace BattleHorizons.EditorTools
             var builder = worldObject.AddComponent<SiranWorldBuilder>();
             var worldSerialized = new SerializedObject(builder);
             worldSerialized.FindProperty("terrainMaterial").objectReferenceValue = materials["terrain"];
+            worldSerialized.FindProperty("islandMaterial").objectReferenceValue = materials["island"];
             worldSerialized.FindProperty("chunkMaterial").objectReferenceValue = materials["chunk"];
             worldSerialized.FindProperty("waterMaterial").objectReferenceValue = materials["water"];
             worldSerialized.FindProperty("roadMaterial").objectReferenceValue = materials["road"];
-            worldSerialized.FindProperty("showFullTerrainBase").boolValue = true;
+            worldSerialized.FindProperty("showIslandOverview").boolValue = true;
             worldSerialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // Empty parent for the buildings, trees and props the user will drop
+            // in from Assets/UserAssets. Nothing is spawned here on purpose.
+            var userAssets = new GameObject("UserAssets");
+            userAssets.transform.SetParent(worldObject.transform, false);
 
             var player = new GameObject("Player");
             player.tag = "Player";

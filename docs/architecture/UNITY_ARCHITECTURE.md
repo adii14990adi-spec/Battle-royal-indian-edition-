@@ -39,9 +39,10 @@ SiranIsland.unity / PlayerTest.unity
 └── SiranWorldBuilder             creates the world from committed Resources
     ├── SiranIslandData           loads and validates binary map data
     ├── Terrain + TerrainCollider heightmap collision; Terrain rendering hidden
+    ├── SiranIslandOverview       20 m full-island shell, drawn outside the 50 m disk
     ├── SiranChunkStreamer        resident 500 m tiles intersecting a 50 m disk
-    ├── SiranRadiusClip shader    clips streamed terrain, roads and water to disk
-    ├── Roads + SiranIslandWater  world surfaces using the same clip shader
+    ├── SiranRadiusClip shader    clips the two terrain LODs and the roads
+    ├── Roads + SiranIslandWater  matte ribbons, sea, basin-shaped lake and river
     └── PlayerTest only: motor, camera rig, touch controls and debug HUD
 ```
 
@@ -78,15 +79,28 @@ river direction and the 50 m radius value.
 ## 4. World construction and collision
 
 `SiranWorldBuilder.Build()` loads data, creates a 513 × 513 Unity `TerrainData`,
-then assembles the heightmap collider, road ribbons, water surfaces and streamer.
-The single `TerrainCollider` covers the full 4 km map; collision is not unloaded
-at the 50 m visual boundary.
+then assembles the heightmap collider, the full-island shell, road ribbons, water
+surfaces and streamer. The single `TerrainCollider` covers the full 4 km map;
+collision is not unloaded at the 50 m detail boundary.
 
-The Terrain component's `drawHeightmap` is always disabled. Leaving the full-map
-Unity Terrain renderer on would draw outside the streaming disk and violate the
-visibility contract. Its full-map collider remains active for gameplay, while
-streamed 500 m terrain meshes provide the visible surface. No full-map renderer
-is available as a visibility bypass.
+The Terrain component's `drawHeightmap` is always disabled. Leaving the Unity
+Terrain renderer on would draw a second full-map surface over the meshes (and
+URP's Terrain/Lit output on a runtime-generated layer reads as a flat white
+sheet). Its full-map collider remains active for gameplay.
+
+Visible terrain is therefore built from the same height grid in two LODs:
+
+* `SiranIslandTerrainBuilder.BuildOverviewMesh` samples every 20 m (201 × 201
+  vertices, 80,000 triangles) over the whole island for the shell that is visible
+  beyond the detail disk;
+* `SiranIslandData.BuildChunkMesh` samples every 10 m for the 500 m tiles inside
+  it, matching the 10 m source data the collider is built from.
+
+Both use up-facing clockwise triangles, the baked grass / sand / dirt palette as
+vertex colours, and the same matte material settings (`metallic 0`,
+`smoothness 0`). The shader converts the palette vertex colours from sRGB to
+linear; raw vertex colours are not colour-corrected by Unity in a Linear-space
+project, which is what previously washed the ground out to near white.
 
 ---
 
@@ -105,9 +119,13 @@ ring:
 4. `SiranRadiusClip.shader` clips fragments using world XZ distance to the focus.
    This trims the large source tiles to the actual circular boundary; loading a
    500 m tile does not make its other 450 m visible.
-5. The same shader is used by streamed terrain, road ribbons and water surfaces,
-   so the sea plane and static roads cannot draw beyond the active radius.
-6. The shader focus is updated every frame; set membership is updated on the
+5. The same shader also draws the 20 m island shell with the **inverse** clip
+   (outside the circle only). The two terrain LODs therefore meet at the same
+   world-space boundary without overlapping, z-fighting or interpenetrating.
+6. Road ribbons follow the 10 m grid, so they use the same inside-the-disk clip
+   as the detail tiles. The sea, the basin-shaped lake mesh and the river ribbon
+   use mode 0 (no clip) so the coast is visible to the horizon.
+7. The shader focus is updated every frame; set membership is updated on the
    amortized streaming tick. The radius is fixed across Low and High quality.
 
 `QualityProfiles.StreamRadius()` returns 50 m for both profiles. The debug HUD
@@ -120,11 +138,16 @@ actual Unity render/build pass and device visual check.
 ## 6. Rendering and Android settings
 
 `ProjectBootstrap.Configure()` writes the project settings and creates the
-shared URP materials. Every visible terrain tile, road ribbon and water surface
-uses `BattleHorizons/Radius Clipped Lit`, which clips fragments in world space
-before shading. The shader multiplies terrain/road vertex colours by simple URP
-lighting and applies an optional scrolling water normal map. The full-map Unity
-Terrain renderer remains disabled; Terrain and road chunks do not cast shadows.
+shared URP materials. Every visible terrain tile, the island shell, road ribbons
+and water surfaces use `BattleHorizons/Radius Clipped Lit`, which clips fragments
+in world space before shading (or not at all for water). The shader multiplies
+terrain/road vertex colours by simple URP lighting, keeps the only specular term
+proportional to smoothness — so the matte ground has none — and applies an
+optional scrolling water normal map. Water uses smoothness `0.28` instead of the
+old near-mirror `0.92`. There is no post-processing volume and the camera's
+post-processing flag is disabled, so no Bloom can blow the sun-lit ground out to
+white. Terrain and road chunks do not cast shadows; fog colour matches the camera
+background so the horizon is seamless.
 
 The generated Android settings include IL2CPP, ARM64, minimum API 26, landscape
 orientation, ASTC texture compression, Vulkan with OpenGLES3 fallback, Linear

@@ -24,7 +24,8 @@ be made until the built Unity APK has been profiled on the corresponding device.
 | GPU memory | ≤ 180 MB target | Unity Profiler / device GPU tooling; not currently measured |
 | Set-pass calls | ≤ 60 target | Unity ProfilerRecorder in a development build |
 | Texture dimensions | ≤ 512 × 512 | enforced by `AssetImportRules` |
-| Streamed visible world | 50 m circular radius | Unity PlayMode/render test and device visual check |
+| Streamed detail disk | 50 m circular radius, 10 m samples | Unity PlayMode/render test and device visual check |
+| Full-island shell | 201 × 201 vertices, 80,000 triangles, one draw call | PlayMode/edit-mode mesh tests |
 
 ## Unity implementation constraints
 
@@ -34,9 +35,11 @@ be made until the built Unity APK has been profiled on the corresponding device.
   forced INTERNET permission.
 * Low profile targets 30 fps and uses 0.85 render scale, two hard-shadow
   cascades, 60 m shadow distance and a 512 px shadow map.
-* The island has 500 m source tiles, but the active visual region is a clipped
-  50 m world-space circle. The full-map Terrain renderer is always disabled; its
-  collider remains active.
+* The island has 500 m source tiles. Inside a fixed 50 m world-space circle the
+  streamed tiles render at 10 m spacing; outside it a single 20 m full-island
+  shell (80,000 triangles) keeps the coast and hills visible. The full-map
+  `Terrain` renderer is always disabled; its collider remains active, and its
+  1 MB palette texture is only used if the renderer is re-enabled.
 * Keep per-frame allocations and scene searches out of gameplay hot paths. Pool
   streamed chunk views and cache diagnostics.
 * Prefer a small number of shared materials and keep optional effects off unless

@@ -25,9 +25,11 @@ world_x = ix * spacing_m - half_extent_m
 world_z = iz * spacing_m - half_extent_m
 ```
 
-The Unity runtime builds each 500 m tile as 51 × 51 vertices. A tile's renderer
-uses the shared 50 m radial shader clip; the separate heightmap collider covers
-the full map.
+The Unity runtime builds each 500 m tile as 51 × 51 vertices. Tile renderers use
+the shared 50 m radial shader clip (inside only), while a 20 m full-island shell
+uses the same shader with the inverse clip; the separate heightmap collider
+covers the full map. The road and river blobs are baked counter-clockwise and are
+flipped to Unity's clockwise-up winding when loaded.
 
 ## `siran_island_heights.bytes`
 

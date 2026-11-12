@@ -8,6 +8,7 @@ Unity project does not depend on another engine project.
 
 ```text
 unity-project/Assets/Art/             authored environment, character and prop assets
+unity-project/Assets/UserAssets/      drop-in Models/ and Materials/ for user-uploaded 3D assets
 unity-project/Assets/Resources/       runtime-loaded textures and map data
 unity-project/Assets/Materials/       materials created by ProjectBootstrap
 unity-project/Assets/Shaders/         Unity shader source
@@ -15,6 +16,12 @@ processing/blender/generators/        reproducible Blender generation scripts
 processing/blender/validators/        format and manifest validation
 processing/blender/output/            generated output (git-ignored)
 ```
+
+`Assets/UserAssets/Models` and `Assets/UserAssets/Materials` are created by
+project setup and committed empty (with a README). The project spawns no
+placeholder buildings, trees or props: that folder is where the user's own
+assets go, grouped under the empty `World/UserAssets` object in the generated
+scenes.
 
 The Blender workflow is documented in
 [`asset-pipeline/BLENDER_PIPELINE.md`](asset-pipeline/BLENDER_PIPELINE.md). It

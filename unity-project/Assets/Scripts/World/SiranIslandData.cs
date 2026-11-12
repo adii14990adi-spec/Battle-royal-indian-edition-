@@ -249,6 +249,10 @@ namespace BattleHorizons.World
                     cursor += 2;
                 }
 
+                // The blobs were baked with counter-clockwise faces. Unity's front
+                // faces are clockwise, so an unconverted ribbon is invisible (and
+                // lit from below) when viewed from above the island.
+                MakeClockwiseFromAbove(ribbon.Indices);
                 RoadRibbons.Add(ribbon);
             }
         }
@@ -293,6 +297,10 @@ namespace BattleHorizons.World
                 cursor += 4;
             }
 
+            // Same counter-clockwise bake as the roads: flip to Unity's clockwise
+            // front faces so the river surface renders from above.
+            MakeClockwiseFromAbove(indices);
+
             River = new RiverMesh { Vertices = vertices, Indices = indices };
         }
 
@@ -322,6 +330,27 @@ namespace BattleHorizons.World
             ix = Mathf.Clamp(ix, 0, Size - 1);
             iz = Mathf.Clamp(iz, 0, Size - 1);
             return Colors[iz * Size + ix];
+        }
+
+        /// <summary>
+        /// Rewrites every triangle so its front face points up. The committed
+        /// road and river blobs were baked counter-clockwise (a legacy-engine
+        /// convention); Unity renders clockwise faces, so without this conversion
+        /// both ribbons render as one-sided geometry facing into the island.
+        /// </summary>
+        private static void MakeClockwiseFromAbove(int[] indices)
+        {
+            if (indices == null)
+            {
+                return;
+            }
+
+            for (var i = 0; i + 2 < indices.Length; i += 3)
+            {
+                var swap = indices[i + 1];
+                indices[i + 1] = indices[i + 2];
+                indices[i + 2] = swap;
+            }
         }
 
         /// <summary>Bilinear terrain height anywhere in the map (metres).</summary>
@@ -407,12 +436,17 @@ namespace BattleHorizons.World
                     var topRight = topLeft + 1;
                     var bottomLeft = topLeft + vertsPerSide;
                     var bottomRight = bottomLeft + 1;
+
+                    // Unity front faces are clockwise seen from the front. With
+                    // X east and Z south, (topLeft, bottomLeft, topRight) and
+                    // (topRight, bottomLeft, bottomRight) give cross(b-a, c-a).y > 0,
+                    // i.e. a surface that is visible and lit from above.
                     indices.Add(topLeft);
-                    indices.Add(topRight);
                     indices.Add(bottomLeft);
                     indices.Add(topRight);
+                    indices.Add(topRight);
+                    indices.Add(bottomLeft);
                     indices.Add(bottomRight);
-                    indices.Add(bottomLeft);
                 }
             }
         }
