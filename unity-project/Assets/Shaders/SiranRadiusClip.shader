@@ -1,14 +1,30 @@
 Shader "BattleHorizons/Radius Clipped Lit"
 {
+    // Shared URP surface shader for Siran Island ground, roads and water.
+    //
+    //  * Terrain/road vertex colours are authored in sRGB (the island palette is
+    //    baked from display colours), so they are converted to linear here.
+    //    Unity does not colour-correct raw vertex data in a Linear-space project,
+    //    which is what made the greybox look washed out / white.
+    //  * Smoothness drives the only specular term. Ground materials keep
+    //    smoothness 0, which removes the highlight completely (no ice / mirror
+    //    glare). Water uses a low value for a soft sheen.
+    //  * `_StreamClipMode` splits the two terrain LODs so they never overlap:
+    //      0 = draw everywhere (sea, lake, river),
+    //      1 = draw only inside the 50 m detail disk (streamed 10 m meshes, roads),
+    //      2 = draw only outside it (20 m full-island shell).
+    //    Both are cut by the same circle, so there is no z-fighting and no LOD
+    //    interpenetration where they meet.
     Properties
     {
         [MainTexture] _BaseMap ("Base Map", 2D) = "white" {}
         [MainColor] _BaseColor ("Base Color", Color) = (1, 1, 1, 1)
         _BumpMap ("Normal Map", 2D) = "bump" {}
         _BumpScale ("Normal Strength", Range(0, 1)) = 0
-        _UseVertexColor ("Multiply Vertex Color", Float) = 0
+        _UseVertexColor ("Multiply Vertex Color (sRGB)", Float) = 0
         _Metallic ("Metallic", Range(0, 1)) = 0
-        _Smoothness ("Smoothness", Range(0, 1)) = 0.05
+        _Smoothness ("Smoothness", Range(0, 1)) = 0
+        _StreamClipMode ("Streaming Clip (0 off, 1 inside disk, 2 outside disk)", Float) = 1
     }
 
     SubShader
@@ -51,6 +67,7 @@ Shader "BattleHorizons/Radius Clipped Lit"
                 half _UseVertexColor;
                 half _Metallic;
                 half _Smoothness;
+                half _StreamClipMode;
             CBUFFER_END
 
             // Set globally once per frame by SiranChunkStreamer. Keeping the
@@ -79,6 +96,14 @@ Shader "BattleHorizons/Radius Clipped Lit"
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
+            // sRGB -> linear for raw vertex colours (Unity leaves them untouched).
+            half3 SrgbToLinear(half3 c)
+            {
+                half3 low = c / 12.92h;
+                half3 high = pow(saturate((c + 0.055h) / 1.055h), 2.4h);
+                return lerp(low, high, step(0.04045h, c));
+            }
+
             Varyings Vert(Attributes input)
             {
                 Varyings output;
@@ -103,15 +128,27 @@ Shader "BattleHorizons/Radius Clipped Lit"
             {
                 UNITY_SETUP_INSTANCE_ID(input);
 
-                float activeRadius = _BHStreamRadius > 0.001 ? _BHStreamRadius : 50.0;
-                float2 fromFocus = input.positionWS.xz - _BHStreamFocusXZ.xy;
-                clip(activeRadius * activeRadius - dot(fromFocus, fromFocus));
+                if (_StreamClipMode > 0.5h)
+                {
+                    float activeRadius = _BHStreamRadius > 0.001 ? _BHStreamRadius : 50.0;
+                    float2 fromFocus = input.positionWS.xz - _BHStreamFocusXZ.xy;
+                    float distanceSq = dot(fromFocus, fromFocus);
+                    float radiusSq = activeRadius * activeRadius;
+                    if (_StreamClipMode < 1.5h)
+                    {
+                        clip(radiusSq - distanceSq);   // detail disk: inside only
+                    }
+                    else
+                    {
+                        clip(distanceSq - radiusSq);   // island shell: outside only
+                    }
+                }
 
                 half4 texel = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.baseUv);
                 half3 albedo = texel.rgb * _BaseColor.rgb;
                 if (_UseVertexColor > 0.5h)
                 {
-                    albedo *= input.color.rgb;
+                    albedo *= SrgbToLinear(input.color.rgb);
                 }
 
                 half3 normalWS = SafeNormalize(input.normalWS);
@@ -133,9 +170,11 @@ Shader "BattleHorizons/Radius Clipped Lit"
                 half3 direct = mainLight.color * ndotl;
                 half3 litColor = albedo * (ambient + direct);
 
+                // Matte by default: with _Smoothness = 0 this term is exactly zero,
+                // so a sun-lit ground plane cannot blow out to white.
                 half3 viewDirection = SafeNormalize(GetWorldSpaceViewDir(input.positionWS));
                 half3 halfDirection = SafeNormalize(mainLight.direction + viewDirection);
-                half specPower = exp2(1.0h + _Smoothness * 10.0h);
+                half specPower = exp2(2.0h + _Smoothness * 8.0h);
                 half specular = pow(saturate(dot(normalWS, halfDirection)), specPower) * _Smoothness;
                 half3 f0 = lerp(half3(0.04h, 0.04h, 0.04h), albedo, _Metallic);
                 litColor += f0 * mainLight.color * specular;

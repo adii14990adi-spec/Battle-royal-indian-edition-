@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BattleHorizons.World
@@ -18,6 +19,13 @@ namespace BattleHorizons.World
 
         /// <summary>Unity Terrain height resolution (power of two + 1). 513 is 2 m/cell.</summary>
         public const int HeightmapResolution = 513;
+
+        /// <summary>
+        /// Sample stride of the full-island base mesh. 2 = one vertex every 20 m,
+        /// i.e. 201 x 201 vertices / 80,000 triangles for the whole 4 km island in
+        /// a single static draw call. The 10 m streamed disk adds near detail.
+        /// </summary>
+        public const int OverviewSampleStride = 2;
 
         public static TerrainData Build(SiranIslandData data, Material terrainMaterial)
         {
@@ -61,15 +69,17 @@ namespace BattleHorizons.World
             terrainData.SetHeights(0, 0, heightmap);
 
             // --- greybox albedo --------------------------------------------------
-            variableOcclusionMask(data, out var albedo);
+            BuildPaletteTexture(data, out var albedo);
             if (albedo != null)
             {
                 var layer = new TerrainLayer
                 {
                     diffuseTexture = albedo,
                     tileSize = new Vector2(size, size),
+                    // Fully matte: any smoothness here turns the sun into a white
+                    // specular sheet across the ground.
                     metallic = 0f,
-                    smoothness = 0.06f,
+                    smoothness = 0f,
                 };
                 terrainData.terrainLayers = new[] { layer };
             }
@@ -129,12 +139,12 @@ namespace BattleHorizons.World
         /// same "large flat colour patches" look the greybox had, at 8 bits per
         /// channel instead of per-vertex floats.
         /// </summary>
-        private static void variableOcclusionMask(SiranIslandData data, out Texture2D albedo)
+        private static void BuildPaletteTexture(SiranIslandData data, out Texture2D albedo)
         {
             const int resolution = 512;
             albedo = new Texture2D(resolution, resolution, TextureFormat.RGBA32, true, false)
             {
-                name = "SiranIslandGreyboxAlbedo",
+                name = "SiranIslandPaletteAlbedo",
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Bilinear,
                 anisoLevel = 0,
@@ -155,6 +165,103 @@ namespace BattleHorizons.World
 
             albedo.SetPixels32(pixels);
             albedo.Apply(updateMipmaps: true, makeNoLongerReadable: true);
+        }
+
+        /// <summary>
+        /// Builds the coarse full-island surface that is visible outside the 50 m
+        /// streamed detail disk: one vertex every 20 m (201 x 201, 80,000
+        /// triangles), the baked grass / sand / dirt palette as vertex colours and
+        /// up-facing triangles. This is what makes the map read as an island with
+        /// hills, flat zone pads and the inland lake rather than a white plane.
+        /// </summary>
+        public static Mesh BuildOverviewMesh(SiranIslandData data, int stride = OverviewSampleStride)
+        {
+            if (data == null || !data.IsLoaded)
+            {
+                throw new ArgumentException("island data is not loaded", nameof(data));
+            }
+
+            stride = Mathf.Clamp(stride, 1, 8);
+            var vertsPerSide = (data.Size - 1) / stride + 1;
+            var vertexCount = vertsPerSide * vertsPerSide;
+            var mapSize = SiranMapConfig.MapSizeM;
+
+            var vertices = new List<Vector3>(vertexCount);
+            var normals = new List<Vector3>(vertexCount);
+            var colors = new List<Color32>(vertexCount);
+            var uvs = new List<Vector2>(vertexCount);
+
+            for (var z = 0; z < vertsPerSide; z++)
+            {
+                var iz = Mathf.Min(z * stride, data.Size - 1);
+                var worldZ = -data.HalfExtentM + iz * data.SpacingM;
+                for (var x = 0; x < vertsPerSide; x++)
+                {
+                    var ix = Mathf.Min(x * stride, data.Size - 1);
+                    var worldX = -data.HalfExtentM + ix * data.SpacingM;
+                    var index = iz * data.Size + ix;
+                    vertices.Add(new Vector3(worldX, data.Heights[index], worldZ));
+                    normals.Add(data.SampleNormal(worldX, worldZ));
+                    colors.Add(data.Colors[index]);
+                    uvs.Add(new Vector2((worldX + data.HalfExtentM) / mapSize,
+                        (worldZ + data.HalfExtentM) / mapSize));
+                }
+            }
+
+            var indices = new List<int>((vertsPerSide - 1) * (vertsPerSide - 1) * 6);
+            for (var z = 0; z < vertsPerSide - 1; z++)
+            {
+                for (var x = 0; x < vertsPerSide - 1; x++)
+                {
+                    var topLeft = z * vertsPerSide + x;
+                    var topRight = topLeft + 1;
+                    var bottomLeft = topLeft + vertsPerSide;
+                    var bottomRight = bottomLeft + 1;
+
+                    // Clockwise from above, same convention as BuildChunkMesh.
+                    indices.Add(topLeft);
+                    indices.Add(bottomLeft);
+                    indices.Add(topRight);
+                    indices.Add(topRight);
+                    indices.Add(bottomLeft);
+                    indices.Add(bottomRight);
+                }
+            }
+
+            var mesh = new Mesh { name = "SiranIslandOverview" };
+            mesh.indexFormat = vertexCount > 65535
+                ? UnityEngine.Rendering.IndexFormat.UInt32
+                : UnityEngine.Rendering.IndexFormat.UInt16;
+            mesh.SetVertices(vertices);
+            mesh.SetNormals(normals);
+            mesh.SetColors(colors);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(indices, 0, true);
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        /// <summary>Wraps the overview mesh in a single static, matte, unshadowed renderer.</summary>
+        public static GameObject CreateOverviewMesh(SiranIslandData data, Material material, Transform parent = null,
+            int stride = OverviewSampleStride)
+        {
+            var go = new GameObject("SiranIslandOverview");
+            if (parent != null)
+            {
+                go.transform.SetParent(parent, false);
+            }
+
+            go.layer = TerrainLayerIndex;
+            go.isStatic = true;
+            go.AddComponent<MeshFilter>().sharedMesh = BuildOverviewMesh(data, stride);
+
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            renderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+            return go;
         }
 
     }

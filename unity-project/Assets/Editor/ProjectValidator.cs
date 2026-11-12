@@ -99,6 +99,7 @@ namespace BattleHorizons.EditorTools
                 "Assets/Scripts/Core", "Assets/Scripts/Player", "Assets/Scripts/Camera",
                 "Assets/Scripts/World", "Assets/Scripts/UI", "Assets/Scenes", "Assets/Materials",
                 "Assets/Settings", "Assets/Resources/Config",
+                "Assets/UserAssets", "Assets/UserAssets/Models", "Assets/UserAssets/Materials",
                 "Packages/manifest.json", "ProjectSettings/ProjectVersion.txt",
             };
 
@@ -347,6 +348,46 @@ namespace BattleHorizons.EditorTools
 
                 Check("runway is flat", worst < 0.2f, string.Format("worst deviation {0:F3} m", worst));
             }
+
+            // The baked road and river blobs are counter-clockwise; the loader
+            // flips them to Unity's clockwise-up convention. If that conversion is
+            // ever dropped, both ribbons disappear when seen from above.
+            var ribbonDown = CountRibbonsFacingDown(data);
+            Check("road and river ribbons face up", ribbonDown == 0,
+                ribbonDown + " ribbon triangles wound away from the sky");
+        }
+
+        private static int CountRibbonsFacingDown(SiranIslandData data)
+        {
+            var down = 0;
+            foreach (var ribbon in data.RoadRibbons)
+            {
+                down += CountDownFacingTriangles(ribbon.Vertices, ribbon.Indices);
+            }
+
+            if (data.River != null)
+            {
+                down += CountDownFacingTriangles(data.River.Vertices, data.River.Indices);
+            }
+
+            return down;
+        }
+
+        private static int CountDownFacingTriangles(Vector3[] vertices, int[] indices)
+        {
+            var down = 0;
+            for (var t = 0; t + 2 < indices.Length; t += 3)
+            {
+                var a = vertices[indices[t]];
+                var b = vertices[indices[t + 1]];
+                var c = vertices[indices[t + 2]];
+                if (Vector3.Cross(b - a, c - a).y <= 0f)
+                {
+                    down++;
+                }
+            }
+
+            return down;
         }
 
         private static void CheckIslandGeometry()
@@ -391,13 +432,14 @@ namespace BattleHorizons.EditorTools
                         spanErrors++;
                     }
 
-                    // A triangle wound (a, b, c) with cross(b-a, c-a).y < 0 faces up.
+                    // Unity front faces are clockwise: cross(b-a, c-a) points out
+                    // of the visible side, so an up-facing triangle has .y > 0.
                     for (var t = 0; t < indices.Count; t += 3)
                     {
                         var a = vertices[indices[t]];
                         var b = vertices[indices[t + 1]];
                         var c = vertices[indices[t + 2]];
-                        if (Vector3.Cross(b - a, c - a).y > 0f)
+                        if (Vector3.Cross(b - a, c - a).y <= 0f)
                         {
                             woundDown++;
                         }
@@ -518,6 +560,7 @@ namespace BattleHorizons.EditorTools
             var paths = new[]
             {
                 ProjectBootstrap.TerrainMaterialPath,
+                ProjectBootstrap.IslandMaterialPath,
                 ProjectBootstrap.ChunkMaterialPath,
                 ProjectBootstrap.WaterMaterialPath,
                 ProjectBootstrap.RoadMaterialPath,
@@ -545,6 +588,55 @@ namespace BattleHorizons.EditorTools
                 Check("material " + Path.GetFileNameWithoutExtension(path) + " uses the expected renderer",
                     validShader, material.shader.name);
             }
+
+            // Ground must be fully matte. A non-zero smoothness/metallic pair is
+            // what turned the island into a glossy white sheet under the sun.
+            var groundPaths = new[]
+            {
+                ProjectBootstrap.TerrainMaterialPath,
+                ProjectBootstrap.IslandMaterialPath,
+                ProjectBootstrap.ChunkMaterialPath,
+                ProjectBootstrap.RoadMaterialPath,
+            };
+            var glossy = new List<string>();
+            foreach (var path in groundPaths)
+            {
+                var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (material == null)
+                {
+                    continue;
+                }
+
+                var smoothness = material.HasProperty("_Smoothness") ? material.GetFloat("_Smoothness") : 0f;
+                var metallic = material.HasProperty("_Metallic") ? material.GetFloat("_Metallic") : 0f;
+                if (smoothness > 0.001f || metallic > 0.001f)
+                {
+                    glossy.Add(string.Format("{0} (metallic {1:F2}, smoothness {2:F2})",
+                        Path.GetFileNameWithoutExtension(path), metallic, smoothness));
+                }
+            }
+
+            Check("ground materials are matte (metallic 0, smoothness 0)", glossy.Count == 0,
+                glossy.Count == 0 ? "terrain, island, chunk and road materials" : string.Join(", ", glossy));
+
+            var islandMaterial = AssetDatabase.LoadAssetAtPath<Material>(ProjectBootstrap.IslandMaterialPath);
+            Check("island shell draws outside the 50 m detail disk",
+                islandMaterial != null && islandMaterial.HasProperty("_StreamClipMode") &&
+                islandMaterial.GetFloat("_StreamClipMode") >= 1.5f,
+                islandMaterial != null ? "SiranIslandMat draws the whole coast" : "island material missing");
+
+            var chunkMaterial = AssetDatabase.LoadAssetAtPath<Material>(ProjectBootstrap.ChunkMaterialPath);
+            Check("detail disk draws only inside the 50 m circle",
+                chunkMaterial != null && chunkMaterial.HasProperty("_StreamClipMode") &&
+                Mathf.Approximately(chunkMaterial.GetFloat("_StreamClipMode"), 1f),
+                chunkMaterial != null ? "SiranChunkMat fills the near disk" : "chunk material missing");
+
+            var waterMaterial = AssetDatabase.LoadAssetAtPath<Material>(ProjectBootstrap.WaterMaterialPath);
+            var waterSmoothness = waterMaterial != null && waterMaterial.HasProperty("_Smoothness")
+                ? waterMaterial.GetFloat("_Smoothness")
+                : 0f;
+            Check("water is not a mirror", waterSmoothness <= 0.35f,
+                string.Format("smoothness {0:F2} (was 0.92, which read as ice)", waterSmoothness));
 
             var waterNormal = AssetDatabase.LoadAssetAtPath<Texture2D>(
                 "Assets/Resources/Art/Textures/water_normal_256.png");

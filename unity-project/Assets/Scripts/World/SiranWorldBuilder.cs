@@ -7,15 +7,19 @@ namespace BattleHorizons.World
 {
     /// <summary>
     /// Assembles Siran Island at scene start from committed Unity resources:
-    /// heightmap collision, circularly clipped terrain tiles, roads and water.
+    /// heightmap collision, a matte 20 m full-island shell, a 10 m detail disk
+    /// inside the fixed 50 m stream radius, roads, water and lighting.
     /// No editor-time map bake is required to build the project.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class SiranWorldBuilder : MonoBehaviour
     {
         [Header("Materials")]
-        [Tooltip("URP terrain material (Terrain/Lit with the greybox albedo). Optional.")]
+        [Tooltip("URP terrain material (Terrain/Lit with the baked palette). Optional.")]
         [SerializeField] private Material terrainMaterial;
+
+        [Tooltip("Matte vertex-colour material for the full-island mesh. Optional.")]
+        [SerializeField] private Material islandMaterial;
 
         [Tooltip("URP material for chunk-mesh rendering. Optional.")]
         [SerializeField] private Material chunkMaterial;
@@ -33,8 +37,8 @@ namespace BattleHorizons.World
         [Tooltip("Render the island with Unity Terrain (cheap collision + LOD).")]
         [SerializeField] private bool useTerrain = true;
 
-        [Tooltip("Draw the full 4000x4000m greybox terrain base out to the camera far plane.")]
-        [SerializeField] private bool showFullTerrainBase;
+        [Tooltip("Draw the coarse full-island mesh so hills, coastline and the inland lake stay visible beyond the 50 m detail disk.")]
+        [SerializeField] private bool showIslandOverview = true;
 
         [Header("Lighting")]
         [Tooltip("Create the URP sun, sky and fog if the scene has none.")]
@@ -42,6 +46,7 @@ namespace BattleHorizons.World
 
         public SiranIslandData Data { get; private set; }
         public Terrain Terrain { get; private set; }
+        public GameObject Overview { get; private set; }
         public SiranChunkStreamer Streamer { get; private set; }
         public SiranIslandWater Water { get; private set; }
         public bool TerrainUsed => useTerrain;
@@ -87,19 +92,25 @@ namespace BattleHorizons.World
             {
                 var terrainData = SiranIslandTerrainBuilder.Build(data, terrainMaterial);
                 Terrain = SiranIslandTerrainBuilder.CreateTerrain(data, terrainData, terrainMaterial, transform);
-                // Keep the heightmap collider for gameplay, but do not draw the
-                // full-map Terrain. The streamed terrain meshes, roads and water
-                // are all clipped by the shared shader to the same 50 m disk.
+
+                // The Terrain component is collision only. Rendering it as well
+                // would draw a second, full-map surface (white/glossy on URP
+                // Terrain/Lit) over the meshes below.
                 Terrain.drawHeightmap = false;
-                if (showFullTerrainBase)
+                Terrain.drawTreesAndFoliage = false;
+
+                var collider = Terrain.GetComponent<TerrainCollider>();
+                if (collider == null || collider.terrainData == null)
                 {
-                    Terrain.drawHeightmap = true;
-                    Terrain.transform.position += new Vector3(0f, -0.05f, 0f);
+                    GameLog.Error("world", "terrain collider is missing; the player would fall through the island");
                 }
+
                 GameLog.Info("world", string.Format(
-                    "terrain collision built: {0}x{0} heightmap, heights {1:F1}..{2:F1} m, full-map renderer hidden",
+                    "terrain collision built: {0}x{0} heightmap, heights {1:F1}..{2:F1} m, Terrain renderer hidden",
                     SiranIslandTerrainBuilder.HeightmapResolution, data.MinHeightM, data.MaxHeightM));
             }
+
+            BuildOverview();
 
             BuildRoads();
             BuildWater();
@@ -118,13 +129,48 @@ namespace BattleHorizons.World
             return true;
         }
 
+        /// <summary>Sky / horizon tint shared by the camera and the fog so the island has a seamless horizon.</summary>
+        public static readonly Color SkyColor = new Color(0.55f, 0.72f, 0.88f, 1f);
+
+        /// <summary>
+        /// Draws the whole island (hills, flat zone pads, lake basin and coast) as
+        /// one static, matte mesh. The shader clips it to the outside of the 50 m
+        /// circle; the streamed 10 m tiles fill the inside, so the two surfaces
+        /// never overlap, never z-fight and never float relative to the collider.
+        /// </summary>
+        private void BuildOverview()
+        {
+            if (!showIslandOverview)
+            {
+                return;
+            }
+
+            var material = islandMaterial != null
+                ? islandMaterial
+                : CreateVertexColorMaterial("GeneratedIslandMaterial", 0f, streamClipMode: 2);
+            if (material == null)
+            {
+                GameLog.Warn("world", "no island material available; the full-island mesh was skipped");
+                return;
+            }
+
+            Overview = SiranIslandTerrainBuilder.CreateOverviewMesh(Data, material, transform);
+            var mesh = Overview.GetComponent<MeshFilter>().sharedMesh;
+            GameLog.Info("world", string.Format(
+                "island overview built: {0} x {0} m base, {1} vertices, {2} triangles, matte (metallic 0, smoothness 0)",
+                SiranMapConfig.MapSizeM, mesh != null ? mesh.vertexCount : 0, mesh != null ? mesh.triangles.Length / 3 : 0));
+        }
+
         private void ApplyQuality()
         {
             QualityProfileHook.HighQuality = QualityProfiles.Active == QualityProfile.High;
+            var viewDistance = QualityProfiles.ViewDistance(QualityProfiles.Active);
+
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogStartDistance = 250f;
-            RenderSettings.fogEndDistance = 1000f;
+            RenderSettings.fogColor = SkyColor;
+            RenderSettings.fogStartDistance = viewDistance * 0.45f;
+            RenderSettings.fogEndDistance = viewDistance;
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = new Color(0.63f, 0.73f, 0.84f);
             RenderSettings.ambientEquatorColor = new Color(0.52f, 0.60f, 0.68f);
@@ -134,8 +180,18 @@ namespace BattleHorizons.World
             if (camera != null)
             {
                 camera.nearClipPlane = 0.1f;
-                camera.farClipPlane = 1000f;
+                camera.farClipPlane = viewDistance + 200f;
                 camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = SkyColor;
+
+                // No post-processing volume is used on mobile. Disabling it on the
+                // camera also stops a stray Bloom volume from turning the sun-lit
+                // ground into a white glare.
+                var cameraData = camera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+                if (cameraData != null)
+                {
+                    cameraData.renderPostProcessing = false;
+                }
             }
         }
 
@@ -151,7 +207,7 @@ namespace BattleHorizons.World
             var sun = sunObject.AddComponent<Light>();
             sun.type = LightType.Directional;
             sun.color = new Color(1f, 0.96f, 0.89f);
-            sun.intensity = 1.15f;
+            sun.intensity = 1.05f;
             sun.shadows = QualityProfiles.Active == QualityProfile.High
                 ? LightShadows.Soft
                 : LightShadows.None;
@@ -189,7 +245,7 @@ namespace BattleHorizons.World
 
             var material = roadMaterial != null
                 ? roadMaterial
-                : CreateVertexColorMaterial("GeneratedRoadMaterial", 0.08f);
+                : CreateVertexColorMaterial("GeneratedRoadMaterial", 0f, streamClipMode: 1);
 
             var triangles = 0;
             for (var i = 0; i < Data.RoadRibbons.Count; i++)
@@ -246,7 +302,7 @@ namespace BattleHorizons.World
             return camera != null ? camera.transform : transform;
         }
 
-        private static Material CreateVertexColorMaterial(string name, float smoothness)
+        private static Material CreateVertexColorMaterial(string name, float smoothness, int streamClipMode = 1)
         {
             var shader = Shader.Find(SiranRadiusClip.ShaderName);
             if (shader == null)
@@ -257,7 +313,9 @@ namespace BattleHorizons.World
 
             var material = new Material(shader) { name = name, enableInstancing = true };
             material.SetFloat("_UseVertexColor", 1f);
+            material.SetFloat("_Metallic", 0f);
             material.SetFloat("_Smoothness", smoothness);
+            material.SetFloat("_StreamClipMode", streamClipMode);
             return material;
         }
 
@@ -272,8 +330,10 @@ namespace BattleHorizons.World
 
             var material = new Material(shader) { name = "GeneratedWaterMaterial" };
             material.SetColor("_BaseColor", new Color(0.20f, 0.44f, 0.50f, 1f));
-            material.SetFloat("_Smoothness", 0.92f);
+            material.SetFloat("_Smoothness", 0.28f);
             material.SetFloat("_Metallic", 0.0f);
+            // Water is visible to the horizon; only the terrain LODs are clipped.
+            material.SetFloat("_StreamClipMode", 0f);
             var normal = Resources.Load<Texture2D>("Art/Textures/water_normal_256");
             if (normal != null)
             {

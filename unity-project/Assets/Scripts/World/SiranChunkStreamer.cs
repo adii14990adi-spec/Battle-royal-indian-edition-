@@ -78,7 +78,9 @@ namespace BattleHorizons.World
                         enableInstancing = true,
                     };
                     chunkMaterial.SetFloat("_UseVertexColor", 1f);
-                    chunkMaterial.SetFloat("_Smoothness", 0.05f);
+                    chunkMaterial.SetFloat("_Metallic", 0f);
+                    chunkMaterial.SetFloat("_Smoothness", 0f);
+                    chunkMaterial.SetFloat("_StreamClipMode", 1f);
                 }
                 else
                 {

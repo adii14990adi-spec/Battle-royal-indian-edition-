@@ -49,17 +49,31 @@ creates or updates a GitHub Release named **Battle Horizons: Last Survive (Build
 signing secrets are present. The build name remains `BattleHorizons`, and the
 workflow artifact is named `BattleHorizons-Android-APK-N`.
 
-## Siran Island and 50 m streaming
+## Siran Island, terrain LODs and 50 m streaming
 
 The committed Unity data lives under
 `unity-project/Assets/Resources/Config/`. It describes a 4 km island on a 401 ×
-401 height/color grid, partitioned into 500 m source tiles. Runtime visibility is
-a separate fixed **50 m circular radius** around the streamer focus:
+401 height/color grid, partitioned into 500 m source tiles.
 
-* only 500 m tile rectangles intersecting the circle are resident;
-* a URP clip shader trims terrain, roads and water to the circle itself;
-* the full-map Terrain renderer is always disabled, so it cannot bypass the
-  radius; its heightmap collider remains for gameplay.
+The ground is drawn as two complementary levels of detail, both matte
+(`metallic 0`, `smoothness 0`) and both cut by the same world-space circle:
+
+* **inside 50 m** — the streamed 500 m tiles at the full 10 m sample spacing
+  (only tile rectangles intersecting the circle are resident). This is also the
+  surface the `TerrainCollider` matches, so the player never floats or sinks;
+* **outside 50 m** — one static 20 m full-island shell (201 × 201 vertices,
+  80,000 triangles, a single draw call) that shows the hills, flat zone pads,
+  coastline and inland lake out to the view distance.
+
+The `SiranRadiusClip` shader draws the detail disk only inside the circle and the
+shell only outside it, so the two never overlap or z-fight. The Unity `Terrain`
+renderer (`drawHeightmap`) stays disabled; its heightmap collider covers the
+whole map. The sea, lake and river are unclipped so the island reads as an island
+rather than a floating circle. See
+[`docs/architecture/UNITY_ARCHITECTURE.md`](docs/architecture/UNITY_ARCHITECTURE.md).
+
+Your own buildings, trees and props go in `unity-project/Assets/UserAssets/Models`
+and `.../Materials`; nothing is spawned there by the project.
 
 The map data is authoritative in Unity; no separate engine project or conversion
 step is required. Validate the committed blobs and hashes with:
@@ -72,7 +86,8 @@ python3 processing/unity/validate_unity_map.py
 
 The Android target is ARM64, landscape, ASTC-compressed and does not request a
 forced INTERNET permission. Low and High quality profiles adjust render scale,
-shadows and frame pacing; both keep the same 50 m world-visibility radius. These
+shadows, view distance and frame pacing; both keep the same 50 m detail-disk
+radius. These
 are project settings and targets, not proof of device performance. See
 [`docs/performance/ANDROID_PROFILES.md`](docs/performance/ANDROID_PROFILES.md) and
 [`docs/UNISOC_BUDGET.md`](docs/UNISOC_BUDGET.md).

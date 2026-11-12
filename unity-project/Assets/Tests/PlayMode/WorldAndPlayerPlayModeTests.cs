@@ -70,6 +70,22 @@ namespace BattleHorizons.Tests.PlayMode
             Assert.GreaterOrEqual(builder.Water.SurfaceCount, 2, "sea + lake at minimum");
             Assert.Greater(builder.Data.RoadRibbons.Count, 0);
 
+            // The island itself is drawn by a matte overview mesh plus the 10 m
+            // detail disk. Without it the camera only sees sea and sky.
+            Assert.IsNotNull(builder.Overview, "the full-island overview mesh was not created");
+            var overviewRenderer = builder.Overview.GetComponent<MeshRenderer>();
+            Assert.IsNotNull(overviewRenderer, "overview needs a renderer");
+            Assert.IsNotNull(overviewRenderer.sharedMesh, "overview needs a mesh");
+            Assert.Greater(overviewRenderer.sharedMesh.triangles.Length, 0);
+            var overviewMaterial = overviewRenderer.sharedMaterial;
+            Assert.IsNotNull(overviewMaterial);
+            Assert.AreEqual(0f, overviewMaterial.GetFloat("_Smoothness"), 0.001f,
+                "the ground must be matte, not glossy");
+            Assert.AreEqual(0f, overviewMaterial.GetFloat("_Metallic"), 0.001f,
+                "the ground must not be metallic");
+            Assert.GreaterOrEqual(overviewMaterial.GetFloat("_StreamClipMode"), 1.5f,
+                "the island shell must draw outside the 50 m detail disk");
+
             // Every visible world mesh must use the same radial clip shader;
             // otherwise roads or water could leak beyond the terrain disk.
             var renderers = _world.GetComponentsInChildren<MeshRenderer>();

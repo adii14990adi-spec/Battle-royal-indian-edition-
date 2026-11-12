@@ -131,9 +131,9 @@ namespace BattleHorizons.Tests.EditMode
         [Test]
         public void ChunkMeshWindingFacesUp()
         {
-            // The mesh winding is clockwise from above. A quad wound the other
-            // way is invisible from above - the classic
-            // "island disappeared" bug.
+            // Unity's front faces are clockwise, so cross(b-a, c-a).y > 0 means
+            // the triangle is visible and lit from above. A quad wound the other
+            // way is invisible from above - the classic "island disappeared" bug.
             var vertices = new System.Collections.Generic.List<Vector3>(2601);
             var normals = new System.Collections.Generic.List<Vector3>(2601);
             var colors = new System.Collections.Generic.List<Color32>(2601);
@@ -148,13 +148,97 @@ namespace BattleHorizons.Tests.EditMode
                 var a = vertices[indices[t]];
                 var b = vertices[indices[t + 1]];
                 var c = vertices[indices[t + 2]];
-                if (Vector3.Cross(b - a, c - a).y > 0f)
+                if (Vector3.Cross(b - a, c - a).y <= 0f)
                 {
                     wrongWay++;
                 }
             }
 
             Assert.AreEqual(0, wrongWay, wrongWay + " triangles face down");
+        }
+
+        [Test]
+        public void OverviewMeshCoversTheWholeIslandAndFacesUp()
+        {
+            var mesh = SiranIslandTerrainBuilder.BuildOverviewMesh(_data);
+            Assert.IsNotNull(mesh);
+            var vertsPerSide = (_data.Size - 1) / SiranIslandTerrainBuilder.OverviewSampleStride + 1;
+            Assert.AreEqual(201, vertsPerSide, "20 m stride gives 201 vertices across 4 km");
+            Assert.AreEqual(vertsPerSide * vertsPerSide, mesh.vertexCount);
+            Assert.AreEqual((vertsPerSide - 1) * (vertsPerSide - 1) * 2, mesh.triangles.Length / 3,
+                "two triangles per 20 m cell");
+
+            var vertices = mesh.vertices;
+            var triangles = mesh.triangles;
+            var wrongWay = 0;
+            for (var t = 0; t < triangles.Length; t += 3)
+            {
+                var a = vertices[triangles[t]];
+                var b = vertices[triangles[t + 1]];
+                var c = vertices[triangles[t + 2]];
+                if (Vector3.Cross(b - a, c - a).y <= 0f)
+                {
+                    wrongWay++;
+                }
+            }
+
+            Assert.AreEqual(0, wrongWay, wrongWay + " overview triangles face down");
+
+            var bounds = mesh.bounds;
+            Assert.AreEqual(0f, bounds.center.x, 1f);
+            Assert.AreEqual(0f, bounds.center.z, 1f);
+            Assert.AreEqual(SiranMapConfig.MapSizeM, bounds.size.x, 25f);
+            Assert.AreEqual(SiranMapConfig.MapSizeM, bounds.size.z, 25f);
+            Assert.Greater(bounds.size.y, 40f, "the island must have real height variation");
+
+            // The overview colours are the baked palette (grass, sand, dirt), not
+            // a white surface: the mean must be a mid-tone green/brown.
+            var colors = mesh.colors32;
+            long r = 0, g = 0, b = 0;
+            for (var i = 0; i < colors.Length; i++)
+            {
+                r += colors[i].r;
+                g += colors[i].g;
+                b += colors[i].b;
+            }
+
+            var mean = new Vector3((float)r / colors.Length, (float)g / colors.Length, (float)b / colors.Length);
+            Assert.Less(mean.magnitude, 220f, "the overview must not be a white plane");
+            Assert.Greater(mean.y, mean.z, "grass should dominate over the baked sea-bed blue");
+        }
+
+        [Test]
+        public void BakedRibbonsAreFlippedToUnitysClockwiseUpWinding()
+        {
+            var down = 0;
+            foreach (var ribbon in _data.RoadRibbons)
+            {
+                down += CountDown(ribbon.Vertices, ribbon.Indices);
+            }
+
+            if (_data.River != null)
+            {
+                down += CountDown(_data.River.Vertices, _data.River.Indices);
+            }
+
+            Assert.AreEqual(0, down, down + " road/river triangles would be invisible from above");
+        }
+
+        private static int CountDown(Vector3[] vertices, int[] indices)
+        {
+            var down = 0;
+            for (var t = 0; t + 2 < indices.Length; t += 3)
+            {
+                var a = vertices[indices[t]];
+                var b = vertices[indices[t + 1]];
+                var c = vertices[indices[t + 2]];
+                if (Vector3.Cross(b - a, c - a).y <= 0f)
+                {
+                    down++;
+                }
+            }
+
+            return down;
         }
 
         [Test]
