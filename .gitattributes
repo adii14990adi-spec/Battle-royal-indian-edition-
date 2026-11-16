@@ -1,25 +1,34 @@
 # Normalize text line endings
 * text=auto eol=lf
 
-# Binary assets are stored with Git LFS.
-*.png   binary
-*.jpg   binary
-*.jpeg  binary
-*.webp  binary
-*.exr   binary
-*.hdr   binary
-*.glb   binary
-*.gltf  text eol=lf
-*.ogg   binary
-*.wav   binary
-*.mp3   binary
-*.ttf   binary
-*.otf   binary
-
-# Git LFS-tracked types
+# Git LFS-tracked types - large binary files
+# These require Git LFS for proper version control
 *.png   filter=lfs diff=lfs merge=lfs -text
 *.jpg   filter=lfs diff=lfs merge=lfs -text
-*.glb   filter=lfs diff=lfs merge=lfs -text
+*.jpeg  filter=lfs diff=lfs merge=lfs -text
+*.webp  filter=lfs diff=lfs merge=lfs -text
+*.exr   filter=lfs diff=lfs merge=lfs -text
+*.hdr   filter=lfs diff=lfs merge=lfs -text
 *.ogg   filter=lfs diff=lfs merge=lfs -text
 *.wav   filter=lfs diff=lfs merge=lfs -text
-*.exr   filter=lfs diff=lfs merge=lfs -text
+*.mp3   filter=lfs diff=lfs merge=lfs -text
+*.ttf   filter=lfs diff=lfs merge=lfs -text
+*.otf   filter=lfs diff=lfs merge=lfs -text
+
+# Animation and 3D assets - Git LFS recommended but browser upload allowed for smaller files
+# Files under 10MB can be uploaded via GitHub browser
+# Files over 10MB MUST use Git LFS CLI
+*.glb   filter=lfs diff=lfs merge=lfs -text
+*.gltf  filter=lfs diff=lfs merge=lfs -text
+*.fbx   filter=lfs diff=lfs merge=lfs -text
+*.obj   filter=lfs diff=lfs merge=lfs -text
+*.mtl   filter=lfs diff=lfs merge=lfs -text
+*.bin   filter=lfs diff=lfs merge=lfs -text
+
+# Unity animation clips - NOT LFS tracked (uploadable via browser if < 25MB)
+*.anim  diff=lfs merge=lfs text
+*.controller diff=lfs merge=lfs text
+
+# Git LFS asset configurations
+# These are stored as LFS pointers in git, actual files stored on Git LFS server
+# This repository has Git LFS enabled with standard storage limits
