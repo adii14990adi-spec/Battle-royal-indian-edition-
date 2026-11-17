@@ -536,6 +536,12 @@ namespace BattleHorizons.EditorTools
             var motor = player.AddComponent<ThirdPersonMotor>();
             var playerController = player.AddComponent<PlayerController>();
 
+            // Character & animation import system: spawns the configured
+            // character model (Male/Female/custom from the Character Bay)
+            // and drives its Animator from the motor. Stays dormant and keeps
+            // the capsule visual until a character has been imported & saved.
+            player.AddComponent<BattleHorizons.Characters.PlayerCharacterVisual>();
+
             var capsuleVisual = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             capsuleVisual.name = "PlayerCapsuleVisual";
             capsuleVisual.transform.SetParent(player.transform, false);

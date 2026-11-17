@@ -148,8 +148,11 @@ namespace BattleHorizons.UI
                 () => ShowInfoModal("VAULT", "Equipped Outfit: Special Operations Olive Tactical Rig + NVG Helmet\nParachute: Battle Horizons Gold Emblem"));
             CreateHotspotButton(frame.transform, "WeaponButton", new Vector2(0.1455f, 0.0469f), new Vector2(0.2725f, 0.1146f),
                 () => ShowInfoModal("WEAPON ARMORY", "Primary Slot: Assault Rifle (Phase 2 Combat System)\nMelee: Tactical Combat Blades"));
+            // Character Bay = real-time character & animation preview (the
+            // modal reports "not configured" until a character is imported
+            // and saved in the Character & Animation Manager).
             CreateHotspotButton(frame.transform, "CharacterButton", new Vector2(0.2793f, 0.0469f), new Vector2(0.4063f, 0.1146f),
-                () => ShowInfoModal("OPERATOR — COMMANDER_K", "Role: Reconnaissance & Survival Specialist\nPassive: +10% Stamina Recovery on Siran Island"));
+                ShowCharacterBay);
 
             // Top-right profile, settings & notifications
             CreateHotspotButton(frame.transform, "ProfileButton", new Vector2(0.5249f, 0.8993f), new Vector2(0.6758f, 0.9670f),
@@ -207,6 +210,25 @@ namespace BattleHorizons.UI
                 ? GameBootstrap.SceneNames.SiranIslandGreybox
                 : GameBootstrap.SceneNames.SiranIsland;
             LoadScene(target);
+        }
+
+        private void ShowCharacterBay()
+        {
+            if (_modalRoot == null)
+            {
+                return;
+            }
+
+            // § real-time 3D preview inside the existing game UI: the Character
+            // Bay is built next to the existing LobbyModal on the same canvas
+            // (same overlay pattern, no external dependencies).
+            var canvas = _modalRoot.transform.parent;
+            if (canvas == null)
+            {
+                return;
+            }
+
+            Characters.CharacterBayMenu.Build(canvas, null);
         }
 
         private void ShowInfoModal(string title, string body)

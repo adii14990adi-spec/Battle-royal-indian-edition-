@@ -10,6 +10,12 @@ Assets/UserAssets/
 └── Materials/   materials and shaders for those models
 ```
 
+> Uploaded **characters** and the **animation library** now live in their own
+> organized folders — `Assets/Characters/{Male,Female}` and
+> `Assets/Animations/{Movement,Combat,Weapon,Crouch,Death}` — see
+> `docs/CHARACTER_ANIMATION_PIPELINE.md` and the in-editor
+> **Battle Horizons → Asset Management → Character & Animation Manager**.
+
 ## How to place your assets
 
 1. Copy your model files into `Assets/UserAssets/Models/` (sub-folders are fine).

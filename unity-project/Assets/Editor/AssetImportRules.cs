@@ -144,9 +144,10 @@ namespace BattleHorizons.EditorTools
         /// <summary>
         /// True for model paths that must import as Humanoid: the generated
         /// <c>Characters/</c> props and the hand-authored UserAssets rigs
-        /// (<c>Male/</c>, <c>Female/</c>) plus <c>Animation/</c>, whose clips
-        /// retarget onto those avatars. Matching is case-insensitive and uses
-        /// Unity's forward-slash <c>assetPath</c> form.
+        /// (<c>Male/</c>, <c>Female/</c>) plus <c>Animation/</c> and the
+        /// organized <c>Animations/</c> library, whose clips retarget onto
+        /// those avatars. Matching is case-insensitive and uses Unity's
+        /// forward-slash <c>assetPath</c> form.
         /// </summary>
         internal static bool IsHumanoidAsset(string path)
         {
@@ -158,7 +159,32 @@ namespace BattleHorizons.EditorTools
             return path.Contains("/Characters/", StringComparison.OrdinalIgnoreCase)
                 || path.Contains("/UserAssets/Models/Male/", StringComparison.OrdinalIgnoreCase)
                 || path.Contains("/UserAssets/Models/Female/", StringComparison.OrdinalIgnoreCase)
-                || path.Contains("/UserAssets/Models/Animation/", StringComparison.OrdinalIgnoreCase);
+                || path.Contains("/UserAssets/Models/Animation/", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("/Animations/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Respects an explicit Generic rig choice recorded by the Character &amp;
+        /// Animation Manager (CharacterImportService with "force Generic", or
+        /// AnimationImportService's Generic path). Unity's default animation
+        /// type for a fresh FBX is also Generic, so only a *recorded* choice
+        /// is honoured — never an accidental default. Unmarked files follow
+        /// the pipeline default (Humanoid inside the character/animation
+        /// folders).
+        /// </summary>
+        internal static bool RespectsExplicitGeneric(string path, ModelImporter importer)
+        {
+            if (string.IsNullOrEmpty(path) || importer == null)
+            {
+                return false;
+            }
+
+            if (importer.animationType != ModelImporterAnimationType.Generic)
+            {
+                return false;
+            }
+
+            return CharacterAnimationConfigLibrary.IsExplicitGeneric(path);
         }
 
         private void OnPreprocessModel()
@@ -185,6 +211,16 @@ namespace BattleHorizons.EditorTools
             importer.addCollider = false;      // collision is explicit, per prefab
             importer.meshCompression = ModelImporterMeshCompression.Medium;
             importer.isReadable = false;       // mesh data does not need to be readable on device
+
+            if (RespectsExplicitGeneric(assetPath, importer))
+            {
+                // Manual Generic choice (Character & Animation Manager escape
+                // hatch): keep the user's rig decision, only apply pipeline
+                // defaults for animation import itself.
+                importer.importAnimation = true;
+                importer.animationCompression = ModelImporterAnimationCompression.Optimal;
+                return;
+            }
 
             if (IsHumanoidAsset(assetPath))
             {
