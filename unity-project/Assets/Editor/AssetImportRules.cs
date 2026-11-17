@@ -1,6 +1,9 @@
 using System;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
+
+[assembly: InternalsVisibleTo("BattleHorizons.EditModeTests")]
 
 namespace BattleHorizons.EditorTools
 {
@@ -138,6 +141,26 @@ namespace BattleHorizons.EditorTools
             }
         }
 
+        /// <summary>
+        /// True for model paths that must import as Humanoid: the generated
+        /// <c>Characters/</c> props and the hand-authored UserAssets rigs
+        /// (<c>Male/</c>, <c>Female/</c>) plus <c>Animation/</c>, whose clips
+        /// retarget onto those avatars. Matching is case-insensitive and uses
+        /// Unity's forward-slash <c>assetPath</c> form.
+        /// </summary>
+        internal static bool IsHumanoidAsset(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return false;
+            }
+
+            return path.Contains("/Characters/", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("/UserAssets/Models/Male/", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("/UserAssets/Models/Female/", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("/UserAssets/Models/Animation/", StringComparison.OrdinalIgnoreCase);
+        }
+
         private void OnPreprocessModel()
         {
             if (!assetPath.StartsWith("Assets/", StringComparison.Ordinal))
@@ -163,9 +186,13 @@ namespace BattleHorizons.EditorTools
             importer.meshCompression = ModelImporterMeshCompression.Medium;
             importer.isReadable = false;       // mesh data does not need to be readable on device
 
-            if (assetPath.Contains("/Characters/"))
+            if (IsHumanoidAsset(assetPath))
             {
                 importer.animationType = ModelImporterAnimationType.Human;
+                // Also applies to UserAssets/Models/Animation: clips there
+                // retarget onto this model's avatar. "Copy From Other Avatar"
+                // stays an optional manual override in the importer for rigs
+                // that deliberately reuse an existing avatar.
                 importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
                 importer.humanoidOversampling = ModelImporterHumanoidOversampling.X1;
                 importer.importAnimation = true;

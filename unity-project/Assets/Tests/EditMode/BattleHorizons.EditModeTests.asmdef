@@ -3,6 +3,7 @@
     "rootNamespace": "BattleHorizons.Tests",
     "references": [
         "BattleHorizons.Runtime",
+        "BattleHorizons.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "Unity.InputSystem"
