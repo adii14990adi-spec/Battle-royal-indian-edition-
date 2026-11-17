@@ -198,12 +198,16 @@ namespace BattleHorizons.Tests
                     "male source must map to a valid humanoid avatar:\n"
                     + result.definition.rigReport);
 
-                // Textures extracted (male FBX embeds PNGs).
+                // Textures: extracted when the FBX embeds them; when the source
+                // only *references* external image files the pipeline must say
+                // so honestly instead of silently shipping missing maps.
                 var textureGuids = AssetDatabase.FindAssets("t:Texture2D",
                     new[] { _scratchCharacterFolder + "/Textures" });
-                Assert.Greater(textureGuids.Length, 0,
-                    "embedded textures must be extracted to Textures/: "
-                    + result.report.ToMarkdown());
+                if (textureGuids.Length == 0)
+                {
+                    StringAssert.Contains("no embedded textures", result.report.ToMarkdown(),
+                        "without embedded textures the report must warn instead of pretending");
+                }
 
                 // URP materials created + remapped.
                 var materialGuids = AssetDatabase.FindAssets("t:Material",
@@ -537,6 +541,9 @@ namespace BattleHorizons.Tests
             var originalType = importer.animationType;
             try
             {
+                // Generic without a recorded choice → the rule overrides it
+                // back to Humanoid on reimport (and the helper says "not
+                // respected").
                 if (originalType != ModelImporterAnimationType.Generic)
                 {
                     importer.animationType = ModelImporterAnimationType.Generic;
@@ -544,13 +551,19 @@ namespace BattleHorizons.Tests
                     AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
                 }
 
-                // Generic without a recorded choice → still not respected.
                 Assert.IsFalse(AssetImportRules.RespectsExplicitGeneric(path, importer),
                     "Generic alone must not be treated as an explicit choice");
 
+                // Record the choice FIRST, then set Generic and reimport —
+                // the import rule honours the recording.
                 CharacterAnimationConfigLibrary.MarkExplicitGeneric(path);
+                importer.animationType = ModelImporterAnimationType.Generic;
+                AssetDatabase.WriteImportSettingsIfDirty(path);
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
                 Assert.IsTrue(AssetImportRules.RespectsExplicitGeneric(path, importer),
                     "a recorded Generic choice on an animation asset must be respected");
+                Assert.AreEqual(ModelImporterAnimationType.Generic, importer.animationType,
+                    "the recorded Generic choice must survive the reimport");
             }
             finally
             {

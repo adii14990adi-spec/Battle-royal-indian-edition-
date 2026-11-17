@@ -136,6 +136,16 @@ namespace BattleHorizons.EditorTools
 
             report.Success("import", "FBX imported to " + assetPath);
 
+            // ---- content-hash registration (duplicate prevention) -----------
+            var config = CharacterAnimationConfigLibrary.LoadOrCreate();
+            var sourceSha = CharacterAnimationConfigLibrary.Sha256OfFile(absoluteSource);
+            var sourceBytes = new FileInfo(absoluteSource).Length;
+            if (CharacterAnimationConfigLibrary.RegisterSource(config, assetPath, sourceSha, sourceBytes))
+            {
+                report.Warn("duplicate",
+                    "identical file content was already imported — continuing so the slot stays valid");
+            }
+
             // ---- rig -------------------------------------------------------
             var rigReport = new RigReport();
             if (options.forceGenericRig)
@@ -173,8 +183,7 @@ namespace BattleHorizons.EditorTools
             // ---- mesh integrity --------------------------------------------
             ValidateMeshIntegrity(assetPath, report);
 
-            // ---- config entry ----------------------------------------------
-            var config = CharacterAnimationConfigLibrary.LoadOrCreate();
+            // ---- config entry (config was loaded for source registration) ---
             var id = SlotId(options.slot, options.customName);
             var definition = CharacterAnimationConfigLibrary.GetOrCreateCharacter(
                 config, id, SlotDisplayName(options.slot, options.customName, fileName));
