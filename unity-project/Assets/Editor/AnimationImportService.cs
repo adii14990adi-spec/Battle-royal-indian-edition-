@@ -210,6 +210,14 @@ namespace BattleHorizons.EditorTools
                     report.Success("rig", fileName + ": " + rigSummary);
                 }
 
+                var model = AssetDatabase.LoadAssetAtPath<GameObject>(targetPath);
+                var isMixamo = MixamoImportSettings.CountMixamoBones(model) > 0;
+                if (isMixamo)
+                {
+                    report.Success("rig", fileName + ": " + MixamoImportSettings.DescribeSkeleton(model)
+                        + " — clips retarget onto the character's Humanoid avatar");
+                }
+
                 // ---- register clips --------------------------------------
                 for (var c = 0; c < importedClips.Length; c++)
                 {
@@ -231,6 +239,16 @@ namespace BattleHorizons.EditorTools
                         loop = clip.isLooping,
                         retargetable = rigKind == RigKind.Humanoid,
                     }, characterId: null);
+
+                    // A Mixamo clip that still reports generic motion means the
+                    // Rig tab conversion did not take — name the cause instead
+                    // of letting it look like a normal import.
+                    if (isMixamo && !clip.humanMotion)
+                    {
+                        report.Warn("rig", fileName + ": clip '" + clip.name
+                            + "' is still generic motion — set Rig > Animation Type to Humanoid"
+                            + " and Apply (this is why the character ignored it)");
+                    }
 
                     result.Clips.Add(clip);
                     report.Success("clip",
@@ -324,19 +342,24 @@ namespace BattleHorizons.EditorTools
         }
 
         /// <summary>
-        /// Set loopTime on every clip of the FBX through the importer's clip
-        /// animation list (the documented way to persist loop flags).
+        /// Configure the clip settings that make a Mixamo FBX usable on a
+        /// Humanoid character (Animation tab): Loop Time / Loop Pose from the
+        /// category (with a file-name override, e.g. "jump loop.fbx"), and Root
+        /// Transform Rotation / Position (Y, XZ) baked into pose so the clip
+        /// can never slide or spin the character. Written through the
+        /// importer's clip list — the documented way to persist these flags.
         /// </summary>
         private static void ConfigureLoopFlags(ModelImporter importer, CharacterAnimCategory category)
         {
-            var desiredLoop = CharacterAnimCategories.DefaultLoop(category);
+            var fileName = Path.GetFileName(importer.assetPath);
+            var desiredLoop = MixamoImportSettings.WantsLoop(category, fileName);
             var clipAnimations = importer.clipAnimations;
             var changed = false;
 
             if (clipAnimations == null || clipAnimations.Length == 0)
             {
                 // No explicit clip list yet: generate one from the imported
-                // clips so the loop flag can persist.
+                // clips so the flags can persist.
                 var clips = LoadClipsFromFbx(importer.assetPath);
                 if (clips == null || clips.Length == 0)
                 {
@@ -351,28 +374,24 @@ namespace BattleHorizons.EditorTools
                         name = clips[i].name,
                         firstFrame = 0f,
                         lastFrame = Mathf.Max(1f, clips[i].length * clips[i].frameRate),
-                        loopTime = desiredLoop,
                         takeName = clips[i].name,
                     };
                     changed = true;
                 }
-
-                importer.clipAnimations = clipAnimations;
             }
-            else
+
+            for (var i = 0; i < clipAnimations.Length; i++)
             {
-                for (var i = 0; i < clipAnimations.Length; i++)
+                // Also bakes in the root-motion settings (Bake Into Pose).
+                if (MixamoImportSettings.ApplyToClip(clipAnimations[i], desiredLoop))
                 {
-                    if (clipAnimations[i].loopTime != desiredLoop)
-                    {
-                        clipAnimations[i].loopTime = desiredLoop;
-                        changed = true;
-                    }
+                    changed = true;
                 }
             }
 
             if (changed)
             {
+                importer.clipAnimations = clipAnimations;
                 AssetDatabase.WriteImportSettingsIfDirty(importer.assetPath);
                 AssetDatabase.ImportAsset(importer.assetPath, ImportAssetOptions.ForceSynchronousImport);
             }

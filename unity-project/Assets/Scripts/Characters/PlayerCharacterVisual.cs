@@ -91,6 +91,9 @@ namespace BattleHorizons.Characters
                 return false;
             }
 
+            // Root motion stays off: ThirdPersonMotor owns the character
+            // transform, and the clips are imported with Bake Into Pose so a
+            // Mixamo root cannot slide or spin the model underneath it.
             _animator.applyRootMotion = false;
             _animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             if (_active.controller != null)
@@ -100,6 +103,17 @@ namespace BattleHorizons.Characters
             else
             {
                 GameLog.Error("characters", _active.displayName + " has no generated Animator controller");
+            }
+
+            // A Generic (non-converted) Mixamo clip inside a Humanoid
+            // controller plays nothing — the character freezes in its bind
+            // pose. Say that out loud instead of letting it look like a bug.
+            var avatar = _animator.avatar;
+            if (avatar == null || !avatar.isValid || !avatar.isHuman)
+            {
+                GameLog.Error("characters", _active.displayName
+                    + " avatar is not a valid Humanoid — Mixamo clips cannot play on it."
+                    + " Fix: model FBX > Rig > Animation Type Humanoid > Apply");
             }
 
             SetCapsuleVisible(false);

@@ -53,6 +53,10 @@ namespace BattleHorizons.EditorTools
         private Vector2 _animationScroll;
         private string _lastAnimationMessage = string.Empty;
 
+        // Mixamo import-settings audit, cached: loading every clip of 74 FBX
+        // files on each OnGUI pass would make the window crawl.
+        private List<MixamoClipAudit> _mixamoAudit;
+
         // Assign tab
         private string _selectedCharacterId;
         private readonly Dictionary<string, AnimationClip> _draftAssignments =
@@ -398,6 +402,8 @@ namespace BattleHorizons.EditorTools
                 EditorGUILayout.HelpBox(_lastAnimationMessage, MessageType.None);
             }
 
+            DrawMixamoImportSettingsSection();
+
             EditorGUILayout.Space(12f);
             EditorGUILayout.LabelField("Registered clips (" + (_config != null ? _config.clips.Count : 0) + ")",
                 EditorStyles.boldLabel);
@@ -425,6 +431,74 @@ namespace BattleHorizons.EditorTools
             }
 
             EditorGUILayout.EndScrollView();
+        }
+
+        /// <summary>
+        /// The three Mixamo settings that decide whether a downloaded clip
+        /// plays at all, shown as live counts so a Generic clip cannot hide:
+        /// Rig = Humanoid, Loop Time per category, Root Transform baked into
+        /// pose (and the Animator Controller rebuilt so the clip is wired).
+        /// </summary>
+        private void DrawMixamoImportSettingsSection()
+        {
+            EditorGUILayout.Space(8f);
+            EditorGUILayout.LabelField("Mixamo import settings (Rig · Animation · Animator)", EditorStyles.boldLabel);
+
+            if (_mixamoAudit == null)
+            {
+                _mixamoAudit = MixamoAnimationImportService.Audit(MixamoImportSettings.AnimationsRoot);
+            }
+
+            var rows = _mixamoAudit;
+            var problems = MixamoAnimationImportService.CountProblems(rows);
+            var genericClips = 0;
+            var unbaked = 0;
+            var wrongLoop = 0;
+            for (var i = 0; i < rows.Count; i++)
+            {
+                for (var p = 0; p < rows[i].problems.Count; p++)
+                {
+                    var problem = rows[i].problems[p];
+                    if (problem.StartsWith("Rig tab", StringComparison.Ordinal))
+                    {
+                        genericClips++;
+                    }
+                    else if (problem.StartsWith("Animation tab: Loop", StringComparison.Ordinal))
+                    {
+                        wrongLoop++;
+                    }
+                    else if (problem.StartsWith("Animation tab", StringComparison.Ordinal))
+                    {
+                        unbaked++;
+                    }
+                }
+            }
+
+            EditorGUILayout.HelpBox(
+                string.Format(
+                    "{0} animation clip(s) audited · Rig not Humanoid: {1} · wrong Loop Time: {2} · root motion not baked: {3}",
+                    rows.Count, genericClips, wrongLoop, unbaked)
+                + "\nA clip imported as Generic is ignored by a Humanoid character's Animator — that is the"
+                + " most common reason a Mixamo animation does not play.",
+                problems == 0 ? MessageType.Info : MessageType.Warning);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Repair all (Humanoid + Loop Time + Bake Into Pose + rebuild controllers)",
+                        GUILayout.Height(30f), GUILayout.Width(520f)))
+                {
+                    MixamoAnimationFixMenu.RepairAll();
+                    _mixamoAudit = null;
+                    ReloadConfig();
+                    Repaint();
+                }
+
+                if (GUILayout.Button("Re-audit", GUILayout.Width(110f)))
+                {
+                    _mixamoAudit = null;
+                    Repaint();
+                }
+            }
         }
 
         /// <summary>Queue an FBX source once, with its inferred category.</summary>
@@ -460,6 +534,7 @@ namespace BattleHorizons.EditorTools
                 _pendingSources.Clear();
             }
 
+            _mixamoAudit = null;
             ReloadConfig();
             _tab = 4;
             Repaint();

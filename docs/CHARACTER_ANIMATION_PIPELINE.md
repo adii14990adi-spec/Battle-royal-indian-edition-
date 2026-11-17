@@ -57,6 +57,51 @@ Assets/Generated/       config + import reports (git-ignored, code-generated)
 The same preview runs in-game: the **Character** hotspot on the Home Screen
 opens the *Character Bay* modal (existing UI, no external dependencies).
 
+## Mixamo import settings (Rig · Animation · Animator)
+
+A Mixamo FBX that is left on Unity's default imports as **Generic**, and a
+Generic clip is silently ignored by a Humanoid character's Animator — the
+controller looks wired up, the character never moves. The three settings that
+fix it are enforced in code, because this repository commits no `.meta` files:
+anything ticked by hand in the Inspector is gone after the next clone or CI
+import.
+
+| Step | Inspector (manual) | Enforced by |
+| --- | --- | --- |
+| 1. Rig → **Humanoid** | FBX → Rig tab → Animation Type `Generic` → `Humanoid` → Apply | `MixamoAnimationImportRules.OnPreprocessModel` + `ProjectValidator` check |
+| 2. Loop + Bake Into Pose | Animation tab → Loop Time for cycles, Root Transform Rotation / Position (Y, XZ) → Bake Into Pose | `MixamoImportSettings.ApplyToClip` (import time) + `MixamoAnimationImportService.Repair` |
+| 3. Animator Controller | drag the clip into the controller and set transitions | `AnimatorControllerBuilder.BuildController` (generated from the Assign tab) |
+
+* **Rig.** Every FBX under `Assets/Animations/` (and the legacy
+  `Assets/UserAssets/Models/Animation/`) imports as `ModelImporterAnimationType.Human`
+  with an avatar generated from the model. A file recorded as an explicit
+  Generic rig (`Assets/Generated/GenericRigs.txt`) is never overridden.
+* **Loop Time.** Cycles (Idle, Walk, Run, Sprint, Crouch, CrouchWalk, Aim,
+  Rifle Run/Idle) loop; one-shots (Jump up, Fall, Shoot, Reload, Weapon
+  Switch, Melee, Death) do not. File names override the category —
+  `jump loop.fbx` loops, `jump up.fbx` / `jump down.fbx` /
+  `Running To Stop.fbx` do not.
+* **Root motion.** Root Transform Rotation, Position (Y) and Position (XZ)
+  are **baked into pose** and based upon the original source values, so a
+  Mixamo root can never slide or spin the character while `ThirdPersonMotor`
+  owns the transform (`Animator.applyRootMotion` is `false`).
+* **Animator step.** The builder adds a **warning** when a clip it is about to
+  reference is not humanoid motion, and `PlayerCharacterVisual` logs an error
+  when the spawned character's avatar is not a valid humanoid — the two ways
+  this failure used to happen silently.
+
+Run it once, or after adding new FBX files:
+
+**Battle Horizons → Asset Management → Repair Mixamo Import Settings**
+(or the *Repair all* button on the Manager window's Animations tab). It
+re-imports only files that are wrong (`0` files on a correct library), rebuilds
+the generated controllers and writes `Assets/Generated/LastImportReport.md`.
+
+Verification: the EditMode test
+`MixamoLibrary_ImportsHumanoidWithLoopAndBakedRootMotion` audits all 74 clips
+and the same audit runs in `ProjectBootstrap.ValidateFromCommandLine`, so a
+Generic or unbaked clip fails CI instead of shipping.
+
 ## Generated Animator Controllers
 
 Parameters: `Speed`, `VerticalSpeed`, `IsAirborne`, `IsCrouching`, `IsAiming`,
