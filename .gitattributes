@@ -20,7 +20,6 @@
 # Files over 10MB MUST use Git LFS CLI
 *.glb   filter=lfs diff=lfs merge=lfs -text
 *.gltf  filter=lfs diff=lfs merge=lfs -text
-*.fbx   filter=lfs diff=lfs merge=lfs -text
 *.obj   filter=lfs diff=lfs merge=lfs -text
 *.mtl   filter=lfs diff=lfs merge=lfs -text
 *.bin   filter=lfs diff=lfs merge=lfs -text
@@ -28,6 +27,11 @@
 # Unity animation clips - NOT LFS tracked (uploadable via browser if < 25MB)
 *.anim  diff=lfs merge=lfs text
 *.controller diff=lfs merge=lfs text
+
+# **FBX files NO LONGER tracked by Git LFS**
+# Small FBX files (< 1 MB) can now be uploaded directly via GitHub browser
+# Large FBX files (> 10 MB) should use Git LFS CLI manually
+# *.fbx   filter=lfs diff=lfs merge=lfs -text  (REMOVED)
 
 # Git LFS asset configurations
 # These are stored as LFS pointers in git, actual files stored on Git LFS server
