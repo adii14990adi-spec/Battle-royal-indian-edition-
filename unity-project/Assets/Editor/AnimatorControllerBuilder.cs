@@ -39,7 +39,7 @@ namespace BattleHorizons.EditorTools
 
         private static readonly CharacterAnimCategory[] RequiredCategories =
         {
-            CharacterAnimCategories.Idle,
+            CharacterAnimCategory.Idle,
         };
 
         public sealed class BuildResult
@@ -135,7 +135,7 @@ namespace BattleHorizons.EditorTools
             var machine = baseLayer.stateMachine;
             machine.name = "Locomotion";
 
-            var defaultState = AddState(machine, "Idle", ClipFor(resolved, CharacterAnimCategories.Idle, result));
+            var defaultState = AddState(machine, "Idle", ClipFor(resolved, CharacterAnimCategory.Idle, result));
             machine.defaultState = defaultState;
 
             // Speed-driven states (missing clips are skipped with warnings).
@@ -144,7 +144,7 @@ namespace BattleHorizons.EditorTools
             {
                 var entry = SpeedStates[i];
                 var clip = ClipFor(resolved, entry.category, result);
-                if (clip == null && entry.category != CharacterAnimCategories.Idle)
+                if (clip == null && entry.category != CharacterAnimCategory.Idle)
                 {
                     continue;
                 }
@@ -173,8 +173,8 @@ namespace BattleHorizons.EditorTools
             }
 
             // ---- Crouch (1D blend: Crouch ↔ Crouch Walk) --------------------
-            var crouchClip = ClipFor(resolved, CharacterAnimCategories.Crouch, result);
-            var crouchWalkClip = ClipFor(resolved, CharacterAnimCategories.CrouchWalk, result);
+            var crouchClip = ClipFor(resolved, CharacterAnimCategory.Crouch, result);
+            var crouchWalkClip = ClipFor(resolved, CharacterAnimCategory.CrouchWalk, result);
             if (crouchClip != null)
             {
                 var blend = BlendTreeHelper.CreateBlendTree1D(
@@ -202,8 +202,8 @@ namespace BattleHorizons.EditorTools
             }
 
             // ---- Airborne ---------------------------------------------------
-            var jumpClip = ClipFor(resolved, CharacterAnimCategories.Jump, result);
-            var fallClip = ClipFor(resolved, CharacterAnimCategories.Fall, result);
+            var jumpClip = ClipFor(resolved, CharacterAnimCategory.Jump, result);
+            var fallClip = ClipFor(resolved, CharacterAnimCategory.Fall, result);
             if (jumpClip != null)
             {
                 var jumpState = AddState(machine, "Jump", jumpClip);
@@ -225,19 +225,20 @@ namespace BattleHorizons.EditorTools
             }
 
             // ---- weapon one-shots -------------------------------------------
-            AttachOneShot(machine, resolved, CharacterAnimCategories.Shoot, result);
-            AttachOneShot(machine, resolved, CharacterAnimCategories.Reload, result);
-            AttachOneShot(machine, resolved, CharacterAnimCategories.WeaponSwitch, result);
-            AttachOneShot(machine, resolved, CharacterAnimCategories.Melee, result);
+            AttachOneShot(machine, resolved, CharacterAnimCategory.Shoot, result);
+            AttachOneShot(machine, resolved, CharacterAnimCategory.Reload, result);
+            AttachOneShot(machine, resolved, CharacterAnimCategory.WeaponSwitch, result);
+            AttachOneShot(machine, resolved, CharacterAnimCategory.Melee, result);
 
             // ---- Death (absorbing) ------------------------------------------
-            var deathClip = ClipFor(resolved, CharacterAnimCategories.Death, result);
+            var deathClip = ClipFor(resolved, CharacterAnimCategory.Death, result);
             if (deathClip != null)
             {
                 var deathState = AddState(machine, "Death", deathClip);
                 var deathTransition = deathState.AddTransition(FindState(machine, "Idle"));
                 ConfigureMotionless(deathTransition);
-                deathTransition.AddExitTime(1f);
+                deathTransition.hasExitTime = true;
+                deathTransition.exitTime = 1f;
                 deathTransition.AddCondition(AnimatorConditionMode.If, 0f, CharacterAnimParameters.Death);
             }
             else
@@ -246,7 +247,7 @@ namespace BattleHorizons.EditorTools
             }
 
             // ---- Aim (grounded upper-body stance lives on layer 1) -----------
-            var aimClip = ClipFor(resolved, CharacterAnimCategories.Aim, result);
+            var aimClip = ClipFor(resolved, CharacterAnimCategory.Aim, result);
             if (aimClip != null)
             {
                 var aimState = AddState(machine, "Aim", aimClip);
@@ -254,8 +255,8 @@ namespace BattleHorizons.EditorTools
             }
 
             // ---- UpperBody layer + AvatarMask --------------------------------
-            var rifleIdle = ClipFor(resolved, CharacterAnimCategories.RifleIdle, result);
-            var rifleRun = ClipFor(resolved, CharacterAnimCategories.RifleRun, result);
+            var rifleIdle = ClipFor(resolved, CharacterAnimCategory.RifleIdle, result);
+            var rifleRun = ClipFor(resolved, CharacterAnimCategory.RifleRun, result);
             if (rifleIdle != null || rifleRun != null)
             {
                 var mask = BuildUpperBodyMask(
@@ -456,15 +457,15 @@ namespace BattleHorizons.EditorTools
         {
             switch (category)
             {
-                case CharacterAnimCategories.Shoot:
+                case CharacterAnimCategory.Shoot:
                     return CharacterAnimParameters.Shoot;
-                case CharacterAnimCategories.Reload:
+                case CharacterAnimCategory.Reload:
                     return CharacterAnimParameters.Reload;
-                case CharacterAnimCategories.WeaponSwitch:
+                case CharacterAnimCategory.WeaponSwitch:
                     return CharacterAnimParameters.WeaponSwitch;
-                case CharacterAnimCategories.Melee:
+                case CharacterAnimCategory.Melee:
                     return CharacterAnimParameters.Melee;
-                case CharacterAnimCategories.Death:
+                case CharacterAnimCategory.Death:
                     return CharacterAnimParameters.Death;
                 default:
                     return CharacterAnimParameters.Shoot;

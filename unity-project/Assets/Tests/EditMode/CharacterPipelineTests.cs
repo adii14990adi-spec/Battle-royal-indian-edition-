@@ -370,7 +370,7 @@ namespace BattleHorizons.Tests
                 }, character.id);
             }
 
-            Assert.IsTrue(clipsByCategory.ContainsKey(CharacterAnimCategories.Idle),
+            Assert.IsTrue(clipsByCategory.ContainsKey(CharacterAnimCategory.Idle),
                 "the library must contain an Idle clip for the required state");
 
             CharacterAnimationConfigLibrary.Save(config);
