@@ -294,25 +294,28 @@ namespace BattleHorizons.EditorTools
 
         private void DrawAnimationsTab()
         {
-            EditorGUILayout.LabelField("Upload animation FBX files (multi-select)", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "Upload animation FBX files (single file, repeatable — or a whole folder)",
+                EditorStyles.boldLabel);
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Choose animation FBX files…", GUILayout.Height(32f), GUILayout.Width(320f)))
+                if (GUILayout.Button("Add animation FBX…", GUILayout.Height(32f), GUILayout.Width(220f)))
                 {
-                    var paths = EditorUtility.OpenFilePanelMultiple("Select animation FBX files", "", "fbx");
-                    foreach (var path in paths)
+                    var path = EditorUtility.OpenFilePanel("Select animation FBX file", "", "fbx");
+                    if (!string.IsNullOrEmpty(path))
                     {
-                        if (string.IsNullOrEmpty(path))
-                        {
-                            continue;
-                        }
+                        QueueSource(path);
+                    }
+                }
 
-                        _pendingSources.Add(path);
-                        var fileName = Path.GetFileName(path);
-                        if (!_pendingOverrides.ContainsKey(fileName))
+                if (GUILayout.Button("Add all FBX in folder…", GUILayout.Height(32f), GUILayout.Width(240f)))
+                {
+                    var folder = EditorUtility.OpenFolderPanel("Select folder of animation FBX files", "", "");
+                    if (!string.IsNullOrEmpty(folder) && Directory.Exists(folder))
+                    {
+                        foreach (var path in Directory.GetFiles(folder, "*.fbx", SearchOption.AllDirectories))
                         {
-                            _pendingOverrides[fileName] =
-                                CharacterAnimCategories.InferFromFileName(fileName);
+                            QueueSource(path);
                         }
                     }
                 }
@@ -422,6 +425,22 @@ namespace BattleHorizons.EditorTools
             }
 
             EditorGUILayout.EndScrollView();
+        }
+
+        /// <summary>Queue an FBX source once, with its inferred category.</summary>
+        private void QueueSource(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
+
+            _pendingSources.Add(path);
+            var fileName = Path.GetFileName(path);
+            if (!_pendingOverrides.ContainsKey(fileName))
+            {
+                _pendingOverrides[fileName] = CharacterAnimCategories.InferFromFileName(fileName);
+            }
         }
 
         private void RunAnimationImport()
@@ -587,8 +606,8 @@ namespace BattleHorizons.EditorTools
 
         private static bool IsCompatible(CharacterDefinition character, AnimationClip clip, out string reason)
         {
-            var avatar = character.avatar;
-            if (avatar == null && character.model != null)
+            Avatar avatar = null;
+            if (character.model != null)
             {
                 avatar = RigDetectionUtility.FindAvatar(AssetDatabase.GetAssetPath(character.model));
             }

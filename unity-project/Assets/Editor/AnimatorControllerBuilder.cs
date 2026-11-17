@@ -139,7 +139,7 @@ namespace BattleHorizons.EditorTools
             machine.defaultState = defaultState;
 
             // Speed-driven states (missing clips are skipped with warnings).
-            var speedBounds = new List<(float low, float high, ChildAnimatorState state)>();
+            var speedBounds = new List<(float low, float high, AnimatorState state)>();
             for (var i = 0; i < SpeedStates.Length; i++)
             {
                 var entry = SpeedStates[i];
@@ -154,14 +154,14 @@ namespace BattleHorizons.EditorTools
                     ? defaultState
                     : AddState(machine, stateName, clip);
                 var high = i + 1 < SpeedStates.Length ? SpeedStates[i + 1].speed : float.MaxValue;
-                speedBounds.Add((entry.speed, high, new ChildAnimatorState { state = state, stateMachine = machine }));
+                speedBounds.Add((entry.speed, high, state));
             }
 
             // Zone-based Any State speed transitions (no exit time, smooth).
             for (var i = 0; i < speedBounds.Count; i++)
             {
                 var bound = speedBounds[i];
-                var transition = machine.AddAnyStateTransition(bound.state.state);
+                var transition = machine.AddAnyStateTransition(bound.state);
                 ConfigureMotionless(transition);
                 transition.AddCondition(AnimatorConditionMode.Greater, bound.low - 0.001f,
                     CharacterAnimParameters.Speed);
@@ -505,7 +505,6 @@ namespace BattleHorizons.EditorTools
             mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightArm, true);
             mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
             mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
-            mask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.SourceOBj, true);
             mask.transformCount = 0; // humanoid masks don't need transform entries
 
             if (isNew)
@@ -587,7 +586,7 @@ namespace BattleHorizons.EditorTools
             string name, string parameter, IList<(float threshold, T motion)> children)
             where T : Motion
         {
-            var tree = ScriptableObject.CreateInstance<BlendTree>();
+            var tree = new BlendTree();
             tree.name = name;
             tree.blendType = BlendTreeType.Simple1D;
             tree.blendParameter = parameter;
