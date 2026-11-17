@@ -128,6 +128,21 @@ def repository_files() -> list[str]:
     ]
 
 
+def tracked_files() -> list[str]:
+    """Return every path currently staged/committed in the index."""
+    result = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+    )
+    return [
+        item.decode("utf-8")
+        for item in result.stdout.split(b"\0")
+        if item
+    ]
+
+
 def main() -> int:
     report = Report()
     print("=" * 62)
@@ -179,6 +194,19 @@ def main() -> int:
     missing_files = [path for path in UNITY_REQUIRED_FILES if not (UNITY / path).is_file()]
     report.check(not missing_files,
                  "required Unity project files and island resources exist" + (": " + ", ".join(missing_files) if missing_files else ""))
+
+    # Path components with leading/trailing whitespace (a directory literally
+    # named "Female " or a file named ". gitkeep") break checkouts, Unity's
+    # asset database and every script that joins paths naively. Fail on them
+    # so they cannot be re-introduced.
+    whitespace_paths = [
+        path for path in tracked_files()
+        if any(component != component.strip() for component in path.split("/"))
+    ]
+    report.check(not whitespace_paths,
+                 "no tracked path component has leading or trailing whitespace" +
+                 (": " + ", ".join(repr(path) for path in whitespace_paths[:4])
+                  if whitespace_paths else ""))
 
     package_path = UNITY / "Packages/manifest.json"
     if package_path.is_file():
