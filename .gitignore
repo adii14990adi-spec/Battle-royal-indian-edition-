@@ -52,3 +52,9 @@ processing/blender/.blender-cache/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Generated character/animation authoring assets (created by the Character &
+# Animation Manager and EditMode tests; code-generated because this repo
+# commits no .meta files — never commit the assets themselves).
+unity-project/Assets/Generated/*
+!unity-project/Assets/Generated/.gitkeep
