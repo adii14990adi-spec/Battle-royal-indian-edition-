@@ -318,6 +318,14 @@ namespace BattleHorizons.Characters
             }
 
             UpdateCameraTransform();
+
+            // In play mode nobody else renders the disabled camera, so draw
+            // into the RenderTexture here (the editor window calls
+            // RenderOnce() itself from its update loop).
+            if (previewCamera != null && _texture != null)
+            {
+                previewCamera.Render();
+            }
         }
 
         private void UpdateCameraTransform()
