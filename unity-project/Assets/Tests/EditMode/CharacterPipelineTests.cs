@@ -578,6 +578,102 @@ namespace BattleHorizons.Tests
         }
 
         // ------------------------------------------------------------------
+        // Mixamo import settings: Rig = Humanoid, Loop Time, baked root motion
+        // ------------------------------------------------------------------
+
+        [Test]
+        public void MixamoLibrary_ImportsHumanoidWithLoopAndBakedRootMotion()
+        {
+            var rows = MixamoAnimationImportService.Audit(MixamoImportSettings.AnimationsRoot);
+            Assert.Greater(rows.Count, 20,
+                "expected the Mixamo animation library under " + MixamoImportSettings.AnimationsRoot);
+            Assert.AreEqual(0, MixamoAnimationImportService.CountProblems(rows),
+                "every Mixamo clip must import as Humanoid, loop per its category and have root motion baked into pose:\n"
+                + MixamoAnimationImportService.Describe(rows));
+        }
+
+        [Test]
+        public void MixamoLibrary_IsDetectedByBonePrefix()
+        {
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>(AnimationsRoot + "/Movement/Running.fbx");
+            Assert.IsNotNull(model, "Running.fbx must import");
+            Assert.Greater(MixamoImportSettings.CountMixamoBones(model), 40,
+                "the real Mixamo hierarchy is expected (mixamorig:* bones)");
+
+            Assert.IsTrue(MixamoImportSettings.IsMixamoSkeleton(new[] { "mixamorig:Hips", "mixamorig:Spine" }));
+            Assert.IsTrue(MixamoImportSettings.IsMixamoSkeleton(new[] { "mixamorig1:LeftArm" }),
+                "Mixamo's numbered namespace suffix is still Mixamo");
+            Assert.IsFalse(MixamoImportSettings.IsMixamoSkeleton(new[] { "Hips", "Spine" }));
+            Assert.IsFalse(MixamoImportSettings.IsMixamoSkeleton(null));
+        }
+
+        [Test]
+        public void MixamoRules_CoverTheRealFileNames()
+        {
+            // Only the animation library takes these rules; characters and props do not.
+            Assert.IsTrue(MixamoImportSettings.IsAnimationAssetPath("Assets/Animations/Movement/Running.fbx"));
+            Assert.IsTrue(MixamoImportSettings.IsAnimationAssetPath("Assets/UserAssets/Models/Animation/idle.fbx"));
+            Assert.IsFalse(MixamoImportSettings.IsAnimationAssetPath("Assets/Characters/Male/Male character.fbx"));
+            Assert.IsFalse(MixamoImportSettings.IsAnimationAssetPath("Assets/Props/rock.fbx"));
+            Assert.IsFalse(MixamoImportSettings.IsAnimationAssetPath(null));
+
+            // Cycles loop, one-shots do not — including the name overrides.
+            Assert.IsTrue(MixamoImportSettings.WantsLoop("walking.fbx"));
+            Assert.IsTrue(MixamoImportSettings.WantsLoop("Running.fbx"));
+            Assert.IsTrue(MixamoImportSettings.WantsLoop("jump loop.fbx"));
+            Assert.IsTrue(MixamoImportSettings.WantsLoop("idle aiming.fbx"));
+            Assert.IsFalse(MixamoImportSettings.WantsLoop("jump up.fbx"));
+            Assert.IsFalse(MixamoImportSettings.WantsLoop("jump down.fbx"));
+            Assert.IsFalse(MixamoImportSettings.WantsLoop("death from the front.fbx"));
+            Assert.IsFalse(MixamoImportSettings.WantsLoop("reloading.fbx"));
+            Assert.IsFalse(MixamoImportSettings.WantsLoop("Running To Stop.fbx"),
+                "a 'to stop' variant must not loop even though it contains 'run' and 'stop'");
+        }
+
+        [Test]
+        public void MixamoClipSettings_BakeIntoPoseAndLoopTime()
+        {
+            var clip = new ModelImporterClipAnimation { name = "Running", loopTime = false, loopPose = false };
+
+            Assert.IsTrue(MixamoImportSettings.ApplyToClip(clip, true),
+                "first application must report a change");
+            Assert.IsTrue(clip.loopTime, "Loop Time on");
+            Assert.IsTrue(clip.loopPose, "Loop Pose on");
+            Assert.IsTrue(clip.lockRootRotation, "Root Transform Rotation: Bake Into Pose");
+            Assert.IsTrue(clip.lockRootHeightY, "Root Transform Position (Y): Bake Into Pose");
+            Assert.IsTrue(clip.lockRootPositionXZ, "Root Transform Position (XZ): Bake Into Pose");
+            Assert.IsTrue(clip.keepOriginalOrientation && clip.keepOriginalPositionY && clip.keepOriginalPositionXZ,
+                "baked values must be based upon the original source pose");
+            Assert.IsTrue(MixamoImportSettings.IsRootMotionBaked(clip));
+
+            Assert.IsFalse(MixamoImportSettings.ApplyToClip(clip, true),
+                "re-applying the same settings is a no-op (no reimport loop)");
+
+            Assert.IsTrue(MixamoImportSettings.ApplyToClip(clip, false), "one-shot must switch loop off");
+            Assert.IsFalse(clip.loopTime, "Loop Time off for a one-shot");
+            Assert.IsTrue(MixamoImportSettings.IsRootMotionBaked(clip), "root motion stays baked");
+        }
+
+        [Test]
+        public void RepairIsIdempotent_AndLeavesACorrectLibraryClean()
+        {
+            // First pass may legitimately touch files whose .meta has no
+            // explicit clip list yet (this repo commits no .meta files).
+            MixamoAnimationImportService.Repair(
+                MixamoImportSettings.AnimationsRoot, new ImportReport { Title = "repair (first pass)" });
+
+            var audit = MixamoAnimationImportService.Audit(MixamoImportSettings.AnimationsRoot);
+            Assert.AreEqual(0, MixamoAnimationImportService.CountProblems(audit),
+                "after the repair every clip must satisfy the rules:\n"
+                + MixamoAnimationImportService.Describe(audit));
+
+            var report = new ImportReport { Title = "repair (second pass)" };
+            var repaired = MixamoAnimationImportService.Repair(MixamoImportSettings.AnimationsRoot, report);
+            Assert.AreEqual(0, repaired,
+                "a repaired library must not be re-imported again (no import loop):\n" + report.ToMarkdown());
+        }
+
+        // ------------------------------------------------------------------
 
         private static Dictionary<CharacterAnimCategory, AnimationClip> LoadRealClipsByCategory()
         {

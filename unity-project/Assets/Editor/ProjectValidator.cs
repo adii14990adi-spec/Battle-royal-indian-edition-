@@ -49,6 +49,7 @@ namespace BattleHorizons.EditorTools
             CheckScenes();
             CheckNoMissingScripts();
             CheckMaterials();
+            CheckMixamoAnimationImportSettings();
             CheckBlenderPipeline();
             DeviceGates();
 
@@ -669,6 +670,49 @@ namespace BattleHorizons.EditorTools
                 defaultIcons != null && defaultIcons.Length > 0 && defaultIcons[0] != null
                     ? defaultIcons[0].name
                     : "no default application icon assigned");
+        }
+
+        /// <summary>
+        /// The Mixamo import settings that decide whether an animation plays
+        /// at all: Rig = Humanoid, Loop Time matching the category and Root
+        /// Transform rotation/position baked into pose. Checked, not assumed —
+        /// a Generic reimport after a fresh clone (this repo commits no .meta
+        /// files) fails this gate instead of silently animating nothing.
+        /// </summary>
+        private static void CheckMixamoAnimationImportSettings()
+        {
+            var rows = MixamoAnimationImportService.Audit(MixamoImportSettings.AnimationsRoot);
+            if (rows.Count == 0)
+            {
+                Skip("Mixamo animation import settings",
+                    "no animation clips under " + MixamoImportSettings.AnimationsRoot);
+                return;
+            }
+
+            var problems = MixamoAnimationImportService.CountProblems(rows);
+            if (problems == 0)
+            {
+                Pass("Mixamo animation import settings", string.Format(
+                    "{0} clip(s): Humanoid rig, Loop Time and baked root motion match their category",
+                    rows.Count));
+                return;
+            }
+
+            Fail("Mixamo animation import settings", problems + " setting problem(s)");
+            foreach (var row in rows)
+            {
+                foreach (var problem in row.problems)
+                {
+                    // Each offender is its own report line so CI shows all of
+                    // them, not one truncated "and N more".
+                    Results.Add(new Result
+                    {
+                        Name = "mixamo setting: " + row.clipName,
+                        Status = "FAIL",
+                        Detail = row.assetPath + " — " + problem,
+                    });
+                }
+            }
         }
 
         private static void CheckBlenderPipeline()

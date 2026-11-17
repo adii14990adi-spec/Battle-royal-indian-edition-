@@ -135,7 +135,7 @@ namespace BattleHorizons.EditorTools
             var machine = baseLayer.stateMachine;
             machine.name = "Locomotion";
 
-            var defaultState = AddState(machine, "Idle", ClipFor(resolved, CharacterAnimCategory.Idle, result));
+            var defaultState = AddState(machine, "Idle", ClipFor(resolved, CharacterAnimCategory.Idle, result), result);
             machine.defaultState = defaultState;
 
             // Speed-driven states (missing clips are skipped with warnings).
@@ -152,7 +152,7 @@ namespace BattleHorizons.EditorTools
                 var stateName = entry.category.ToString();
                 var state = stateName == "Idle"
                     ? defaultState
-                    : AddState(machine, stateName, clip);
+                    : AddState(machine, stateName, clip, result);
                 var high = i + 1 < SpeedStates.Length ? SpeedStates[i + 1].speed : float.MaxValue;
                 speedBounds.Add((entry.speed, high, state));
             }
@@ -206,7 +206,7 @@ namespace BattleHorizons.EditorTools
             var fallClip = ClipFor(resolved, CharacterAnimCategory.Fall, result);
             if (jumpClip != null)
             {
-                var jumpState = AddState(machine, "Jump", jumpClip);
+                var jumpState = AddState(machine, "Jump", jumpClip, result);
                 AttachAirborneTransitions(machine, jumpState);
             }
             else
@@ -216,7 +216,7 @@ namespace BattleHorizons.EditorTools
 
             if (fallClip != null)
             {
-                var fallState = AddState(machine, "Fall", fallClip);
+                var fallState = AddState(machine, "Fall", fallClip, result);
                 AttachAirborneTransitions(machine, fallState);
             }
             else
@@ -234,7 +234,7 @@ namespace BattleHorizons.EditorTools
             var deathClip = ClipFor(resolved, CharacterAnimCategory.Death, result);
             if (deathClip != null)
             {
-                var deathState = AddState(machine, "Death", deathClip);
+                var deathState = AddState(machine, "Death", deathClip, result);
                 var deathTransition = deathState.AddTransition(FindState(machine, "Idle"));
                 ConfigureMotionless(deathTransition);
                 deathTransition.hasExitTime = true;
@@ -250,7 +250,7 @@ namespace BattleHorizons.EditorTools
             var aimClip = ClipFor(resolved, CharacterAnimCategory.Aim, result);
             if (aimClip != null)
             {
-                var aimState = AddState(machine, "Aim", aimClip);
+                var aimState = AddState(machine, "Aim", aimClip, result);
                 AttachAimTransitions(machine, aimState);
             }
 
@@ -276,13 +276,13 @@ namespace BattleHorizons.EditorTools
                 var upperMachine = controller.layers[controller.layers.Length - 1].stateMachine;
                 if (rifleIdle != null)
                 {
-                    var idleState = AddState(upperMachine, "RifleIdle", rifleIdle);
+                    var idleState = AddState(upperMachine, "RifleIdle", rifleIdle, result);
                     idleState.writeDefaultValues = false;
                     upperMachine.defaultState = idleState;
 
                     if (rifleRun != null)
                     {
-                        var runState = AddState(upperMachine, "RifleRun", rifleRun);
+                        var runState = AddState(upperMachine, "RifleRun", rifleRun, result);
                         runState.writeDefaultValues = false;
                         var toRun = idleState.AddTransition(runState);
                         ConfigureMotionless(toRun);
@@ -294,7 +294,7 @@ namespace BattleHorizons.EditorTools
                 }
                 else if (rifleRun != null)
                 {
-                    var runState = AddState(upperMachine, "RifleRun", rifleRun);
+                    var runState = AddState(upperMachine, "RifleRun", rifleRun, result);
                     runState.writeDefaultValues = false;
                     upperMachine.defaultState = runState;
                 }
@@ -377,6 +377,31 @@ namespace BattleHorizons.EditorTools
             controller.AddParameter(name, type);
         }
 
+        /// <summary>
+        /// Same as <see cref="AddState"/>, plus the guard that a Generic (not
+        /// converted to Humanoid) clip would otherwise enter the controller
+        /// silently and never play on the character.
+        /// </summary>
+        private static AnimatorState AddState(
+            AnimatorStateMachine machine, string name, Motion motion, BuildResult result)
+        {
+            var state = AddState(machine, name, motion);
+
+            var clip = motion as AnimationClip;
+            if (clip != null && !clip.humanMotion)
+            {
+                var message = "state '" + name + "': clip '" + clip.name
+                    + "' is generic motion (the FBX was not converted to Humanoid) — the animator ignores it. "
+                    + "Fix the Rig tab, or run Battle Horizons > Asset Management > Repair Mixamo Import Settings";
+                if (result != null && !result.warnings.Contains(message))
+                {
+                    result.warnings.Add(message);
+                }
+            }
+
+            return state;
+        }
+
         private static AnimatorState AddState(AnimatorStateMachine machine, string name, Motion motion)
         {
             var state = machine.AddState(name);
@@ -439,7 +464,7 @@ namespace BattleHorizons.EditorTools
                 return;
             }
 
-            var state = AddState(machine, category.ToString(), clip);
+            var state = AddState(machine, category.ToString(), clip, result);
             var entry = machine.AddAnyStateTransition(state);
             ConfigureMotionless(entry);
             entry.AddCondition(AnimatorConditionMode.If, 0f, TriggerParameterFor(category));

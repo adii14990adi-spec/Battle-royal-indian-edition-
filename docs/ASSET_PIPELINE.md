@@ -37,7 +37,11 @@ imported:
   filtering is disabled and Android uses ASTC 6×6;
 * audio imports as Vorbis, mono for sound effects, with music streamed;
 * models use metre scale, no implicit collider, and character models use a
-  Humanoid avatar with at most four bone influences.
+  Humanoid avatar with at most four bone influences;
+* Mixamo animation FBX files in `Assets/Animations/` import as **Humanoid**
+  (never Unity's Generic default), loop per their category and have root
+  motion baked into pose — see
+  [`CHARACTER_ANIMATION_PIPELINE.md`](CHARACTER_ANIMATION_PIPELINE.md#mixamo-import-settings-rig--animation--animator).
 
 The rules are centralized so a new asset does not need an undocumented manual
 import setup. Inspect the Unity import log for `[bh][import]` errors after adding

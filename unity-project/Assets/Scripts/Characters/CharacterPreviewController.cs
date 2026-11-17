@@ -230,8 +230,10 @@ namespace BattleHorizons.Characters
                 return;
             }
 
+            // Baked-into-pose clips + motor-owned transform: root motion off.
             _animator.applyRootMotion = false;
             _animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+
             if (character.controller != null)
             {
                 _animator.runtimeAnimatorController = character.controller;
@@ -239,9 +241,30 @@ namespace BattleHorizons.Characters
 
             RebuildClipList(character);
             _clipIndex = _clips.Count > 0 ? 0 : -1;
-            _lastMessage = character.controller != null
-                ? character.displayName + " ready"
-                : character.displayName + ": controller missing — assign animations and save to enable playback";
+
+            // The preview must tell the truth: a non-Humanoid avatar means the
+            // Mixamo clips will not move this model at all.
+            var avatar = _animator.avatar;
+            var humanoid = avatar != null && avatar.isValid && avatar.isHuman;
+            if (!humanoid)
+            {
+                _lastMessage = character.displayName
+                    + ": avatar is not a valid Humanoid — clips will not play (Rig > Animation Type Humanoid)";
+            }
+            else
+            {
+                _lastMessage = character.controller != null
+                    ? character.displayName + " ready"
+                    : character.displayName + ": controller missing — assign animations and save to enable playback";
+            }
+
+            if (!humanoid)
+            {
+                // Playback would be a lie on a non-Humanoid avatar: leave the
+                // Animator alone and keep the explanatory _lastMessage.
+                return;
+            }
+
             ApplyAnimation(0, true);
         }
 
