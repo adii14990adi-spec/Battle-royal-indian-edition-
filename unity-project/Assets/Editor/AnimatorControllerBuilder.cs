@@ -235,7 +235,7 @@ namespace BattleHorizons.EditorTools
             if (deathClip != null)
             {
                 var deathState = AddState(machine, "Death", deathClip);
-                var deathTransition = deathState.AddTransition(machine.GetState("Idle"));
+                var deathTransition = deathState.AddTransition(FindState(machine, "Idle"));
                 ConfigureMotionless(deathTransition);
                 deathTransition.AddExitTime(1f);
                 deathTransition.AddCondition(AnimatorConditionMode.If, 0f, CharacterAnimParameters.Death);
@@ -338,6 +338,24 @@ namespace BattleHorizons.EditorTools
             return null;
         }
 
+        /// <summary>
+        /// AnimatorStateMachine has no GetState API — look the state up by
+        /// name in the state list instead.
+        /// </summary>
+        private static AnimatorState FindState(AnimatorStateMachine machine, string name)
+        {
+            var states = machine.states;
+            for (var i = 0; i < states.Length; i++)
+            {
+                if (states[i].state != null && states[i].state.name == name)
+                {
+                    return states[i].state;
+                }
+            }
+
+            return null;
+        }
+
         private static void AddParameter(AnimatorController controller, string name,
             AnimatorControllerParameterType type)
         {
@@ -383,7 +401,7 @@ namespace BattleHorizons.EditorTools
             ConfigureMotionless(toCrouch);
             toCrouch.AddCondition(AnimatorConditionMode.If, 0f, CharacterAnimParameters.IsCrouching);
 
-            var fromCrouch = crouchState.AddTransition(machine.GetState("Idle"));
+            var fromCrouch = crouchState.AddTransition(FindState(machine, "Idle"));
             ConfigureMotionless(fromCrouch);
             fromCrouch.AddCondition(AnimatorConditionMode.IfNot, 0f, CharacterAnimParameters.IsCrouching);
         }
@@ -403,7 +421,7 @@ namespace BattleHorizons.EditorTools
                 entry.AddCondition(AnimatorConditionMode.Less, 0.5f, CharacterAnimParameters.VerticalSpeed);
             }
 
-            var exit = airborneState.AddTransition(machine.GetState("Idle"));
+            var exit = airborneState.AddTransition(FindState(machine, "Idle"));
             ConfigureMotionless(exit);
             exit.AddCondition(AnimatorConditionMode.IfNot, 0f, CharacterAnimParameters.IsAirborne);
         }
@@ -425,7 +443,7 @@ namespace BattleHorizons.EditorTools
             ConfigureMotionless(entry);
             entry.AddCondition(AnimatorConditionMode.If, 0f, TriggerParameterFor(category));
 
-            var exit = state.AddTransition(machine.GetState("Idle"));
+            var exit = state.AddTransition(FindState(machine, "Idle"));
             exit.hasExitTime = true;
             exit.exitTime = 1f;
             exit.hasFixedDuration = false;
@@ -462,7 +480,7 @@ namespace BattleHorizons.EditorTools
             enter.AddCondition(AnimatorConditionMode.IfNot, 0f, CharacterAnimParameters.IsCrouching);
             enter.AddCondition(AnimatorConditionMode.IfNot, 0f, CharacterAnimParameters.IsAirborne);
 
-            var exit = aimState.AddTransition(machine.GetState("Idle"));
+            var exit = aimState.AddTransition(FindState(machine, "Idle"));
             ConfigureMotionless(exit);
             exit.AddCondition(AnimatorConditionMode.IfNot, 0f, CharacterAnimParameters.IsAiming);
         }
