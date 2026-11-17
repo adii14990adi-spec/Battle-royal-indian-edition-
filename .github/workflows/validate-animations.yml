@@ -6,7 +6,7 @@ name: "Validate Animation Assets"
 on:
   push:
     paths:
-      - 'unity-project/Assets/UserAssets/Animations/**'
+      - 'unity-project/Assets/UserAssets/Models/Animation/**'
   workflow_dispatch:
 
 permissions:
@@ -18,8 +18,6 @@ jobs:
     name: "Validate Animation Assets"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    outputs:
-      validation_status: ${{ steps.set_status.outputs.status }}
 
     steps:
       - name: "Checkout repository"
@@ -33,24 +31,19 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: "Install dependencies"
-        run: |
-          python -m pip install --upgrade pip
-          pip install tree-sitter tree-sitter-c-sharp
-
       - name: "Validate directory structure"
         id: structure-check
         run: |
-          ANIMATION_DIR="unity-project/Assets/UserAssets/Animations"
-          
+          ANIMATION_DIR="unity-project/Assets/UserAssets/Models/Animation"
+
           echo "Checking animation directory exists..."
           if [ ! -d "$ANIMATION_DIR" ]; then
             echo "::error::Animation directory not found at $ANIMATION_DIR"
             exit 1
           fi
-          
+
           echo "Directory exists. Checking file types..."
-          
+
           # Count files by extension
           glb_count=$(find "$ANIMATION_DIR" -name "*.glb" 2>/dev/null | wc -l)
           fbx_count=$(find "$ANIMATION_DIR" -name "*.fbx" 2>/dev/null | wc -l)
@@ -58,9 +51,9 @@ jobs:
           obj_count=$(find "$ANIMATION_DIR" -name "*.obj" 2>/dev/null | wc -l)
           anim_count=$(find "$ANIMATION_DIR" -name "*.anim" 2>/dev/null | wc -l)
           total_files=$(find "$ANIMATION_DIR" -type f 2>/dev/null | wc -l)
-          
+
           echo "Found: $glb_count GLB, $fbx_count FBX, $gltf_count GLTF, $obj_count OBJ, $anim_count ANIM, $total_files total"
-          
+
           # Store counts for output
           echo "glb_count=$glb_count" >> $GITHUB_OUTPUT
           echo "fbx_count=$fbx_count" >> $GITHUB_OUTPUT
@@ -72,29 +65,35 @@ jobs:
       - name: "Check for large files requiring LFS"
         id: lfs-check
         run: |
-          ANIMATION_DIR="unity-project/Assets/UserAssets/Animations"
-          LFS_THRESHOLD="10485760"  # 10MB in bytes
-          
+          ANIMATION_DIR="unity-project/Assets/UserAssets/Models/Animation"
+
           echo "Checking for files over 10MB threshold..."
-          
-          # Find large files (over 10MB)
-          large_files=$(find "$ANIMATION_DIR" -type f -size +10M 2>/dev/null)
-          large_count=$(echo "$large_files" | grep -v "\.git" | wc -l)
-          
+
+          # Find large files (over 10MB). NUL-delimited so names with spaces
+          # stay intact, and large_count starts at 0 so an empty directory
+          # reports 0 instead of a spurious 1.
+          large_count=0
+          large_names=()
+          while IFS= read -r -d '' file; do
+            large_count=$((large_count + 1))
+            large_names+=("$(basename "$file")")
+          done < <(find "$ANIMATION_DIR" -type f -size +10M -print0 2>/dev/null)
+
           echo "Found $large_count files over 10MB"
-          
+
           if [ "$large_count" -gt 0 ]; then
             echo "Large files found (should use Git LFS):"
-            echo "$large_files" | while read -r file; do
-              echo "  - $(basename "$file")"
+            for name in "${large_names[@]}"; do
+              echo "  - $name"
             done
           fi
-          
-          # Check LFS tracking for large files
+
+          # Report LFS-tracked files in this directory (plain `git lfs
+          # ls-files` output, filtered - a path argument is a ref to git-lfs).
           echo ""
           echo "Checking Git LFS tracking status..."
-          git lfs ls-files -- "$ANIMATION_DIR/" 2>/dev/null | head -20
-          
+          git lfs ls-files 2>/dev/null | grep -F "$ANIMATION_DIR/" | head -20 || true
+
           # Report status
           if [ "$large_count" -gt 0 ]; then
             echo "large_files_detected=true" >> $GITHUB_OUTPUT
@@ -105,49 +104,55 @@ jobs:
       - name: "Validate GLB/FBX file integrity (basic)"
         id: file-check
         run: |
-          ANIMATION_DIR="unity-project/Assets/UserAssets/Animations"
+          ANIMATION_DIR="unity-project/Assets/UserAssets/Models/Animation"
           ERRORS=0
-          
+
           echo "Performing basic file format checks..."
-          
-          # Check GLB files (basic binary validation)
-          for file in $(find "$ANIMATION_DIR" -name "*.glb" 2>/dev/null); do
+
+          # Check GLB files (basic binary validation).
+          # NUL-delimited reads keep filenames with spaces intact; only real
+          # errors increment ERRORS (warnings stay informational).
+          while IFS= read -r -d '' file; do
             filesize=$(stat -c%s "$file" 2>/dev/null || echo "0")
             echo "Checking GLB: $(basename "$file") ($((filesize/1024)) KB)"
-            
-            # GLB files should be > 1KB (valid minimum)
-            if [ "$filesize" -lt 1024 ] && [ "$filesize" -ne 0 ]; then
-              echo "::warning::Very small GLB file: $(basename "$file")"
+
+            if [ "$filesize" -eq 0 ]; then
+              echo "::error::Empty GLB file: $(basename "$file")"
               ERRORS=$((ERRORS + 1))
+            elif [ "$filesize" -lt 1024 ]; then
+              echo "::warning::Very small GLB file: $(basename "$file")"
             fi
-          done
-          
+          done < <(find "$ANIMATION_DIR" -name "*.glb" -print0 2>/dev/null)
+
           # Check FBX files (basic existence check)
-          for file in $(find "$ANIMATION_DIR" -name "*.fbx" 2>/dev/null); do
+          while IFS= read -r -d '' file; do
             echo "Checking FBX: $(basename "$file")"
             if [ ! -s "$file" ]; then
               echo "::error::Empty FBX file: $(basename "$file")"
               ERRORS=$((ERRORS + 1))
             fi
-          done
-          
+          done < <(find "$ANIMATION_DIR" -name "*.fbx" -print0 2>/dev/null)
+
           # Check GLTF text files
-          for file in $(find "$ANIMATION_DIR" -name "*.gltf" 2>/dev/null); do
+          while IFS= read -r -d '' file; do
             # Basic check for valid GLTF JSON start
-            head -c 10 "$file" | grep -qi '"asset"' && echo "Valid GLTF start: $(basename "$file")" || echo "::warning::May not be valid GLTF: $(basename "$file")"
-          done
-          
-          # Check OBJ files have geometry
-          for file in $(find "$ANIMATION_DIR" -name "*.obj" 2>/dev/null); do
-            vertex_count=$(grep -c "^v " "$file" 2>/dev/null || echo "0")
+            if head -c 10 "$file" | grep -qi '"asset"'; then
+              echo "Valid GLTF start: $(basename "$file")"
+            else
+              echo "::warning::May not be valid GLTF: $(basename "$file")"
+            fi
+          done < <(find "$ANIMATION_DIR" -name "*.gltf" -print0 2>/dev/null)
+
+          # Check OBJ files have geometry (warnings do not fail the job)
+          while IFS= read -r -d '' file; do
+            vertex_count=$(grep -c "^v " "$file" 2>/dev/null) || vertex_count=0
             if [ "$vertex_count" -eq 0 ]; then
               echo "::warning::OBJ file without vertices: $(basename "$file")"
-              ERRORS=$((ERRORS + 1))
             else
               echo "OBJ has $vertex_count vertices: $(basename "$file")"
             fi
-          done
-          
+          done < <(find "$ANIMATION_DIR" -name "*.obj" -print0 2>/dev/null)
+
           echo "Total errors: $ERRORS"
           exit $ERRORS
 
@@ -158,7 +163,7 @@ jobs:
           echo "Structural check completed"
           echo "LFS large files: ${{ steps.lfs-check.outputs.large_files_detected }}"
           echo "Total files validated in this run"
-          
+
           # Summary output
           echo ""
           echo "GitHub Checks Summary:"
@@ -166,34 +171,10 @@ jobs:
           echo "- File type coverage: GLB, FBX, GLTF, OBJ, ANIM, CONTROLLER"
           echo "- LFS tracking: Checked for files > 10MB"
           echo "- Basic integrity: Performed"
-          
+
           # Set conclusion
           if [ "${{ steps.structure-check.outputs.glb_count }}" -gt 0 ] || [ "${{ steps.structure-check.outputs.total_files }}" -gt 0 ]; then
             echo "✅ Animation assets validation passed"
           else
             echo "ℹ️ No animation files found in this run (may be expected)"
           fi
-
-      - name: "Comment on PR/Issue with results"
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const summary = `
-              **Animation Asset Validation**
-              - Directory: unity-project/Assets/UserAssets/Animations/
-              - Files checked: ${{ steps.structure-check.outputs.total_files }}
-              - GLB files: ${{ steps.structure-check.outputs.glb_count }}
-              - FBX files: ${{ steps.structure-check.outputs.fbx_count }}
-              - Large files (>10MB): ${{ steps.lfs-check.outputs.large_files_detected == 'true' && 'Yes' || 'No' }}
-              - Status: Validation completed
-            `
-            
-            // Add comment to PR
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: summary
-            })
