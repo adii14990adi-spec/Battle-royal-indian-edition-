@@ -1,8 +1,11 @@
 # Normalize text line endings
 * text=auto eol=lf
 
-# Git LFS-tracked types - large binary files
-# These require Git LFS for proper version control
+# Git LFS-tracked types - binary assets.
+# Files matching these patterns are committed as LFS pointers; the real bytes
+# live on the Git LFS server. They can NEVER be uploaded through the GitHub
+# web editor (the browser would commit the pointer text itself and corrupt
+# the asset) - always add them from a clone with `git lfs` installed.
 *.png   filter=lfs diff=lfs merge=lfs -text
 *.jpg   filter=lfs diff=lfs merge=lfs -text
 *.jpeg  filter=lfs diff=lfs merge=lfs -text
@@ -14,17 +17,18 @@
 *.mp3   filter=lfs diff=lfs merge=lfs -text
 *.ttf   filter=lfs diff=lfs merge=lfs -text
 *.otf   filter=lfs diff=lfs merge=lfs -text
+*.obj   filter=lfs diff=lfs merge=lfs -text
+*.mtl   filter=lfs diff=lfs merge=lfs -text
+*.bin   filter=lfs diff=lfs merge=lfs -text
 
+# Unity animation clips and animator controllers are text assets: store them
+# as plain Git text with LF line endings so diffs and merges work normally.
+# (They previously carried `diff=lfs merge=lfs`, which without a real LFS
+# merge driver makes every conflicted .anim/.controller unmergeable.)
+*.anim       text eol=lf
+*.controller text eol=lf
 
-# Unity animation clips - NOT LFS tracked (uploadable via browser if < 25MB)
-*.anim  diff=lfs merge=lfs text
-*.controller diff=lfs merge=lfs text
-
-# **FBX files NO LONGER tracked by Git LFS**
-# Small FBX files (< 1 MB) can now be uploaded directly via GitHub browser
-# Large FBX files (> 10 MB) should use Git LFS CLI manually
-# *.fbx   filter=lfs diff=lfs merge=lfs -text  (REMOVED)
-
-# Git LFS asset configurations
-# These are stored as LFS pointers in git, actual files stored on Git LFS server
-# This repository has Git LFS enabled with standard storage limits
+# 3D model sources are deliberately NOT LFS-tracked: .glb/.gltf and .fbx are
+# ordinary Git blobs, so small files can be added through the GitHub web
+# editor directly. Keep individual models reasonably sized; Git handles them
+# fine as blobs up to a few tens of MB.
