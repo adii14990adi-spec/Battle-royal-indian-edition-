@@ -50,6 +50,7 @@ namespace BattleHorizons.EditorTools
             CheckNoMissingScripts();
             CheckMaterials();
             CheckMixamoAnimationImportSettings();
+            CheckCharacterAnimationAssets();
             CheckBlenderPipeline();
             DeviceGates();
 
@@ -676,8 +677,9 @@ namespace BattleHorizons.EditorTools
         /// The Mixamo import settings that decide whether an animation plays
         /// at all: Rig = Humanoid, Loop Time matching the category and Root
         /// Transform rotation/position baked into pose. Checked, not assumed —
-        /// a Generic reimport after a fresh clone (this repo commits no .meta
-        /// files) fails this gate instead of silently animating nothing.
+        /// a Generic reimport after a fresh clone (PR #25 commits 74 .fbx.meta
+        /// files, but newly uploaded FBXs have none) fails this gate instead
+        /// of silently animating nothing.
         /// </summary>
         private static void CheckMixamoAnimationImportSettings()
         {
@@ -724,16 +726,100 @@ namespace BattleHorizons.EditorTools
             Check("blender pipeline present", File.Exists(validator),
                 File.Exists(validator) ? validator : validator + " is missing");
 
-            var charactersFolder = "Assets/Art/Characters";
-            if (Directory.Exists(charactersFolder) && Directory.GetFiles(charactersFolder).Length > 0)
+            var charactersFolder = CharacterAnimationConfigLibrary.CharactersRoot;
+            if (Directory.Exists(charactersFolder))
             {
-                var files = Directory.GetFiles(charactersFolder);
-                Pass("character sources found", files.Length + " file(s) in Assets/Art/Characters");
+                var files = Directory.GetFiles(charactersFolder, "*.fbx", SearchOption.AllDirectories);
+                Check("character sources found", files.Length > 0,
+                    files.Length + " character FBX file(s) under " + charactersFolder);
             }
             else
             {
-                Skip("character sources", "Assets/Art/Characters is empty; no shippable character source is committed yet");
+                Fail("character sources", charactersFolder + " is missing");
             }
+        }
+
+        /// <summary>
+        /// Character rig / Avatar / controller checks that only the Editor can
+        /// perform. The static validator proves bone names and GUIDs on disk;
+        /// this proves Unity actually produced usable Humanoid Avatars and
+        /// that the generated controllers carry the registered clips.
+        /// </summary>
+        private static void CheckCharacterAnimationAssets()
+        {
+            var guids = AssetDatabase.FindAssets(
+                "t:Model", new[] { CharacterAnimationConfigLibrary.CharactersRoot });
+            var paths = new List<string>();
+            for (var i = 0; i < guids.Length; i++)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                if (path.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase)
+                    && !paths.Contains(path))
+                {
+                    paths.Add(path);
+                }
+            }
+
+            paths.Sort(StringComparer.OrdinalIgnoreCase);
+            Check("committed character models", paths.Count >= 2,
+                paths.Count + " character FBX asset(s) imported");
+
+            for (var i = 0; i < paths.Count; i++)
+            {
+                var path = paths[i];
+                var name = Path.GetFileName(path);
+                Check("character metadata: " + name,
+                    File.Exists(path + ".meta")
+                    && !string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(path)),
+                    "stable GUID required for config/controller references");
+
+                var rig = RigDetectionUtility.Inspect(path);
+                Check("character humanoid avatar: " + name,
+                    rig.success && rig.kind == RigKind.Humanoid,
+                    rig.success
+                        ? rig.mappedHumanBones + "/"
+                          + UnityEngine.HumanTrait.BoneName.Length + " bones mapped"
+                        : rig.Combined);
+
+                var avatar = RigDetectionUtility.FindAvatar(path);
+                Check("character avatar is human: " + name,
+                    avatar != null && avatar.isValid && avatar.isHuman,
+                    avatar == null ? "no Avatar generated" :
+                        "isValid=" + avatar.isValid + ", isHuman=" + avatar.isHuman);
+            }
+
+            var clipGuids = AssetDatabase.FindAssets(
+                "t:AnimationClip", new[] { MixamoImportSettings.AnimationsRoot });
+            Check("animation clips discovered", clipGuids.Length > 0,
+                clipGuids.Length + " AnimationClip asset(s) under "
+                + MixamoImportSettings.AnimationsRoot);
+
+            var config = CharacterAnimationConfigLibrary.LoadIfExists();
+            if (config == null)
+            {
+                Skip("character animation config",
+                    "run the headless integration builder "
+                    + "(BuildFromCommandLine) first");
+                return;
+            }
+
+            int missing;
+            var references = config.ValidateReferences(out missing);
+            Check("character animation references", missing == 0, references);
+
+            var controllers = 0;
+            for (var i = 0; i < config.characters.Count; i++)
+            {
+                var character = config.characters[i];
+                if (character != null && character.controller != null)
+                {
+                    controllers++;
+                }
+            }
+
+            Check("Animator Controllers built", controllers == config.characters.Count,
+                controllers + "/" + config.characters.Count
+                + " character(s) have a generated controller");
         }
 
         private static void DeviceGates()

@@ -26,8 +26,12 @@ One source file can only be applied to one destination file. If two FBX files in
 this project share a name, the sync reports the ambiguity and writes nothing for
 that name rather than guessing.
 
-FBX files with no matching `.fbx.meta` in the source (today: the two character
-models under `Assets/Characters/`) are left exactly as they are.
+The two character models under `Assets/Characters/` have no matching
+`.fbx.meta` in the sync source. The sync still leaves them exactly as they are;
+this branch added separately-authored `.fbx.meta` files for them with unique
+GUIDs (not in `sync-manifest.json`), so **all 76 FBX files now have metadata**.
+`validate_character_animation.py` checks that the sync's 74 owned metas, the 2
+character metas and all other `.meta` files still have unique GUIDs.
 
 ---
 

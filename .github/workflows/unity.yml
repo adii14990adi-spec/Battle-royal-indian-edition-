@@ -62,6 +62,14 @@ jobs:
         run: python3 -m unittest discover -s processing/blender/tests -v
       - name: Animation metadata sync tests
         run: python3 -m unittest discover -s processing/animation-metadata/tests -v
+      - name: FBX / character / animation static validation
+        run: |
+          python3 processing/unity/validate_character_animation.py \
+            --json static-character-animation.json \
+            --report static-character-animation.md
+          cat static-character-animation.md >> "$GITHUB_STEP_SUMMARY"
+      - name: FBX reader and static validator unit tests
+        run: python3 -m unittest discover -s processing/unity/tests -v
 
   data:
     name: Unity island data integrity
@@ -302,6 +310,43 @@ jobs:
               tail -n 120 /tmp/unity-configure.log
             fi
             exit 1
+          fi
+
+      - name: Build character & animation integration (batch mode)
+        if: steps.licence.outputs.available == 'true'
+        shell: bash
+        env:
+          UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
+        run: |
+          set -euo pipefail
+          # Editor-only: imports the FBXs, resolves Avatars, registers clips and
+          # builds the Animator Controllers. Static validation cannot do this;
+          # when no licence is configured the whole job is skipped and the
+          # static validator above reports it as SKIP, never as a pass.
+          xvfb-run --auto-servernum "$UNITY_EDITOR_BIN" \
+            -batchmode \
+            -nographics \
+            -quit \
+            -projectPath "$UNITY_PROJECT_PATH" \
+            -buildTarget Android \
+            -executeMethod BattleHorizons.EditorTools.CharacterAnimationIntegration.BuildFromCommandLine \
+            -logFile /tmp/unity-integration.log || INTEGRATION_EXIT=$?
+
+          if [[ ${INTEGRATION_EXIT:-0} -ne 0 ]]; then
+            echo "::error::character & animation integration failed with exit code $INTEGRATION_EXIT"
+            if [[ -f /tmp/unity-integration.log ]]; then
+              grep -n -E "(\[bh\]\[integration\]|error CS|Exception|FAILED|Error)" /tmp/unity-integration.log | tail -n 15 | while IFS= read -r line; do
+                clean="${line//%/%25}"
+                clean="${clean//$'\r'/}"
+                echo "::error title=Integration Log::${clean}"
+              done
+              tail -n 120 /tmp/unity-integration.log
+            fi
+            exit 1
+          fi
+
+          if [[ -f "$UNITY_PROJECT_PATH/Assets/Generated/LastImportReport.md" ]]; then
+            cat "$UNITY_PROJECT_PATH/Assets/Generated/LastImportReport.md" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Edit-mode tests

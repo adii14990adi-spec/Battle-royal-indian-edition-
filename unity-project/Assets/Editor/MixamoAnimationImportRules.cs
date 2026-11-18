@@ -25,10 +25,11 @@ namespace BattleHorizons.EditorTools
     ///     Assign tab (or the Save button) is the equivalent of dragging the
     ///     clip into the controller.
     ///
-    /// These rules live in code, not in the Inspector, on purpose: this
-    /// repository commits no .meta files, so anything ticked by hand is gone
-    /// after the next clone or CI import and the whole Mixamo library would
-    /// come back as Generic again.
+    /// These rules live in code, not in the Inspector, on purpose. PR #25 added
+    /// 74 authoritative .fbx.meta files, but uploaded FBXs have no committed
+    /// metadata and a hand-ticked Inspector setting is lost on the next clone.
+    /// The import-time hooks below keep both cases importing as Humanoid and
+    /// keep the code rules consistent with the committed clip settings.
     /// </summary>
     public static class MixamoImportSettings
     {
@@ -45,6 +46,12 @@ namespace BattleHorizons.EditorTools
         private static readonly string[] ForceOneShotTokens =
         {
             "to stop", "to idle", "stop", "one shot", "one-shot", "land",
+            // Mixamo's turn variants are one-shot 45/90 degree rotations, not
+            // locomotion cycles. They sit in the Walk/Crouch folders, so the
+            // category default would otherwise turn them into infinite loops
+            // and disagree with the committed .meta (PR #25) which correctly
+            // has Loop Time off for all six of them.
+            "turn",
         };
 
         /// <summary>
@@ -676,8 +683,10 @@ namespace BattleHorizons.EditorTools
     }
 
     /// <summary>
-    /// Import-time enforcement of the rules above, so a fresh clone (no
-    /// committed .meta files) never comes back with Generic Mixamo clips.
+    /// Import-time enforcement of the rules above, so a fresh clone (or an
+    /// FBX uploaded without committed .meta files) never comes back with
+    /// Generic Mixamo clips. The committed 74 .fbx.meta files keep stable
+    /// GUIDs; these hooks keep the settings they do not cover consistent.
     /// </summary>
     public sealed class MixamoAnimationImportRules : AssetPostprocessor
     {

@@ -1,0 +1,99 @@
+name: "Character & Animation integrity (static)"
+
+# STATIC validation only. This workflow never opens Unity, never compiles C#,
+# never imports an FBX, never builds an APK and never claims a visual result.
+# The Editor-only half lives in unity.yml's `unity` job, which is gated on a
+# licensed Unity installation and reports SKIP (not PASS) when absent.
+
+on:
+  push:
+    paths:
+      - 'unity-project/Assets/Animations/**'
+      - 'unity-project/Assets/Characters/**'
+      - 'unity-project/Assets/Editor/**'
+      - 'unity-project/Assets/Scripts/Characters/**'
+      - 'unity-project/ProjectSettings/**'
+      - 'processing/unity/**'
+      - '.github/workflows/validate-character-animation.yml'
+  pull_request:
+    paths:
+      - 'unity-project/Assets/Animations/**'
+      - 'unity-project/Assets/Characters/**'
+      - 'unity-project/Assets/Editor/**'
+      - 'unity-project/Assets/Scripts/Characters/**'
+      - 'unity-project/ProjectSettings/**'
+      - 'processing/unity/**'
+      - '.github/workflows/validate-character-animation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: character-animation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: "FBX, metadata, GUID and reference integrity"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: false
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install C# static-analysis dependencies
+        run: python3 -m pip install --disable-pip-version-check tree-sitter tree-sitter-c-sharp
+
+      - name: FBX / .meta / GUID / clip / rig / Android static validation
+        run: |
+          python3 processing/unity/validate_character_animation.py \
+            --json static-character-animation.json \
+            --report static-character-animation.md
+          cat static-character-animation.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: FBX reader + validator unit tests
+        run: python3 -m unittest discover -s processing/unity/tests -v
+
+      - name: Unity project structure
+        run: python3 processing/unity/validate_structure.py
+
+      - name: C# syntax and cross-file contract checks (no Unity compiler)
+        run: python3 processing/unity/validate_csharp.py
+
+      - name: Animation metadata sync contract
+        run: python3 -m unittest discover -s processing/animation-metadata/tests -v
+
+      - name: Upload static reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: character-animation-static-${{ github.sha }}
+          path: |
+            static-character-animation.json
+            static-character-animation.md
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Editor-only status (explicit, never a pass)
+        if: always()
+        run: |
+          {
+            echo "### Verification boundary"
+            echo ""
+            echo "This job is **static only**. It did NOT run Unity Editor, import an"
+            echo "FBX, generate an Avatar, play an animation, compile C# with Unity,"
+            echo "build an Android APK or measure anything on a device."
+            echo ""
+            echo "Editor verification runs in \`unity.yml\` only when \`UNITY_EMAIL\` and"
+            echo "\`UNITY_PASSWORD\` (plus \`UNITY_SERIAL\` for Professional) are"
+            echo "configured. Without them those jobs report SKIP."
+            echo ""
+            echo "See \`docs/verification/UNITY_CHARACTER_ANIMATION_VERIFICATION.md\`."
+          } >> "$GITHUB_STEP_SUMMARY"
