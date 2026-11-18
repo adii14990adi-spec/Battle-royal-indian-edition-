@@ -99,3 +99,25 @@ Use the Unity import rules in `Assets/Editor/AssetImportRules.cs` and the pipeli
 notes in [`docs/ASSET_PIPELINE.md`](docs/ASSET_PIPELINE.md). Blender output is
 reproducible and ignored until reviewed and promoted into `unity-project/Assets/`.
 Binary assets use the repository's Git LFS attributes.
+
+### Mixamo animation metadata
+
+`unity-project/Assets/Animations/**` is a library of Mixamo FBX clips. Their
+Unity `.fbx.meta` importer settings are authored in the public companion
+repository
+[`Animation-.meta-`](https://github.com/adii14990adi-spec/Animation-.meta-) and
+copied here by exact file name:
+
+```bash
+python3 processing/animation-metadata/sync_animation_meta.py \
+  --source-dir ../Animation-.meta- --dry-run --expect-count 74
+```
+
+Do not edit those `.fbx.meta` files by hand — the next sync reports the drift
+instead of trusting it. The workflow
+[`.github/workflows/sync-animation-metadata.yml`](.github/workflows/sync-animation-metadata.yml)
+polls the source daily and on demand and opens a pull request against
+`chore/sync-animation-metadata`; it never pushes to `main` and never modifies an
+`.fbx`. See
+[`docs/asset-pipeline/ANIMATION_METADATA_SYNC.md`](docs/asset-pipeline/ANIMATION_METADATA_SYNC.md)
+for the contract, the GUID rules and troubleshooting.
