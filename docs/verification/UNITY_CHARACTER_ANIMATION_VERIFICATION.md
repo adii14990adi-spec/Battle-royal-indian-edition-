@@ -7,13 +7,16 @@ integration after PR #25 (Unity animation metadata synchronization).
 **Engine / target:** Unity `6000.0.85f2`, URP, Android
 **Report date:** 2026-11-18
 
-> **Honesty statement.** No Unity Editor, Unity licence, Android Build Support
-> module, APK or Android device was available while producing this report.
-> Nothing below claims that an FBX was imported by Unity, that an Avatar was
-> validated, that an animation played, that C# was compiled by Unity, that an
-> APK was built, or that any runtime measurement was taken. Static results are
-> labelled STATIC; Editor-only work is labelled NOT PERFORMED and enumerated in
-> §9.
+> **Honesty statement.** No local Unity Editor, Android device or APK was
+> available in the sandbox. **A licensed Unity 6 Editor did run in GitHub
+> Actions on this branch** (`unity.yml` run `44362514107`, job
+> `135007741488`): the project was configured, the headless integration
+> executed, C# compiled under Unity, EditMode/PlayMode tests ran, and
+> `ProjectValidator.ValidateAll` passed. Those results are reported as
+> EDITOR/CI, not inferred from static checks. This report still does **not**
+> claim visual playback, a human looking at the characters, an APK built by
+> the PR event, installation on a device, or FPS/PSS/thermal measurements.
+> What remains genuinely manual is in §9.
 
 ---
 
@@ -101,13 +104,15 @@ clip settings in the working tree — one of the Editor checks in §9.
 | Embedded textures | 7 (5 × 1024², 2 × 256², 3,939,246 PNG bytes) | 7 (5 × 1024², 2 × 256², 2,717,177 PNG bytes) |
 | Unresolved external texture | 0 | **1** — `C:\Dropbox\...\T_Superhero_Female_Normal.png` (no embedded bytes) |
 
-**Compatibility conclusion (static evidence only).** Both characters and all
-74 animations resolve to the *same* set of canonical humanoid bones and a
+**Compatibility conclusion (static evidence + Editor CI).** Both characters and
+all 74 animations resolve to the *same* set of canonical humanoid bones and a
 connected Hips-rooted hierarchy, so they are compatible candidates for Unity
 Humanoid retargeting through a shared Avatar convention. The two naming
 conventions are handled by `RigDetectionUtility`'s alias table plus Unity's
-built-in auto-mapper. **This is not a claim that Unity produced a valid
-Avatar** — `Avatar.isValid` / `isHuman` can only be checked in the Editor.
+built-in auto-mapper. Static parsing alone cannot prove a valid Avatar; the
+licensed Editor job in §6 did run `Avatar.isValid` / `isHuman` and the
+`RigDetectionUtility` bone-mapping checks successfully for both characters.
+Visual playback and retargeting quality still require human inspection (§9).
 
 **Generic rig requirements.** No skeleton in this checkout fails the mapping,
 so no Generic rig is required today. Any future rig that fails the 15-bone
@@ -198,7 +203,9 @@ across all 74 metas and the C# rules.
 
 ## 6. Automated validation & test results (Phases 5 and 8)
 
-Everything in this section **was executed** in this workspace on 2026-11-18.
+Local static results below **were executed** in this workspace on 2026-11-18.
+Editor results were executed by the licensed GitHub Actions job described after
+the table.
 
 | Suite | Command | Result |
 | --- | --- | --- |
@@ -210,9 +217,40 @@ Everything in this section **was executed** in this workspace on 2026-11-18.
 | Animation metadata sync tests (PR #25) | `python3 -m unittest discover -s processing/animation-metadata/tests -v` | **26 passed / 0 failed** |
 | Island map data integrity | `processing/unity/validate_unity_map.py` | **23 passed / 3 failed** — see below |
 
-**Executed static tests: 126 passed / 0 failed** (17 + 36 + 20 + 14 + 13 + 26).
-Including the deliberately separate map-data run: **149 passed / 3 failed**. Editor/PlayMode tests, Unity
-compilation and Android builds were **not run** (0 executed, 0 claimed).
+**Executed local static tests: 126 passed / 0 failed** (17 + 36 + 20 + 14 +
+13 + 26). Including the deliberately separate map-data run: **149 passed / 3
+failed**.
+
+**Editor / CI results for this branch (real Unity `6000.0.85f2`).** The licence
+pre-flight reported "Personal Unity license inputs are configured; the editor
+jobs will run". The Editor + Android module was installed on a native
+`ubuntu-24.04` GitHub runner, the licence was activated, and the following job
+steps all succeeded in run `44362514107`:
+
+| Editor step | Result |
+| --- | --- |
+| Unity C# compilation (implicit in batch mode and test runs) | **succeeded**, no `error CS` |
+| `ProjectBootstrap.ConfigureFromCommandLine` | **passed** |
+| `CharacterAnimationIntegration.BuildFromCommandLine` | **passed, 0 failures** — imported FBXs, resolved Avatars, registered imported clips, built controllers and validated config references |
+| Unity EditMode tests | **66 total / 65 passed / 0 failed / 1 intentional `Assert.Ignore`** (duplicate-import skip path) |
+| Unity PlayMode tests | **13 total / 13 passed / 0 failed** |
+| `ProjectBootstrap.ValidateFromCommandLine` / `ProjectValidator.ValidateAll` | **passed**, including `CheckCharacterAnimationAssets`: 2 character models, stable GUIDs, Humanoid rig/Avatar validity, discovered clips, config references and generated controllers |
+| Android APK build | **skipped on the PR event** by the workflow's explicit condition; not claimed as run here |
+
+**Editor/CI test total: 79 Unity tests — 78 passed / 0 failed / 1 intentionally
+skipped.** Including local static tests: **204 passed / 0 failed / 1 skipped**
+(227 passed / 3 pre-existing LFS failures / 1 skipped including the separate
+map suite).
+
+**GitHub Actions workflows on PR #26.** `Character & Animation integrity
+(static)` run `44362514138` succeeded; `Validate Animation Assets` run
+`44362448445` succeeded; `Unity 6 Android validation` run `44362514107`
+succeeded (all four jobs). The `Repository structure` job's two "duplicate
+Unity GUID" annotations are expected **negative-fixture** output from the sync
+unit tests in a `/tmp` directory (`0123456789abcdef…`), not repository GUIDs:
+the job passed and the real validator confirms 81 unique GUIDs. The "Unity CLI
+license activation failed, falling back to the Unity Licensing Client" warning
+is non-fatal; activation succeeded.
 
 **The 3 map-data failures are pre-existing and environmental, not caused by
 this branch.** This sandbox checkout contains Git **LFS pointer text** instead
@@ -234,38 +272,44 @@ PlayMode tests and APK build. `validate-animations.yml` now triggers on
 `Assets/Animations/**` and `Assets/Characters/**` and calls the real validator
 instead of only counting file extensions.
 
-**Static vs Editor separation.** The static validator prints `SKIP` for:
+**Static vs Editor separation.** The static validator still prints `SKIP` for
 Animator Controller / Avatar / clip references (no generated assets committed),
 Avatar validity and clip playback, C# compilation, Unity EditMode/PlayMode
 tests, FBX reimport GUID stability, Android APK/device behaviour, and the
-missing-script scan inside generated scenes. These are never counted as passes.
+missing-script scan inside generated scenes. Those SKIPs are never counted as
+passes. The **separate licensed Editor job** above is the evidence for the
+checks that static analysis cannot perform; it does not retroactively turn a
+static SKIP into a pass.
 
 ---
 
 ## 7. Unity Editor verification strategy (Phase 6)
 
-**Status: NOT PERFORMED.** No Unity binary exists in this environment
-(`unity`, `Unity`, `unity-editor`, `Unity Hub` all absent), no licence is
-configured, and the `unity.yml` licence pre-flight would report
-`available=false` here. GitHub Actions needs `UNITY_EMAIL` + `UNITY_PASSWORD`
-(Personal) or `UNITY_SERIAL` + `UNITY_EMAIL` + `UNITY_PASSWORD`
-(Professional); those secrets are not present.
+**Status: PERFORMED IN LICENSED CI, not locally.** No Unity binary exists in
+the sandbox (`unity`, `Unity`, `unity-editor`, `Unity Hub` all absent), but the
+repository already has the Unity Personal licence secrets configured. GitHub
+Actions run `44362514107` therefore installed Unity `6000.0.85f2` + Android
+Build Support on a native `ubuntu-24.04` runner, activated the licence, ran
+the full Editor validation chain and passed (§6). No PC, Chromebook or user
+intervention was needed for that verification. A local Editor is still
+required only for interactive visual inspection, not for the automated checks.
 
 The user has **no PC**; available devices are Android/Termux and a friend's
 older Chromebook with limited storage. Practical options, in order:
 
-1. **GitHub Actions with a properly licensed Unity environment — recommended.**
-   `unity.yml` already uses Buildalon `unity-setup` + `activate-unity-license`
-   on a native `ubuntu-24.04` host runner (named-user licences bind to machine
-   identity, so containerised activation is unreliable). A Unity Personal
-   entitlement plus the three secrets enables: Configure → **Build Character &
-   Animation Integration** → EditMode tests → PlayMode tests →
-   `ProjectValidator.ValidateAll` → optional Android APK. This requires the
-   user (or the friend) to add the Unity account secrets once; no local
-   machine, no PC and no Chromebook storage needed. Unity 6 Linux Editor
-   requires x86_64 with SSE2, OpenGL 3.2+/Vulkan, ≥8 GB RAM recommended, and
-   Ubuntu 22.04/24.04; the runner provides that, and the workflow frees disk
-   space before installing the Editor and Android module.
+1. **GitHub Actions with a properly licensed Unity environment — already
+   working.** `unity.yml` uses Buildalon `unity-setup` +
+   `activate-unity-license` on a native `ubuntu-24.04` host runner (named-user
+   licences bind to machine identity, so containerised activation is
+   unreliable). The Personal licence secrets are already configured; the PR
+   event ran Configure → **Build Character & Animation Integration** →
+   EditMode tests → PlayMode tests → `ProjectValidator.ValidateAll`, all
+   green. No local machine, no PC and no Chromebook storage needed. The same
+   workflow builds an APK on `push` / `workflow_dispatch(build_apk=true)`;
+   the PR event deliberately skips that step. Unity 6 Linux Editor requires
+   x86_64 with SSE2, OpenGL 3.2+/Vulkan, ≥8 GB RAM recommended, and Ubuntu
+   22.04/24.04; the runner provides that and frees disk space before
+   installing the Editor and Android module.
 2. **Compatible external Windows/Linux machine — most reliable if available.**
    A friend's desktop/laptop with Unity 6000.0.85f2 + Android Build Support,
    x86_64, ≥8 GB RAM and roughly 10–15 GB free (Editor ~6 GB + Android
@@ -302,55 +346,50 @@ Measured from the FBX bytes and committed settings — no device measurement.
 | Generated assets | controllers, AvatarMask, config | Git-ignored so they are never duplicated in the repo; built once per CI run |
 | Runtime memory | **not measured** | Requires a device and `adb shell dumpsys meminfo`; no PSS/FPS/thermal figure is claimed |
 
-One configuration discrepancy worth an Editor check: `AndroidTargetArchitectures: 3`
+One configuration discrepancy worth an APK check: `AndroidTargetArchitectures: 3`
 is `ARMv7 | ARM64` (enum `ARMv7=1`, `ARM64=2`), while the README describes an
 ARM64-only target and the CI build verifies `lib/arm64-v8a/`. Changing it to
 `2` would match the docs and shrink the APK, but it was **left unchanged**
-because no Android build was executed here; confirm the APK contents first.
+because the PR event does not build an APK; inspect the produced APK's
+`lib/` contents first.
 
 ---
 
 ## 9. Remaining manual / Editor-only requirements (exact list)
 
-These are the tests that **cannot** be performed without a licensed Unity
-Editor and/or a device. None of them is claimed as passed.
+The licensed CI job already performed the **non-visual** Editor checks:
+Configure, headless integration, Unity compilation, EditMode/PlayMode tests,
+Humanoid Avatar validity and mapped bones, imported clip discovery, config /
+controller reference validation and `ProjectValidator.ValidateAll`. The
+following still **cannot** be automated by those checks and are not claimed as
+passed:
 
-1. Open `unity-project/` in Unity `6000.0.85f2` with Android Build Support;
-   run **Project Setup → Configure**, then
-   **Asset Management → Build Character & Animation Integration**
-   (or `BuildFromCommandLine`). Confirm the import report has 0 failures.
-2. **Rig tab / Avatar**: for `Male character.fbx` and `Female character.fbx`,
-   confirm `Avatar.isValid && Avatar.isHuman`, ≥40 mapped humanoid bones, and
-   that the Z-up / 100× unit-scale FBX imports as an upright ~1.75 m character
-   (not rotated or 100× too large). If Unity's auto-mapper fails, confirm the
-   `RigDetectionUtility` convention fallback maps the Unreal-style names; only
-   then consider the explicit Generic option.
-3. **Skinning / materials**: confirm all 3 skinned meshes per character render,
-   that extracted textures and URP/Lit materials are remapped, and supply the
-   missing `T_Superhero_Female_Normal.png` in
-   `Assets/Characters/Female/Textures/` (its FBX reference is an external
-   `C:\Dropbox\...` path with no embedded bytes).
-4. **Clip import**: confirm all 74 FBXs import as Humanoid clips with
-   `humanMotion == true`, correct loop behaviour (especially the six turn
-   one-shots), and root Transform Rotation/Position (Y, XZ) baked into pose.
-5. **Visual playback**: play Idle, Walk, Run, Sprint, Jump, Fall, Crouch,
+1. **Visual playback** — play Idle, Walk, Run, Sprint, Jump, Fall, Crouch,
    CrouchWalk, Aim, RifleIdle, RifleRun, Shoot, Reload, WeaponSwitch, Melee and
-   Death on **both** Male and Female; check transitions, UpperBody mask
-   blending, no foot sliding, no T-pose, no frozen bind pose.
-6. **Reimport stability**: `Assets → Reimport All`, then `git diff` — confirm
+   Death on **both** Male and Female in the Editor or a build; check
+   transitions, UpperBody mask blending, no foot sliding, no T-pose and no
+   frozen bind pose. Batch-mode tests prove references, not how it looks.
+2. **Visual scale / orientation / materials** — confirm the Z-up, 100× unit
+   scale FBXs import as upright ~1.75 m characters (not rotated or oversized),
+   all 3 skinned meshes per character render, extracted textures and URP/Lit
+   materials are remapped, and supply the missing
+   `T_Superhero_Female_Normal.png` in `Assets/Characters/Female/Textures/`
+   (its FBX reference is an external `C:\Dropbox\...` path with no embedded
+   bytes).
+3. **Reimport stability** — `Assets → Reimport All`, then `git diff`: confirm
    GUIDs, `CharacterAnimationConfig` references and controller clip references
    are unchanged, no "Missing Script", and note any clip-setting rewrites by
    `OnPreprocessAnimation` (§2). Confirm the daily
    `sync-animation-metadata` workflow (including a `force: true` dispatch)
    leaves the two new character `.meta` files and all GUIDs untouched.
-7. **Editor validation**: run EditMode + PlayMode tests and
-   `ProjectValidator.ValidateAll` (now including
-   `CheckCharacterAnimationAssets`); confirm the 74-clip Mixamo audit passes.
-8. **Android build**: build the APK, confirm `lib/arm64-v8a/` and the generated
-   `CharacterAnimationConfig` / controllers are included, install on an
-   Android device, and record FPS, `adb shell dumpsys meminfo` PSS and a
-   10-minute thermal soak. No such result exists today.
-9. **Android architecture**: decide `AndroidTargetArchitectures: 2` vs `3`
+4. **APK build** — dispatch `unity.yml` with `build_apk=true` or run
+   `build.yml` on the final commit; confirm the APK exists, contains
+   `lib/arm64-v8a/` and the generated config/controllers, and is installable.
+   The PR event itself always skips the APK step.
+5. **Android device runtime** — install the APK, record FPS,
+   `adb shell dumpsys meminfo` PSS, touch input and a 10-minute thermal soak.
+   No FPS/PSS/thermal figure exists today.
+6. **Android architecture** — decide `AndroidTargetArchitectures: 2` vs `3`
    after inspecting the produced APK (§8).
 
 ---
@@ -359,8 +398,9 @@ Editor and/or a device. None of them is claimed as passed.
 
 * **Branch:** `arena/0b2b88b8-battle-royal-indian-edition` (dedicated work
   branch; base `main` @ `6d04c6f`)
-* **PR:** see the PR URL in the final answer / repository pull requests
-* **Commit:** see the commit hash in the final answer
+* **PR:** https://github.com/adii14990adi-spec/Battle-royal-indian-edition-/pull/26
+* **Implementation commit:** `fdf568219f38a49ab257aed235072c60b0e0c995`; the
+  final head commit hash (this report update) is given in the PR and final answer
 * **Merge:** **not merged** — explicit user approval required
 * **FBX files touched:** **0** (verified by SHA-256 baseline, 76/76 unchanged)
 * **Valid GUIDs changed:** **0** (2 new unique GUIDs added; 79 existing GUIDs untouched)
@@ -376,14 +416,14 @@ Editor and/or a device. None of them is claimed as passed.
 | All `.meta` files validated | **81** |
 | Male / female characters validated (static) | **2 / 2** |
 | Animation clips discovered | **74** (one per animation FBX) |
-| Successful automated tests | **126 static** (149 including the separate map suite) |
-| Failed automated tests | **0 introduced**; 3 pre-existing LFS-pointer map-data failures reported |
+| Successful automated tests | **126 local static + 78 Unity Editor/PlayMode = 204** (227 incl. separate map suite) |
+| Failed automated tests | **0 introduced**; 3 pre-existing LFS-pointer map-data failures, 1 intentional Editor `Assert.Ignore` |
 | GUID integrity | **81 unique, 0 duplicates, 0 malformed** |
-| Reference integrity | **0 broken committed `guid:` references**; generated assets = Editor-only SKIP |
+| Reference integrity | **0 broken committed `guid:` references**; generated config/controller references validated by licensed Editor CI; static validator reports those as SKIP |
 | FBX source integrity | **76/76 byte-identical to baseline, 0 duplicates** |
-| Unity Editor verification | **NOT PERFORMED** (no Editor, no licence) |
-| Android build / runtime verification | **NOT PERFORMED** (no APK, no device) |
-| Remaining manual requirements | **9** (§9) |
+| Unity Editor verification | **PASSED in licensed GitHub Actions** (run `44362514107`); no local Editor |
+| Android build / runtime verification | **PR event skips APK; device runtime NOT PERFORMED** |
+| Remaining manual requirements | **6** (§9) |
 
 ## 12. Phase deliverables index
 
