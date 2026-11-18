@@ -1,0 +1,344 @@
+name: Sync animation metadata
+
+# Keeps `unity-project/Assets/Animations/**/*.fbx.meta` identical to the metadata
+# published by the animation authoring repository (adii14990adi-spec/Animation-.meta-):
+#
+#   source animations/<name>.fbx.meta  ──exact file name──▶  unity-project/Assets/Animations/**/<name>.fbx.meta
+#
+# Rules this workflow follows, in order of importance:
+#
+#   1. It never pushes to `main`. Changes always land on the branch named below
+#      and a human opens/merges the pull request.
+#   2. It never adds, writes, moves, renames or deletes an `.fbx`. The sync
+#      hashes every model before and after the run and fails if any changed;
+#      a separate step fails the job if git sees a modified model.
+#   3. It never overwrites metadata this workflow did not create, and it keeps
+#      the GUID already committed for an asset, so scene and prefab references
+#      survive an update of the importer settings.
+#   4. It refuses to write anything when two assets share a GUID.
+#   5. It is idempotent: a rerun with nothing to do makes no commit, and an
+#      existing pull request is reused instead of duplicated.
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Re-apply the source importer settings even when the source file is unchanged'
+        type: boolean
+        default: false
+      check_only:
+        description: 'Verify the committed metadata without opening a pull request'
+        type: boolean
+        default: false
+
+  schedule:
+    # Daily poll of the public source repository (05:17 UTC, off the hour).
+    - cron: '17 5 * * *'
+
+# Least privilege: the token gets write access to exactly what this job needs.
+# The source repository is public, so it is read anonymously — this job can
+# never write to it.
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-animation-metadata
+  cancel-in-progress: false
+
+env:
+  SOURCE_REPOSITORY: adii14990adi-spec/Animation-.meta-
+  SOURCE_PATH: animations
+  TARGET_PATH: unity-project/Assets/Animations
+  SYNC_BRANCH: chore/sync-animation-metadata
+  EXPECTED_META_COUNT: '74'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  sync:
+    name: Sync .fbx.meta from the animation repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    permissions:
+      contents: write        # commit the synced metadata to SYNC_BRANCH
+      pull-requests: write   # open/refresh the pull request
+      # Everything else stays at `none`.
+
+    steps:
+      # ------------------------------------------------------------------ #
+      # 1. The Unity project, on its default branch. Unity assets here are
+      #    ordinary Git blobs (.gitattributes tracks no .fbx/.meta in LFS), so
+      #    LFS is off and the checkout stays fast.
+      # ------------------------------------------------------------------ #
+      - name: Check out the Unity project
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # ------------------------------------------------------------------ #
+      # 2. Read the source repository (public, no token, shallow clone).
+      # ------------------------------------------------------------------ #
+      - name: Clone the animation metadata source
+        run: |
+          set -euo pipefail
+          SOURCE_DIR="${RUNNER_TEMP}/animation-metadata-source"
+          rm -rf "${SOURCE_DIR}"
+          git clone --depth 1 --quiet \
+            "https://github.com/${SOURCE_REPOSITORY}.git" "${SOURCE_DIR}"
+          if [ ! -d "${SOURCE_DIR}/${SOURCE_PATH}" ]; then
+            echo "::error::${SOURCE_REPOSITORY} has no '${SOURCE_PATH}' folder"
+            exit 1
+          fi
+          count=$(find "${SOURCE_DIR}/${SOURCE_PATH}" -name '*.fbx.meta' | wc -l)
+          echo "SOURCE_DIR=${SOURCE_DIR}" >> "$GITHUB_ENV"
+          echo "::notice::source ${SOURCE_REPOSITORY} at $(git -C "${SOURCE_DIR}" rev-parse --short HEAD): ${count} metadata file(s)"
+
+      # ------------------------------------------------------------------ #
+      # 3. The sync tooling's own tests. No network, no Unity needed.
+      # ------------------------------------------------------------------ #
+      - name: Test the sync tooling
+        run: python3 -m unittest discover -s processing/animation-metadata/tests -v
+
+      # ------------------------------------------------------------------ #
+      # 4. Pre-flight: match files, check GUIDs, and print the plan. Nothing
+      #    is written unless this succeeds — a duplicate GUID stops the job
+      #    here (exit code 2) before a single file is touched.
+      # ------------------------------------------------------------------ #
+      - name: Pre-flight — match FBX files and check Unity GUIDs
+        if: ${{ inputs.check_only != true }}
+        run: |
+          set -uo pipefail
+          set +e
+          python3 processing/animation-metadata/sync_animation_meta.py \
+            --source-dir "${SOURCE_DIR}" \
+            --expect-count "${EXPECTED_META_COUNT}" \
+            --report "${RUNNER_TEMP}/preflight-report.json" \
+            --summary "${RUNNER_TEMP}/preflight-summary.md" \
+            --dry-run
+          status=$?
+          set -e
+          if [ "${status}" -eq 2 ]; then
+            echo "::error::duplicate Unity GUID detected — no metadata was written"
+          elif [ "${status}" -ne 0 ]; then
+            echo "::error::pre-flight failed (exit ${status}) — no metadata was written"
+          fi
+          exit "${status}"
+
+      # ------------------------------------------------------------------ #
+      # 5. Apply. Adds new metadata, updates changed metadata (keeping GUIDs),
+      #    skips everything else. Exit 1 means an .fbx hash moved, which the
+      #    script treats as a hard failure.
+      # ------------------------------------------------------------------ #
+      - name: Sync metadata beside the matching FBX files
+        id: sync
+        if: ${{ inputs.check_only != true }}
+        run: |
+          set -uo pipefail
+          ARGS=(--source-dir "${SOURCE_DIR}"
+                --expect-count "${EXPECTED_META_COUNT}"
+                --report "${RUNNER_TEMP}/sync-report.json"
+                --summary "${RUNNER_TEMP}/sync-summary.md")
+          if [ "${{ inputs.force }}" = "true" ]; then
+            ARGS+=(--force)
+          fi
+
+          set +e
+          python3 processing/animation-metadata/sync_animation_meta.py "${ARGS[@]}" 2>&1 | tee "${RUNNER_TEMP}/sync.log"
+          status=${PIPESTATUS[0]}
+          set -e
+
+          if [ "${status}" -ne 0 ]; then
+            echo "::error::animation metadata sync failed (exit ${status})"
+          fi
+          if [ -f "${RUNNER_TEMP}/sync-report.json" ]; then
+            echo "changes=$(python3 -c 'import json,sys;print(str(json.load(open(sys.argv[1]))["changes"]).lower())' "${RUNNER_TEMP}/sync-report.json")" >> "$GITHUB_OUTPUT"
+          else
+            echo "changes=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit "${status}"
+
+      # ------------------------------------------------------------------ #
+      # 6. Verify the committed state: every matched metadata file present,
+      #    every GUID unique and unchanged, the promised total reached.
+      # ------------------------------------------------------------------ #
+      - name: Verify the synced project
+        if: ${{ !cancelled() && (inputs.check_only == true || steps.sync.outcome == 'success') }}
+        run: |
+          set -euo pipefail
+          python3 processing/animation-metadata/sync_animation_meta.py \
+            --source-dir "${SOURCE_DIR}" \
+            --expect-count "${EXPECTED_META_COUNT}" \
+            --verify-only
+
+      - name: Fail if an FBX file was touched
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          touched=$(git status --porcelain -- '*.fbx')
+          if [ -n "${touched}" ]; then
+            echo "::error::an .fbx file was added, modified, renamed or deleted:"
+            echo "${touched}"
+            exit 1
+          fi
+          echo "No .fbx file was added, modified, renamed or deleted."
+
+      # ------------------------------------------------------------------ #
+      # 7. Stage the metadata and the manifest only, and decide whether there
+      #    is anything to publish.
+      # ------------------------------------------------------------------ #
+      - name: Stage the metadata changes
+        id: diff
+        if: ${{ !cancelled() && steps.sync.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          git add -A -- "${TARGET_PATH}" processing/animation-metadata/sync-manifest.json
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --cached --stat
+          fi
+
+      - name: Write the job summary
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            if [ -f "${RUNNER_TEMP}/sync-summary.md" ]; then
+              cat "${RUNNER_TEMP}/sync-summary.md"
+            elif [ -f "${RUNNER_TEMP}/preflight-summary.md" ]; then
+              cat "${RUNNER_TEMP}/preflight-summary.md"
+            fi
+            echo
+            echo "---"
+            echo
+            if [ "${{ steps.diff.outputs.changed }}" = "true" ]; then
+              echo "Metadata changes staged for \`${SYNC_BRANCH}\`; no \`.fbx\` file was touched."
+            elif [ "${{ inputs.check_only }}" = "true" ]; then
+              echo "Check-only run: the committed metadata was verified; nothing was written."
+            else
+              echo "No metadata changes: the project is already in sync with \`${SOURCE_REPOSITORY}\`."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------ #
+      # 8. Publish: commit to the sync branch, then open or refresh its pull
+      #    request. Never a push to the default branch, never a force push.
+      # ------------------------------------------------------------------ #
+      - name: Commit and push to the sync branch
+        if: ${{ !cancelled() && steps.diff.outputs.changed == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          if [ "${SYNC_BRANCH}" = "${DEFAULT_BRANCH}" ]; then
+            echo "::error::refusing to push to the default branch"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --quiet \
+            -m "chore(animations): sync Unity metadata from ${SOURCE_REPOSITORY}" \
+            -m "Generated by .github/workflows/sync-animation-metadata.yml. Only .fbx.meta files and processing/animation-metadata/sync-manifest.json are included; no .fbx file is added, modified, renamed or deleted." \
+            -m "[skip ci]"
+
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          # Fast-forward only: an existing sync branch is appended to, never
+          # rewritten, so the open pull request keeps an honest history. The
+          # token lives in a one-off header, not in .git/config.
+          git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 -w0)" \
+              push origin "HEAD:refs/heads/${SYNC_BRANCH}"
+
+          echo "commit=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build the pull request body
+        if: ${{ !cancelled() && steps.diff.outputs.changed == 'true' }}
+        run: |
+          set -euo pipefail
+          {
+            echo "_Generated by \`.github/workflows/sync-animation-metadata.yml\` on $(date -u '+%Y-%m-%d %H:%M UTC')._"
+            echo
+            [ -f "${RUNNER_TEMP}/sync-summary.md" ] && cat "${RUNNER_TEMP}/sync-summary.md"
+            echo
+            echo "### Commits on this branch"
+            echo
+            echo '```'
+            git log --oneline "${{ github.event.repository.default_branch }}..HEAD" --no-merges
+            echo '```'
+            echo
+            echo "### Files in this pull request"
+            echo
+            echo '```'
+            git diff --stat "${{ github.event.repository.default_branch }}...HEAD"
+            echo '```'
+            echo
+            echo "### Guarantees checked by this workflow"
+            echo
+            echo "* No \`.fbx\` file was added, modified, renamed or deleted — every model is hashed before and after the sync, and git is checked for touched models."
+            echo "* Only \`.fbx.meta\` files and \`processing/animation-metadata/sync-manifest.json\` are in the diff."
+            echo "* Existing GUIDs are preserved; every GUID under \`unity-project/Assets/\` is unique."
+            echo "* Metadata this workflow did not create is never overwritten."
+            echo "* Unmatched FBX files are left exactly as they are."
+            echo
+            echo "Merge after reviewing the importer settings in the diff."
+          } > "${RUNNER_TEMP}/pr-body.md"
+          sed -n '1,200p' "${RUNNER_TEMP}/pr-body.md"
+
+      - name: Open or update the pull request
+        id: pr
+        if: ${{ !cancelled() && steps.diff.outputs.changed == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          TITLE="chore(animations): sync Unity metadata from ${SOURCE_REPOSITORY}"
+
+          # Reuse the open pull request for this branch instead of opening a
+          # second one. The push above already added its commits.
+          number=$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${SYNC_BRANCH}" \
+                     --state open --json number --jq '.[0].number // empty')
+
+          if [ -n "${number}" ]; then
+            gh pr edit "${number}" --repo "${GITHUB_REPOSITORY}" \
+              --title "${TITLE}" --body-file "${RUNNER_TEMP}/pr-body.md"
+            echo "::notice::updated pull request #${number}"
+          else
+            gh pr create --repo "${GITHUB_REPOSITORY}" \
+              --base "${DEFAULT_BRANCH}" --head "${SYNC_BRANCH}" \
+              --title "${TITLE}" --body-file "${RUNNER_TEMP}/pr-body.md"
+            number=$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${SYNC_BRANCH}" \
+                       --state open --json number --jq '.[0].number // empty')
+            echo "::notice::opened pull request #${number}"
+          fi
+
+          echo "number=${number}" >> "$GITHUB_OUTPUT"
+          {
+            echo
+            echo "Pull request: https://github.com/${GITHUB_REPOSITORY}/pull/${number}"
+            echo
+            echo "Nothing was merged and nothing was pushed to \`${DEFAULT_BRANCH}\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the sync report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: animation-metadata-sync-report
+          if-no-files-found: ignore
+          retention-days: 30
+          path: |
+            ${{ runner.temp }}/sync-report.json
+            ${{ runner.temp }}/sync-summary.md
+            ${{ runner.temp }}/sync.log
+            ${{ runner.temp }}/preflight-report.json
+            ${{ runner.temp }}/preflight-summary.md

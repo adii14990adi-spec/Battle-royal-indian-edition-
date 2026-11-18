@@ -100,9 +100,24 @@ python3 processing/unity/validate_structure.py
 python3 processing/unity/validate_csharp.py
 python3 processing/unity/validate_unity_map.py
 python3 -m unittest discover -s processing/blender/tests -v
+python3 -m unittest discover -s processing/animation-metadata/tests -v
 ```
 
 Unity editor tests and Android device measurements require Unity and a device.
+
+## Animation metadata
+
+The Unity importer settings for the Mixamo clips in
+`unity-project/Assets/Animations/` are authored in the public companion
+repository
+[`Animation-.meta-`](https://github.com/adii14990adi-spec/Animation-.meta-) and
+synced here by exact file name. The
+[`Sync animation metadata`](.github/workflows/sync-animation-metadata.yml)
+workflow polls it daily and on demand, and proposes the result as a pull request
+on `chore/sync-animation-metadata`; nothing is ever pushed to `main` and no
+`.fbx` is modified. See
+[`docs/asset-pipeline/ANIMATION_METADATA_SYNC.md`](docs/asset-pipeline/ANIMATION_METADATA_SYNC.md).
+
 See [`CONTRIBUTING.md`](CONTRIBUTING.md),
 [`docs/architecture/UNITY_ARCHITECTURE.md`](docs/architecture/UNITY_ARCHITECTURE.md),
 and [`docs/ASSET_PIPELINE.md`](docs/ASSET_PIPELINE.md) for details.
