@@ -422,6 +422,9 @@ jobs:
           fi
 
           if [[ -f docs/gltf_import_test/EDITOR_VALIDATION.md ]]; then
+            cat docs/gltf_import_test/EDITOR_VALIDATION.md
+            mkdir -p unity-test-results/gltf-import-test
+            cp docs/gltf_import_test/EDITOR_VALIDATION.md unity-test-results/gltf-import-test/EDITOR_VALIDATION.md
             cat docs/gltf_import_test/EDITOR_VALIDATION.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
@@ -505,6 +508,10 @@ jobs:
 
       - name: Project validation (batch mode)
         if: steps.licence.outputs.available == 'true'
+        # The optional GLTF capture/APK dispatch may continue past known
+        # pre-existing LFS/icon failures so visual and Android evidence can be
+        # gathered. Normal push/PR checks still fail on these production issues.
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.capture_screenshots }}
         shell: bash
         env:
           UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
