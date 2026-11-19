@@ -66,3 +66,8 @@ unity-project/Assets/AvatarMasks/*
 
 # Local Python virtualenv used to run the static validators.
 .venv/
+
+# Isolated GLTF test: generated Editor-only avatars/reports are reproducible.
+unity-project/Assets/Characters/GLTF_Import_Test/Generated/*
+!unity-project/Assets/Characters/GLTF_Import_Test/Generated/.gitkeep
+build/gltf-import-test/

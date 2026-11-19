@@ -1,26 +1,28 @@
 {
-    "name": "BattleHorizons.EditModeTests",
-    "rootNamespace": "BattleHorizons.Tests",
-    "references": [
-        "BattleHorizons.Runtime",
-        "BattleHorizons.Editor",
-        "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner",
-        "Unity.InputSystem"
-    ],
-    "includePlatforms": [
-        "Editor"
-    ],
-    "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": true,
-    "precompiledReferences": [
-        "nunit.framework.dll"
-    ],
-    "autoReferenced": false,
-    "defineConstraints": [
-        "UNITY_INCLUDE_TESTS"
-    ],
-    "versionDefines": [],
-    "noEngineReferences": false
+  "name": "BattleHorizons.EditModeTests",
+  "rootNamespace": "BattleHorizons.Tests",
+  "references": [
+    "BattleHorizons.Runtime",
+    "BattleHorizons.Editor",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner",
+    "Unity.InputSystem",
+    "BattleHorizons.GLTFImportTest.Editor",
+    "BattleHorizons.GLTFImportTest.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
 }

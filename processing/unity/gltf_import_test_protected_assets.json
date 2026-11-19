@@ -1,0 +1,1271 @@
+{
+  "description": "Hashes of production Unity assets/ProjectSettings captured before the isolated GLTF import experiment. The static validator permits only new files and the two explicitly allowlisted test asmdefs.",
+  "captured_from_head": "b6c7d14dd5ba393ac9f32902b1b3180223326133",
+  "file_count": 252,
+  "allowlisted_modified_paths": [
+    "unity-project/Assets/Tests/EditMode/BattleHorizons.EditModeTests.asmdef",
+    "unity-project/Assets/Tests/PlayMode/BattleHorizons.PlayModeTests.asmdef"
+  ],
+  "files": [
+    {
+      "path": "unity-project/Assets/AnimationControllers/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Combat/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Combat/Dive Roll.fbx",
+      "size": 530656,
+      "sha256": "af17cd9f3a66dc4972ab8080cd01e8b99326bd66690c33b925aef2b10684d785"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Combat/Dive Roll.fbx.meta",
+      "size": 3527,
+      "sha256": "f58e4743ee0988223fc1e79bd9716fade86cab7de31c86b2feb7290c79c1bc9d"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Combat/hit reaction.fbx",
+      "size": 385281,
+      "sha256": "98351e467b20dcab3271371534c5d88fe4c6f5e4672d795752f9ca7edda9d524"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Combat/hit reaction.fbx.meta",
+      "size": 3530,
+      "sha256": "8ecfa7157a491fc19f4f058a7437c80c445144907c73afbf9b6b74f9578402c5"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Combat/idle aiming.fbx",
+      "size": 425329,
+      "sha256": "ec2c00509a1ec4dd844029151ad7d1b0fb80c959aee4fa3186e771fe34ed9edc"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Combat/idle aiming.fbx.meta",
+      "size": 3529,
+      "sha256": "923e80ae6226b69680930fc63314ef82d8c52f11064a54f41fbf0c0c311146d8"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Combat/idle crouching aiming.fbx",
+      "size": 427585,
+      "sha256": "d1a03cdc96ab85c0b8b8bfe5020a2e7646d64dcd63b88a8cb9f43d3402d6a358"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Combat/idle crouching aiming.fbx.meta",
+      "size": 3539,
+      "sha256": "475691c8fa901f593a0280c71325df41bb14746a4f93980b08e248e636b3c512"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Combat/toss grenade.fbx",
+      "size": 619041,
+      "sha256": "758d4b34b08e4f20abed68f231c2ce6e854b51e0de62144f6dc60b2f08ac3559"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Combat/toss grenade.fbx.meta",
+      "size": 3530,
+      "sha256": "d6c17b568143e28ce7203a2ea1024b8ef0da256f1b018250854641eba16df7a6"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/Crouch Walking.fbx",
+      "size": 356528,
+      "sha256": "0d87522372c5de90b94108359846ff2ea38cd4bd249d3597ebc00500f95d3af3"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/Crouch Walking.fbx.meta",
+      "size": 3532,
+      "sha256": "f2598cb6c177ff4ad17b8e871085d015eecbf8e56782701524e16390cb8f2bb6"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/Prone Idle.fbx",
+      "size": 705088,
+      "sha256": "8d4e72559bbe46c29639002536e8e242dca7d792f8e38fd42204f85b59a09c0d"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/Prone Idle.fbx.meta",
+      "size": 3529,
+      "sha256": "02d564b411ee132d39d97eedcf9ea96e41ce07559ff68798bbf4aa677eb83a46"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/crouching turn 90 left.fbx",
+      "size": 364801,
+      "sha256": "a67f490ea39d1088344d2658e0956390034ac7a16436f7b661ca3aec779a3bd8"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/crouching turn 90 left.fbx.meta",
+      "size": 3540,
+      "sha256": "064c6fc59585207fa02d3f8f4a6052f14cff6f1ff602c859862bbbd91cc8c6bb"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/crouching turn 90 right.fbx",
+      "size": 364625,
+      "sha256": "a242f468a03333ad11fc32cf719b452f6d3d6f6d34eeb8330a335c7689cc582a"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/crouching turn 90 right.fbx.meta",
+      "size": 3541,
+      "sha256": "2e479bf0e19e75a805abe9bbc129ca9cfee9de516001b57080de7ec9d0e9a3fb"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/idle crouching.fbx",
+      "size": 427585,
+      "sha256": "3fa48f6816e3a5d097db32cba323adbc21e9b42befb148cd2db1f7ccd70598a0"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/idle crouching.fbx.meta",
+      "size": 3532,
+      "sha256": "ec03a6f99e5d7ce0cecd25298905803aacd555622ff04b93b74392e1a10ceef8"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching backward left.fbx",
+      "size": 343025,
+      "sha256": "c0aa537e54a726591d062a41eaefaaa1c894ec839e4446a17b022e083a1ff9eb"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching backward left.fbx.meta",
+      "size": 3546,
+      "sha256": "75252c322be3c638419eb5a03cd8e1d849c104e477b06e8e0e2b8a3b9cf392b4"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching backward right.fbx",
+      "size": 343313,
+      "sha256": "0dd9bd16c0c47f1c42de5958f3111f6cc26c58798ee989055b937f171aebc275"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching backward right.fbx.meta",
+      "size": 3547,
+      "sha256": "07b8689b1fd9a6d21acf6cbd2b19627c415dd30df731cd2090b53faac0526af1"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching backward.fbx",
+      "size": 343201,
+      "sha256": "789eaf0693fca8c1dd493f3f2aea680f5cf8ef082310d650327bdffca4809681"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching backward.fbx.meta",
+      "size": 3541,
+      "sha256": "ccb61a123c8ac27f4864b805bf5a74430babd8307e8321c81653aca36db46393"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching forward left.fbx",
+      "size": 343313,
+      "sha256": "5b49e026f54e6c2ea6c036a21a4ad8b37eac085d06a50cc53b6420f5a13cb50a"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching forward left.fbx.meta",
+      "size": 3545,
+      "sha256": "b349a1f0173f3283725a25ace044b2d61f795e8ef0f00f62ffcdfa37c36583f8"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching forward right.fbx",
+      "size": 343025,
+      "sha256": "d307b439dd232e05d8c0fe4090758781076796d7b2ba032c32419bea7d555911"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching forward right.fbx.meta",
+      "size": 3546,
+      "sha256": "a4ef976deab19ea7942bc33173014b8365c061ea883c678bd99d619c2fd20233"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching forward.fbx",
+      "size": 343249,
+      "sha256": "36c22dbde2d21cedfe977dcad3e70b1f1dafa7a1e3962d5f5320bd35b3cad591"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching forward.fbx.meta",
+      "size": 3540,
+      "sha256": "71aee8fc86c92f9ff0cb9e56f1158e26fc08de478058860bebba00a921e19941"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching left.fbx",
+      "size": 343169,
+      "sha256": "364e4b00f5b1da93263ec346a2f47a1b3b94a9b3b41443964d36c62776b5b91c"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching left.fbx.meta",
+      "size": 3537,
+      "sha256": "46f587a8629af94b42cd29c798af57e13111388d3e39e597bb8b848b6f56ce72"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching right.fbx",
+      "size": 343249,
+      "sha256": "b9194416c4bf39fc9a8ef8589ff474835816940005f8f6af4c11845ec4ab0d0f"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Crouch/walk crouching right.fbx.meta",
+      "size": 3538,
+      "sha256": "78f4f5d79d4e2520dfe236d65d69aeddc672edd5d9aa14642c2614c3ff5b84ec"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/Dying.fbx",
+      "size": 563104,
+      "sha256": "7c1283b8e22a36fe34cce97e42c02819ff68bf3c0279ca18d6f0e5793a99518a"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/Dying.fbx.meta",
+      "size": 3524,
+      "sha256": "dca3069ff5ee8722db46c29f9183dda9c0cf7752ca49ce04d11351911a1b1efd"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death crouching headshot front.fbx",
+      "size": 445553,
+      "sha256": "3207e59c131e6a56fd21022fcbc947c55932a70eca230cbe4184e2299ce88215"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death crouching headshot front.fbx.meta",
+      "size": 3548,
+      "sha256": "fd03f9a2bec141a73084e2e98d1747a0f28b3e6269801285b7501fcbf443bc6f"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death from back headshot.fbx",
+      "size": 618465,
+      "sha256": "991d2eeec2ec3c3a6e4661dc2acc01379130c04dbe06dc5dd50d4babe26657a4"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death from back headshot.fbx.meta",
+      "size": 3543,
+      "sha256": "5d56ab9d7f23f58c492a389f29dab8545d918d7b2d696d4e7b42e42d4c3c3f58"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death from front headshot.fbx",
+      "size": 537601,
+      "sha256": "ede1bb020760d4b89604f86cb921380953665d78c9b642ef542d8d7fab64077c"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death from front headshot.fbx.meta",
+      "size": 3543,
+      "sha256": "e07d71e13b38b785e09e764a2e464cd827b38974f38d1ce3b4f372841064f82e"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death from right.fbx",
+      "size": 583089,
+      "sha256": "d5ca837ba7f86a47122c03e5d45512a0e81b4f7448f7c64c6606e95ca9c97fcc"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death from right.fbx.meta",
+      "size": 3534,
+      "sha256": "a96c318c68ce95553fc7c094a68576bfcc87b1257c881781a28a7414209f045f"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death from the back.fbx",
+      "size": 554337,
+      "sha256": "42d708475b8e97b84ff9fbf09ff014e172d303e138e9981f70bdd15148575630"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death from the back.fbx.meta",
+      "size": 3537,
+      "sha256": "46505b20a8a0f7d7743339ce12ef069523982747f4dfc6795e6fc64e6eb1c2b6"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death from the front.fbx",
+      "size": 589265,
+      "sha256": "ebccbc925f233b8d04657872febf924c339b453cf3592f8975809d2493883ee0"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Death/death from the front.fbx.meta",
+      "size": 3539,
+      "sha256": "3665f73815e23e40c5910dc1c3d3c368cd61431ab8242285511aad95d098fd07"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/Running To Stop.fbx",
+      "size": 449328,
+      "sha256": "3b2f7dc865bd237af4ed2ffd462ce66966d138255e4f246dc47daa1c2267df31"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/Running To Stop.fbx.meta",
+      "size": 3533,
+      "sha256": "cfe8318aca6baf59594752770d944859f2b4003ba947c22c3340291cd86afacc"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/Running.fbx",
+      "size": 332720,
+      "sha256": "60f972c57711fb7d1b81432d8a029d761f4919b607e8107fa0621d2cd6375b2b"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/Running.fbx.meta",
+      "size": 3525,
+      "sha256": "07e65fcda892303dbfac98f89f57f1f82c1a9282a1ba370fc1320f9087b14dd6"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/Skateboarding.fbx",
+      "size": 366096,
+      "sha256": "e9a3446f8548fb80a7562d98f557345b874841f663c899f8b2699e847d7a31a6"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/Skateboarding.fbx.meta",
+      "size": 3531,
+      "sha256": "8c1fed69c4ad3cc5cefc1e1ed56ad5dccbabce84b24599c165f41056b3d8efc0"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/Swimming.fbx",
+      "size": 663424,
+      "sha256": "1964e2957ccd10cd9ab5c3e0de4e676ef5a0832ad636b2b020782d6bc49e17f3"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/Swimming.fbx.meta",
+      "size": 3527,
+      "sha256": "0aaaff7ce2cfafe687ea91a2510ba3c667c0b1a632e546bd7690dad8cafb54e2"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/idle.fbx",
+      "size": 427585,
+      "sha256": "be59ae588e2b8fd194803c76e241d3d19a9754b239ae184f774c46f8762129bb"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/idle.fbx.meta",
+      "size": 3522,
+      "sha256": "24d62ec782556c9c361618fb5e424d04909304c83b7ed3dfe9b529f31e23c0fe"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/jump down.fbx",
+      "size": 316273,
+      "sha256": "34d5ff7b181bbc85e6591033408eff5ef75f759ae13eea862b2a9f023815232c"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/jump down.fbx.meta",
+      "size": 3527,
+      "sha256": "f6ada2870621c4303522ae9c796405c9f4e31e302984d0142717a43f033e02eb"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/jump loop.fbx",
+      "size": 338705,
+      "sha256": "ba7494d6e1bc0d882f016bedfc7a67fe2b6c5773f034e3e10beb17f5d57cc09c"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/jump loop.fbx.meta",
+      "size": 3527,
+      "sha256": "ced555db3f92f6c5440122050eba2a12571e36f79d02fb650a7abbf46c593b4a"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/jump up.fbx",
+      "size": 305521,
+      "sha256": "7f9788dfdfa2d4f437b43936ee98c752bad7e1a1a0cdfdf48945d5804f68bbde"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/jump up.fbx.meta",
+      "size": 3525,
+      "sha256": "7777b0cd61146750de8bb08ef05cb4ceadebe4a8bcaa8550cb3de73050f7fdc6"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/rifle jump.fbx",
+      "size": 324881,
+      "sha256": "4fe89287af79755102a7e1e2bfb177be3e1cb919be7a7b557764b23b53fcb1e1"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/rifle jump.fbx.meta",
+      "size": 3528,
+      "sha256": "195bb68e33a0cd4a55d02d5f95320ea47896db5cd0f41eb02a9fbd73a225dd03"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/rifle run.fbx",
+      "size": 342401,
+      "sha256": "062490d940703638761496d1e43e4e0aa86782df945341d9e06253cc65139fad"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/rifle run.fbx.meta",
+      "size": 3527,
+      "sha256": "0679b5cc442757c1e4859401afad671c22d2279c9dbcf3be49a3d904f9a57828"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run backward left.fbx",
+      "size": 382593,
+      "sha256": "b969946b0b00cf3b09d7b5a368d1baab08d0cd6c9ae73aedcc961edd5a1db84c"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run backward left.fbx.meta",
+      "size": 3535,
+      "sha256": "b9ebf8f3bfcfb4b1ecd5d514b174a5c246c5b2b0306c8faf0c59fb416acf2cc1"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run backward right.fbx",
+      "size": 383521,
+      "sha256": "4b44788aec2773b15cd392e024100683ffc58b3ce660f6fbe1f99339f859b544"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run backward right.fbx.meta",
+      "size": 3536,
+      "sha256": "93029b03ed4f589264a8b8f065fe468fff731d79fc5d2da7b7fa368bb06a7aed"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run backward.fbx",
+      "size": 380977,
+      "sha256": "1f6802ab6e5bfeda1b1ac7064557bb511c2be2f31aa6778902189bb844d7ab66"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run backward.fbx.meta",
+      "size": 3530,
+      "sha256": "7d360f7ef707f9e254de265efe023a5523c2e4fabc598f6a1e1d7e992e22aa11"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run backwards.fbx",
+      "size": 319505,
+      "sha256": "491866c7fdf119ae5b4ae1c7adc4166149890502925fb4d33a828128f8e0cf04"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run backwards.fbx.meta",
+      "size": 3531,
+      "sha256": "c02aeb66596ddfd980e46ab547aeedf3d4bc3950530968b6d9d10f4cc7d33192"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run forward left.fbx",
+      "size": 383521,
+      "sha256": "00a959a918ae8c01000850a156a580e24fe027d335eba897ccb48025300fc4a4"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run forward left.fbx.meta",
+      "size": 3534,
+      "sha256": "8ab316ec10a0b63b459059ef75f6fbb43e5270d5d4961c3d7e682dde300c4b41"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run forward right.fbx",
+      "size": 382737,
+      "sha256": "82e3ba3179cd6a45ad9184de3c62b284120cc68c69687538fae1c3dcb0687636"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run forward right.fbx.meta",
+      "size": 3535,
+      "sha256": "d0d624ccfd74905854300405fc09d445b093540019da8d8df0b60332b54ce878"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run forward.fbx",
+      "size": 382881,
+      "sha256": "e5d1d950335091e6f9847204b3ea7c24cf6a66ed4c63ddd4da74d2cef4d7f49d"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run forward.fbx.meta",
+      "size": 3529,
+      "sha256": "50c12357ef1e6c24adb189c65c3f690ba58940c7ce87a7c5f7431a900acb2ea3"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run left.fbx",
+      "size": 383521,
+      "sha256": "d2bcbaa3278edc9bd689f21ec9245c437d4e52a89e8742c2f554c876dbc85ea7"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run left.fbx.meta",
+      "size": 3526,
+      "sha256": "80eb978b0b9c316fe2711a0aed0b01abccace46c52965b72ef98fbc87c6e7532"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run right.fbx",
+      "size": 382513,
+      "sha256": "8f5d5943c9dfa6adf919a4b660fa18af9119467e8a555acb715a72b3bd45d81b"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/run right.fbx.meta",
+      "size": 3527,
+      "sha256": "199ab351e996dd1922daac65e1e25b35adf2d88083b81200286fb020da77eda1"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint backward left.fbx",
+      "size": 383521,
+      "sha256": "c4ab47014900823cd564b1f0226f197150a99786300fc66a6218996c6f7a0849"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint backward left.fbx.meta",
+      "size": 3538,
+      "sha256": "f9da1f8b04ed038a6209e70581f8531a029cf1f74ed14cba2c5e54692aea0d28"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint backward right.fbx",
+      "size": 382993,
+      "sha256": "7d810e6b1526035407c0ed6303cc6ab0cc6156efa62a0ece877ab07a7df544c5"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint backward right.fbx.meta",
+      "size": 3539,
+      "sha256": "472bb254aaa369177f488435f7d7cc961f300934662c00a353f147416055c59b"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint backward.fbx",
+      "size": 383521,
+      "sha256": "e453e85538e7ed01bfe8dedf02b5a95837b276d05d3dc8c7e462fc5ce1c99748"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint backward.fbx.meta",
+      "size": 3533,
+      "sha256": "6fb74029a390afadc17f702841758ee695701f9cbc204f0f6036162bdb763e72"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint forward left.fbx",
+      "size": 383521,
+      "sha256": "79fe68e4038b35298ff07086c9e8f02d9aa11f47c89cd4d114919e70eaa33dbb"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint forward left.fbx.meta",
+      "size": 3537,
+      "sha256": "1daae7a0603a3672a1cb968751b45e60d36184f7743d74ce8e2eb27d2eded2f7"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint forward right.fbx",
+      "size": 382881,
+      "sha256": "461bff160cd56aa77406c645c197f1a46515f5962a601d2a57c6a3bf7f9eb6e7"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint forward right.fbx.meta",
+      "size": 3538,
+      "sha256": "003adb00f12e88639b848a43c2f5ae4552cba9f235c75314e01318f2d1e095dc"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint forward.fbx",
+      "size": 385729,
+      "sha256": "627a44c17dc089cdec368f2c286df5baf1e617096752f1877345632bc1c5890a"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint forward.fbx.meta",
+      "size": 3532,
+      "sha256": "1257d5186fe9b86861d72601bb0b0511102c34c2c2c360bffec95c1983b7966e"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint left.fbx",
+      "size": 383201,
+      "sha256": "820b103bc8705d8e6bb1f176587451a144b13c4ec62a52d17ad60800eaa61588"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint left.fbx.meta",
+      "size": 3529,
+      "sha256": "115e923155c714edb7ada2f80bfacf6ff8ecd1bba62be46c98a35d5b96e05e9f"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint right.fbx",
+      "size": 383809,
+      "sha256": "79f1b6b0709f7de2a10005a52c2ded0f96db0c98994927eb028c01549f835a9f"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/sprint right.fbx.meta",
+      "size": 3530,
+      "sha256": "d712cfbd3b42f976f92d43dbca5989c4480c20c75c6b01fe1bd69a056c081c8f"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/strafe (2).fbx",
+      "size": 313105,
+      "sha256": "a6a3cf6ea12100daff74e2fd9414c48ee4895ef723fe6b932cf6bbe870b61bae"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/strafe (2).fbx.meta",
+      "size": 3528,
+      "sha256": "5d5148e4cde5bbc9d8d831593da2c01d7ab9042795273dd222baabe48733512d"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/strafe left.fbx",
+      "size": 379601,
+      "sha256": "46d042b2966a71dc0533f821c86bd4bd49678a101d90a9f959c0a5306885ea7c"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/strafe left.fbx.meta",
+      "size": 3529,
+      "sha256": "581fca6c8b62c1e8869b0564a6c91fc80224adfa3605aa41d6b9685eeb1d6580"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/strafe right.fbx",
+      "size": 423409,
+      "sha256": "b40340274d197dc11d3c0ba766c419b5649194efe7fd10667aa4a313cdb6835c"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/strafe right.fbx.meta",
+      "size": 3530,
+      "sha256": "93370a833c251b5f9757b217850c9031c9a58b5bd95dbc0d52524d21aa6f8f80"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/strafe.fbx",
+      "size": 316417,
+      "sha256": "234aa22d4475afc2f88b45cd1a57d6afb6e4a26c44d143075a0ab9ca78a90b4e"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/strafe.fbx.meta",
+      "size": 3524,
+      "sha256": "845ed5322e45ac67bc1eac1593c83af87e5865a1d9ff94e4bcb9e3da49bb72bd"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/turn 90 left.fbx",
+      "size": 343025,
+      "sha256": "d7ae8da4e9cd93c311612fb1cff503e9698b6dd79f9c1c9d48bf267e06191d93"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/turn 90 left.fbx.meta",
+      "size": 3530,
+      "sha256": "9abd7db7a429a9a5d15742844f77c1078e7f1d05c7c8f5b4bb55b01e12bd9568"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/turn 90 right.fbx",
+      "size": 344001,
+      "sha256": "2bcba44ec0d3dc3edf57a67f60f65a51b1b55231fccc6624c2c5ca24d5425b2e"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/turn 90 right.fbx.meta",
+      "size": 3531,
+      "sha256": "b63a5ecc11988d81b20e7707d4e53ad60445e2300d3b39481d709e7b7f0f0c00"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/turn left.fbx",
+      "size": 368257,
+      "sha256": "d4f077928b195bab1d9777899d606710f196178ef74f74c08642c507989597a4"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/turn left.fbx.meta",
+      "size": 3527,
+      "sha256": "705d459612b2688e2e431ab83ffd4f8c3cf7a44bd3b55e4e0d34d2e671f2e4c8"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/turning right 45 degrees.fbx",
+      "size": 373649,
+      "sha256": "9488183925d3247bb4f1c1eb73af0d7fc1ac934a60bda06ed624e87660000d48"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/turning right 45 degrees.fbx.meta",
+      "size": 3542,
+      "sha256": "490f4c3000ba68e5600c65556770f72baf6f9b824f2b41d22c610d8daad06b43"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk backward left.fbx",
+      "size": 343025,
+      "sha256": "0c1e29088dc84c0a315957b0da3831a4b7379667d2a2801b72f4ac501ea8a7bc"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk backward left.fbx.meta",
+      "size": 3536,
+      "sha256": "b053bc1bb906fd1fee99dfdaaf7b1009585faf8f1ba074e2d55a6c5f2e857d21"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk backward right.fbx",
+      "size": 343025,
+      "sha256": "7f55abf2c334e2c3a580ef700cc1c9e9cbda6cec16756a6af4646819d77c78aa"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk backward right.fbx.meta",
+      "size": 3537,
+      "sha256": "637ffe8c3bd6a57318af0ed65af4f68005083ee18a8791616aa9efd9e883cf51"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk backward.fbx",
+      "size": 343025,
+      "sha256": "bf08ba7c42c712d6207c4a604a16be9400227bb960d28c7162c9708d11ce1e95"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk backward.fbx.meta",
+      "size": 3531,
+      "sha256": "efda5bd52c87a6e585fa829ea584f20915cea7394f8aca1cde3072eeb1ed5b8a"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk forward left.fbx",
+      "size": 343025,
+      "sha256": "1b57bc04255a145dced77b437736ae5376dcaa38432d632b882956e2760fad87"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk forward left.fbx.meta",
+      "size": 3535,
+      "sha256": "1103788c9d7e085825979d5c7e722e3ab62ab0b2eb6618196888505be615c426"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk forward right.fbx",
+      "size": 343025,
+      "sha256": "f2100c65fdc0e7d38f0a1124de4c2def0b7c8fd056214345e6a0123e43445e0a"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk forward right.fbx.meta",
+      "size": 3536,
+      "sha256": "bc87c80284cd8c85b74d8e2bb8a9cf6c7eb05fca4453711d2c87de8eefd1ba89"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk forward.fbx",
+      "size": 343537,
+      "sha256": "69ad6c226afd5e83949025c4eb017b5f3a148143c2ea8260eb7f2e97a7932113"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk forward.fbx.meta",
+      "size": 3530,
+      "sha256": "8a49fffb7a0ef36d66cc842e602a51872b2d204b1a40cb77449bc63fb1219088"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk left.fbx",
+      "size": 343169,
+      "sha256": "ff6acc1406d9cb3fc70facde5f22badd028ab28045f2912dad363837740956a0"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk left.fbx.meta",
+      "size": 3527,
+      "sha256": "fc5ad18c9affb0610ecde62d21d3fdf30144e0cf4160345f219bcce15acc09bc"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk right.fbx",
+      "size": 343169,
+      "sha256": "0f81706e90f257064faf6aa7eb940d594721c812201a94b4db1bf6e346f8b93e"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walk right.fbx.meta",
+      "size": 3528,
+      "sha256": "81c4f88239641d5f007bcd593c3332bb2aee1da57c51355cb8f3a3a7df9d2b38"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walking backwards.fbx",
+      "size": 419665,
+      "sha256": "b8d1162420c5f270af48565cae10c53bac1fefbb4c0a368075559bd6d33cea34"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walking backwards.fbx.meta",
+      "size": 3535,
+      "sha256": "011523c8fed95bf74b02ee7bf96be63532d6f8008e515df60332978ce90ec0c3"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walking.fbx",
+      "size": 371633,
+      "sha256": "da8f3d6dac9601e2cabf3ff69ad88a8cdd574487797d0d27642596031843c314"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Movement/walking.fbx.meta",
+      "size": 3525,
+      "sha256": "9d2845b8c8ad4827230fcd35e1646ae522ade15f3c140e6d4d10b8ecab9f5b33"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Weapon/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Weapon/Grab And Put Back Rifle.fbx",
+      "size": 929872,
+      "sha256": "8cced05d846c61d71c31a41833d496625e6675aae0555475a7fa5a775b594c83"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Weapon/Grab And Put Back Rifle.fbx.meta",
+      "size": 3542,
+      "sha256": "e87a59eb2bf363fb02eddbd322b4c2fc9ead9ac787a74b011e25905a269727b6"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Weapon/firing rifle.fbx",
+      "size": 340177,
+      "sha256": "06ad7bfd88ab4c7f76d0fa8c0b0125274c714f618a724e20b5e22763dc49a56f"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Weapon/firing rifle.fbx.meta",
+      "size": 3529,
+      "sha256": "7525df33c1ee854ea07137c07fe487324a8f54b4a6fa288691c40dc1a0d71bfd"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Weapon/reloading.fbx",
+      "size": 639313,
+      "sha256": "6311db6d661b896c394d52496a5a24b009fa6d5cf9e8d048cdbab573b12aa4ce"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Weapon/reloading.fbx.meta",
+      "size": 3527,
+      "sha256": "1c65fbb192ac773002cd422d0f87fbf6d2e79f400a073babe514e41fdc8bdc3b"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Weapon/rifle aiming idle.fbx",
+      "size": 597217,
+      "sha256": "3f531eb4baf440ea5bc47e65d839fc16411fe9108d8cf54694e01fd1b58b9b5f"
+    },
+    {
+      "path": "unity-project/Assets/Animations/Weapon/rifle aiming idle.fbx.meta",
+      "size": 3535,
+      "sha256": "d07df511f4b9507be2ad962f452dc44d7038e709912e98c239d094710bc7c88f"
+    },
+    {
+      "path": "unity-project/Assets/AvatarMasks/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Characters/Female/Female character.fbx",
+      "size": 3720870,
+      "sha256": "92c5e500344af3725f67f229ac1627873efa1307561fd07e721f9b65d0bba72f"
+    },
+    {
+      "path": "unity-project/Assets/Characters/Female/Female character.fbx.meta",
+      "size": 2736,
+      "sha256": "9e5b7d1412d5fe37f0b0f8e04343fa436bca381a505677376ccfeb8b9ca8e9f9"
+    },
+    {
+      "path": "unity-project/Assets/Characters/Female/Materials/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Characters/Female/Textures/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Characters/Male/Male character.fbx",
+      "size": 4762892,
+      "sha256": "01990efd69d0bbe16cb484b6f22e27907839d5150544117a1d30b6eeb1633273"
+    },
+    {
+      "path": "unity-project/Assets/Characters/Male/Male character.fbx.meta",
+      "size": 2736,
+      "sha256": "745e5df5bb550a4d9547b9fbdb3df93d184b7edcb2bea39d66ba7b338dc09b84"
+    },
+    {
+      "path": "unity-project/Assets/Characters/Male/Materials/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Characters/Male/Textures/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Editor/AndroidBuild.cs",
+      "size": 11920,
+      "sha256": "17b17f324fb4f14a773b1966d3a30f4996f8cf720c0ec8985564e6af3c269932"
+    },
+    {
+      "path": "unity-project/Assets/Editor/AnimationImportService.cs",
+      "size": 20748,
+      "sha256": "bdd8c5e9571baa8fbcc35b2997aed5e893ed680321332457eaf5c2a86c929754"
+    },
+    {
+      "path": "unity-project/Assets/Editor/AnimatorControllerBuilder.cs",
+      "size": 27343,
+      "sha256": "7f06cfbf8c0581b5b507282711d697caadc9c30bf6f7b2bd933f3e08948dcac1"
+    },
+    {
+      "path": "unity-project/Assets/Editor/AssetImportRules.cs",
+      "size": 10638,
+      "sha256": "203a1242ec85f8dcb70a0765ab1baa15b127859c91844e65192c9782004b3850"
+    },
+    {
+      "path": "unity-project/Assets/Editor/BattleHorizons.Editor.asmdef",
+      "size": 638,
+      "sha256": "3bda9d190c1d726b4aa60ca44186f36c25d31724c7649dbe7c7dea265c07a1f4"
+    },
+    {
+      "path": "unity-project/Assets/Editor/BuildCommand.cs",
+      "size": 424,
+      "sha256": "45db6fc13eb37dc97238e0e891cefdb71d68a78e7665a85934c31245ce00e18e"
+    },
+    {
+      "path": "unity-project/Assets/Editor/CharacterAnimationConfigLibrary.cs",
+      "size": 11817,
+      "sha256": "129f67d25c048f639af5380c563efdc95048c3f6cd5e7963f22273fc38bf9b98"
+    },
+    {
+      "path": "unity-project/Assets/Editor/CharacterAnimationIntegration.cs",
+      "size": 23878,
+      "sha256": "c844f88e0ea262ebeaa0c4d8b51cbe2599477f50d1b864208501571059e0ee4b"
+    },
+    {
+      "path": "unity-project/Assets/Editor/CharacterAnimationManagerWindow.cs",
+      "size": 38276,
+      "sha256": "cc9d3c5753b0fce9e31657b3003fe27abdc1cdf2d7aeb335fe892a9ed49457a0"
+    },
+    {
+      "path": "unity-project/Assets/Editor/CharacterImportService.cs",
+      "size": 23794,
+      "sha256": "54b16481de105d009eb64878ad83f6fc10b64c4c157844f05359adad89b6cf68"
+    },
+    {
+      "path": "unity-project/Assets/Editor/MixamoAnimationImportRules.cs",
+      "size": 30350,
+      "sha256": "40ed2be9c1a7dbc3ff105acda33cf1e4bba19ce9cc3bac7963ee6912260229d5"
+    },
+    {
+      "path": "unity-project/Assets/Editor/ProjectBootstrap.cs",
+      "size": 38917,
+      "sha256": "93853ae6d2a0afed30ed12ff9c5ed4c4f5ad9cbcd06bb98203e4929c35df4ce8"
+    },
+    {
+      "path": "unity-project/Assets/Editor/ProjectValidator.cs",
+      "size": 37277,
+      "sha256": "6e206234e6bb89970f9f8c01a6613f51bf2cdca21019196909dadb129f00ac1c"
+    },
+    {
+      "path": "unity-project/Assets/Editor/RigDetectionUtility.cs",
+      "size": 26167,
+      "sha256": "b96e5cbe25c9bff99caf6c4b8f2c6e1dcc711eff3efc357c75fb2193f300e3e7"
+    },
+    {
+      "path": "unity-project/Assets/Generated/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Art/Textures/water_normal_256.png",
+      "size": 131,
+      "sha256": "e3ae945f89d7e2251bd4b1a717f87935813cf6045e0279d9c25eeb5032d93d63"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_colors.bytes",
+      "size": 643204,
+      "sha256": "a78d09cafe6267c9c1d5654d796c50b2d1247f3fa336b9e87bd74508c1bf4fa3"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_colors.bytes.meta",
+      "size": 158,
+      "sha256": "0553b838726c33280dd60693a680e42dc79f1069701281254360869dbab4bced"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_heights.bytes",
+      "size": 643204,
+      "sha256": "dbab12b66e90cb14b6ba1755e38366665abe6a30dfbe057be7911c08744cb35a"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_heights.bytes.meta",
+      "size": 158,
+      "sha256": "8e68fdf3867b875dfb46413b68f216cbc5607c06726ff8199b342763799db5b0"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_layout.json",
+      "size": 8153,
+      "sha256": "49c74c357e19102f346a055ab6aa14ccd338e0ec02c1807fd64304b4e1e75c94"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_manifest.json",
+      "size": 1454,
+      "sha256": "b35a03a470d05f21ad01bccd561050b345829ef6c462fd58419216a6b8ee08df"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_river.bytes",
+      "size": 8392,
+      "sha256": "538c4f73a1a3e20c9b2057cd7aec6f6dcd0d8783ce195ee7557ed979fdd4de17"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_river.bytes.meta",
+      "size": 158,
+      "sha256": "521e4cac8e0bdca8e10beca39c019cb51f1416b0f1faccd306245b68f7800408"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_roads.bytes",
+      "size": 115932,
+      "sha256": "7b453fd91cf9d814a258841449f15c873d46a3bfbfbe9e70dd5abc6cfc5e48fd"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_roads.bytes.meta",
+      "size": 158,
+      "sha256": "a82ae894f213cb9c59957a3e47070123313f1f0fd53b8302b1b1aa658a3d466a"
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_terrain.json",
+      "size": 4825,
+      "sha256": "b3543c3ee3c1aee664b38ae0922ac755ca3f7f4014a7b2f46cc1d28e37eb6921"
+    },
+    {
+      "path": "unity-project/Assets/Resources/UI/battle_horizons_home_bg.jpg",
+      "size": 355275,
+      "sha256": "9144063dd3c008b2299bd6138ac178a7d81c17af39ebeda174f033c8fda82e07"
+    },
+    {
+      "path": "unity-project/Assets/Resources/UI/battle_horizons_loading_bar.png",
+      "size": 129,
+      "sha256": "f07950eefdc4f5a0fc3be9d9e7a0fc1b0d6334c062471b73f2adf8b600472858"
+    },
+    {
+      "path": "unity-project/Assets/Resources/UI/battle_horizons_loading_bg.jpg",
+      "size": 252867,
+      "sha256": "307acee9278f6a6b79eb91836ca53ca5e3e0d78787a7fdbf81814b5a43f4d389"
+    },
+    {
+      "path": "unity-project/Assets/Resources/UI/battle_horizons_loading_spinner.png",
+      "size": 129,
+      "sha256": "8949c5fb09b14d7265d5096267ca89ad3e7b78efaa3fcde37ea98f41bfed6400"
+    },
+    {
+      "path": "unity-project/Assets/Resources/UI/battle_horizons_logo.png",
+      "size": 131,
+      "sha256": "867190f88a731ceb74bcb2e7c0f5f7f15e8dde9e1fd338f34844f7cd9233e7cf"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/BattleHorizons.Runtime.asmdef",
+      "size": 526,
+      "sha256": "5ee38227801dcf9321af9404d763f11d2711f291e9ddc177b28abd8b3155ca46"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Camera/ThirdPersonCameraController.cs",
+      "size": 6110,
+      "sha256": "729a7ab83c97dbc6b39a313f0e31949e016bd48149d13b0b6718e5ad68edcdee"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Characters/CharacterAnimationConfig.cs",
+      "size": 19594,
+      "sha256": "771104fd509d46cdeb471602f8bd617233f47d9bc7b15f1cf2ccd1739dbf2a26"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Characters/CharacterBayMenu.cs",
+      "size": 13892,
+      "sha256": "e431787430b2e48b3cf735262ee9164b2ce52cd6edd37235af3de0633290040f"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Characters/CharacterPreviewController.cs",
+      "size": 18274,
+      "sha256": "bd8eb2444db2278b374d61a64f1af9ba91ba573e45952ddbd911c8c1c2e9628a"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Characters/PlayerCharacterVisual.cs",
+      "size": 7301,
+      "sha256": "7736b11161fa1ad250f564c1bd8bb49fe94a7a161fd57ed530a106ad99bb7b99"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Core/GameBootstrap.cs",
+      "size": 6456,
+      "sha256": "50d45aa939701e21a8107c30a142329e9da3a5bd94ebe67cef4cba2e7705acf8"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Core/GameLog.cs",
+      "size": 1452,
+      "sha256": "008d6ebfd1235815eb7991794466ea2409dd744196478091c127a4bdc2c10754"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Core/ObjectPool.cs",
+      "size": 2833,
+      "sha256": "167483567be284501f84ae24a7822d1dcb0e728480afc6dd61cad2f62e7d3caf"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Core/PerformanceMonitor.cs",
+      "size": 8421,
+      "sha256": "673b5f8f7dbaed9c171412d63019d89746e4ace02df3e83743308ed6aa5bc27a"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Core/QualityProfile.cs",
+      "size": 6794,
+      "sha256": "922b9c21c51a5a49239251162b5acb20acde579920e912cb38e4a420d010a9e2"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Player/PlayerController.cs",
+      "size": 14860,
+      "sha256": "23014984a7358a823670fff5e2bb65f27ddb21690c7c124153a89f398b166f92"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Player/PlayerInputRouter.cs",
+      "size": 7264,
+      "sha256": "6f63b3c2223cd07905c24940f5857439d65a4a6fbfdc320f4134aa9fc8a54bb5"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Player/ThirdPersonMotor.cs",
+      "size": 9027,
+      "sha256": "fc2e839a584691edf8cd1d36ae24d5ce99f32f79a8b89c3fae3f6acf9501f216"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Player/VirtualJoystick.cs",
+      "size": 4149,
+      "sha256": "79c4cdb50fdf4627eb940108f92fe7149d0d65edfb6f68190236cf03124f8398"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/GameLogo.cs",
+      "size": 2316,
+      "sha256": "12397e8c8b25d507ae2821ccca667d6767f181460200e6e6a1da435b9ba7a68f"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/HoldButton.cs",
+      "size": 1727,
+      "sha256": "8383f651e006e3e859be7ec0298282bdec0bfc16a148df3a467414b41c22fe6c"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/LoadingScreenView.cs",
+      "size": 13164,
+      "sha256": "36cb5adb999310bf053932b0842fbc65cebaf1e89a1f600040d896cab695c469"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/MainMenuController.cs",
+      "size": 24434,
+      "sha256": "176082af4be5fcdb0627d0c485b21ef98f9910849d29a264ceea0e6c3f9634dc"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/MobileControlsBuilder.cs",
+      "size": 14929,
+      "sha256": "d91cd4c13fa10c81608571976fe4f5761fda1da5c7f8c8778fd27864bd01c9cb"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/TouchControlsHost.cs",
+      "size": 2563,
+      "sha256": "4486b1f32b16ffe8030336ed90bbb9e4df6347ce1b43d631a6acbc6102a377f2"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/TouchLookArea.cs",
+      "size": 2318,
+      "sha256": "e39c54e5694b70c04fd1a8c16d583d100519452eec6d962705824f7825a663d7"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/WorldDebugHud.cs",
+      "size": 5518,
+      "sha256": "cf53e07f9d0e708c6f6ea45f6ad6504eaba5e50ec735411bd23088da868234f9"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/World/IslandShapeMath.cs",
+      "size": 9934,
+      "sha256": "9c5fcd382ea48fda12145ebedbac9f8b72411137794a352b03ac6976b16dea01"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/World/SiranChunkStreamer.cs",
+      "size": 11560,
+      "sha256": "cd7070cfbce285b9dfc7d58ef42e9a6575c7beb0e8afead94c40fa84c1ba0a95"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/World/SiranIslandData.cs",
+      "size": 17400,
+      "sha256": "f9281b961905a1eed405a8de021193695746633a184a490d011ca9db87e2b532"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/World/SiranIslandTerrain.cs",
+      "size": 12736,
+      "sha256": "f9ffc3d1be7a56f0e74d4bc6435d1098f4b1b8f781fca487f9a8b812f51e909f"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/World/SiranIslandWater.cs",
+      "size": 10257,
+      "sha256": "eb2fbcfd197ed19cea47337eb50f994ff023c629ad9c494e5468ffd803107b1a"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/World/SiranMapConfig.cs",
+      "size": 14602,
+      "sha256": "150ea56d9240990314719ab5e6b70669f9154928765a9e49668bafec17b2d196"
+    },
+    {
+      "path": "unity-project/Assets/Scripts/World/SiranWorldBuilder.cs",
+      "size": 14052,
+      "sha256": "4aa5a108760749b31a78dd2c4967f6326c048f2aacd5335a4d5459d8204e852a"
+    },
+    {
+      "path": "unity-project/Assets/Shaders/SiranRadiusClip.shader",
+      "size": 7948,
+      "sha256": "ee7598b4fda9e3bf9c5e38d72cdaf0c6ea6ea74e13f83049bb3a351ba1b63cf1"
+    },
+    {
+      "path": "unity-project/Assets/Shaders/SiranRadiusClip.shader.meta",
+      "size": 227,
+      "sha256": "d0839c8bc40140afb882029458878bf251775da3e4ed57592d4397f05a44ad81"
+    },
+    {
+      "path": "unity-project/Assets/Tests/EditMode/AssetImportRulesTests.cs",
+      "size": 1928,
+      "sha256": "e20dbb155a009c7d52c9e8016c30a36b55b62d5df8ad8d2361890e788ee5160b"
+    },
+    {
+      "path": "unity-project/Assets/Tests/EditMode/BattleHorizons.EditModeTests.asmdef",
+      "size": 642,
+      "sha256": "a3c01d9b85231b03d6dcc238dab667fcac474e3260a51e91fa84e17610c17f7f"
+    },
+    {
+      "path": "unity-project/Assets/Tests/EditMode/CharacterAnimationIntegrationTests.cs",
+      "size": 5481,
+      "sha256": "a0616f2daef558bac66e22658d1efffbc3675a814296d02919bd694109e78bd7"
+    },
+    {
+      "path": "unity-project/Assets/Tests/EditMode/CharacterPipelineTests.cs",
+      "size": 33626,
+      "sha256": "72d200cd793b4ce41fb91f26f10636eee9c2be0f52e48d5b875ff2e50dcb85ae"
+    },
+    {
+      "path": "unity-project/Assets/Tests/EditMode/QualityAndShapeTests.cs",
+      "size": 6524,
+      "sha256": "bfdee883a2bc29776aff75d90c3079ff4f811511fb6f8cb254ad0af5db03c11f"
+    },
+    {
+      "path": "unity-project/Assets/Tests/EditMode/SiranIslandDataTests.cs",
+      "size": 11391,
+      "sha256": "c5c4b1b98bf1dc952f83247eab4a4fea5ab439ac17ff45ce76dca1bd822b3be4"
+    },
+    {
+      "path": "unity-project/Assets/Tests/PlayMode/BattleHorizons.PlayModeTests.asmdef",
+      "size": 579,
+      "sha256": "20752e9ad0789013bf024ef5089e2f7ab5caa8f1f59032ac18203817a75cb2cc"
+    },
+    {
+      "path": "unity-project/Assets/Tests/PlayMode/CharacterPreviewRuntimeTests.cs",
+      "size": 5803,
+      "sha256": "800d81937f316563b3a4a8fdd1fe88739b5667a5a0ddd4e7c17a1991f013b868"
+    },
+    {
+      "path": "unity-project/Assets/Tests/PlayMode/WorldAndPlayerPlayModeTests.cs",
+      "size": 19068,
+      "sha256": "c3c97c10acb11fb3dcd5a6c78ed3f09b4cbec7d0042c52a0d0960718abe6f529"
+    },
+    {
+      "path": "unity-project/Assets/UI/Icons/battle_horizons_icon.png",
+      "size": 131,
+      "sha256": "ac020d4b62269b635742207a591d15c8b7f071347c4e793faa0c72f14b21235d"
+    },
+    {
+      "path": "unity-project/Assets/UserAssets/Materials/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/UserAssets/Models/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "unity-project/Assets/UserAssets/Models/Animation/.gitkeep",
+      "size": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "unity-project/Assets/UserAssets/Models/Animation/showcase_all.glb",
+      "size": 74056,
+      "sha256": "2c1f789572704e8ec7a24b50d6fb8e6d6619efaa46de78ecd52ef3a695c78c98"
+    },
+    {
+      "path": "unity-project/Assets/UserAssets/README.md",
+      "size": 2190,
+      "sha256": "b62d0c435e17c42f5e31971294eac0fdb7b934da68485c58b1da9731e2091fb2"
+    },
+    {
+      "path": "unity-project/ProjectSettings/AudioManager.asset",
+      "size": 388,
+      "sha256": "3f43349f4915537c3bcdd8ccc3d0d07498b2267469d7a7704c0eac9afe843cd9"
+    },
+    {
+      "path": "unity-project/ProjectSettings/EditorBuildSettings.asset",
+      "size": 160,
+      "sha256": "1942c088ddfeeef348fdf12390e2a2d6da51056e197458d67969d44e7b2cbbd3"
+    },
+    {
+      "path": "unity-project/ProjectSettings/EditorSettings.asset",
+      "size": 990,
+      "sha256": "2d3b041cf0a0f170a99efc4b7ca3ee2763c0377af6b066d91b452eee3f1f3ad5"
+    },
+    {
+      "path": "unity-project/ProjectSettings/GraphicsSettings.asset",
+      "size": 2395,
+      "sha256": "33ee6750386c578cd3476b8376abc792a39ea9dc75374ec6b8ad50a864123a06"
+    },
+    {
+      "path": "unity-project/ProjectSettings/PhysicsManager.asset",
+      "size": 1624,
+      "sha256": "e400e405a12557fca6dbba792546a2f0667003603df1637ab735e3758af05bea"
+    },
+    {
+      "path": "unity-project/ProjectSettings/ProjectSettings.asset",
+      "size": 19205,
+      "sha256": "2c078e79b7483d9a900db23e59fddbaae8a580a51f3f24f3cf56b00fa4c49d2c"
+    },
+    {
+      "path": "unity-project/ProjectSettings/ProjectVersion.txt",
+      "size": 85,
+      "sha256": "b69d970773b64cd47f5e15302a3f56bd4b4d6f27596e63242c41666cd9df9dec"
+    },
+    {
+      "path": "unity-project/ProjectSettings/QualitySettings.asset",
+      "size": 3038,
+      "sha256": "72044757c306ff7750d7138fa9115dd96a3912f60638c7288ce7955355becf8f"
+    },
+    {
+      "path": "unity-project/ProjectSettings/TagManager.asset",
+      "size": 509,
+      "sha256": "d0044a4d6e68fd3be91de3263f94601e0d3851a6ab21a9a4f96a75d8e1db23c7"
+    },
+    {
+      "path": "unity-project/ProjectSettings/TimeManager.asset",
+      "size": 209,
+      "sha256": "a8b69654a380733b1a31f95e1a7031351a02fef29c12f00056746bd616eed3b9"
+    }
+  ]
+}

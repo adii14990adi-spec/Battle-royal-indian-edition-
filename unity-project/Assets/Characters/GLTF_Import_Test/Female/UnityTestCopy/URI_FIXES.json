@@ -1,0 +1,12 @@
+{
+  "source_original": "../Original/Superhero_Female_FullBody.gltf",
+  "note": "Only this test-copy glTF JSON was edited. All companion BIN/PNG filenames are byte-identical copies of the original source.",
+  "applied": [
+    {
+      "section": "images",
+      "index": 2,
+      "from": "T_Eye_Normal_png.png",
+      "to": "T_Eye_Normal.png"
+    }
+  ]
+}
