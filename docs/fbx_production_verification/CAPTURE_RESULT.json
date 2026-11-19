@@ -1,9 +1,9 @@
 ﻿{
   "title": "Production FBX visual capture — Male and Female, Unity Editor software GL",
   "summary": {
-    "pass": 11,
+    "pass": 26,
     "fail": 2,
-    "not_verified": 1
+    "not_verified": 2
   },
   "rows": [
     { "check": "verification boundary", "status": "PASS", "detail": "Real Unity Editor Camera.Render output for both production FBX characters under graphics-enabled batch mode; each generated definition is instantiated directly from its production FBX to avoid Resources.Load selection caching. Not an Android device render, APK test or human visual inspection." },
@@ -17,8 +17,26 @@
     { "check": "Female spawned visual root found", "status": "PASS", "detail": "Female character (CharacterVisual)" },
     { "check": "Female production material remap", "status": "PASS", "detail": "3 material slots (3 external URP/Lit), 9 bound texture slots, 0 null, 0 error shader(s), 0 non-URP/Lit shader(s), 0 invalid texture(s), shaders: Universal Render Pipeline/Lit" },
     { "check": "Female FBX feet aligned to temporary floor", "status": "PASS", "detail": "bounds before alignment minY=-0.085; aligned minY=0.000, size=(1.670, 1.854, 0.435)" },
-    { "check": "Female canonical Walk deformation clip", "status": "FAIL", "detail": "FindClip(Walk)=walking; canonical walking clip is unavailable" },
-    { "check": "FBX visual capture completed", "status": "FAIL", "detail": "Female has no Humanoid walking clip after config rebuild" },
-    { "check": "screenshot files", "status": "NOT VERIFIED", "detail": "capture failed before writing PNG files" }
+    { "check": "Female runtime Walk deformation clip", "status": "PASS", "detail": "config.FindClip(Walk)='walking', humanMotion=True, length=1.367 s; 74 registered production clips" },
+    { "check": "Female URP/Lit shader warm-up", "status": "PASS", "detail": "two discarded genuine Editor Camera.Render frames primed the material variants before evidence frames" },
+    { "check": "Female no magenta / error-material pixels", "status": "PASS", "detail": "0 magenta pixels in rest and sampled frames" },
+    { "check": "Female visual animation deformation", "status": "FAIL", "detail": "only 0 pixel(s) changed between Editor samples" },
+    { "check": "Female textured camera capture", "status": "PASS", "detail": "29481 chromatic pixels prove the production diffuse/normal material remap is visible, not a flat grey silhouette" },
+    { "check": "Male requested production FBX selected", "status": "PASS", "detail": "generated definition points at Assets/Characters/Male/Male character.fbx" },
+    { "check": "Male visible player mesh is FBX, not capsule", "status": "PASS", "detail": "capture instantiated Assets/Characters/Male/Male character.fbx from the generated definition; 3 SkinnedMeshRenderer(s), valid Humanoid Avatar, PlayerCapsuleVisual MeshRenderer disabled" },
+    { "check": "Male generated Animator controller assigned", "status": "PASS", "detail": "generated per-character controller assigned to the spawned Animator" },
+    { "check": "Male spawned visual root found", "status": "PASS", "detail": "Male character (CharacterVisual)" },
+    { "check": "Male production material remap", "status": "PASS", "detail": "3 material slots (3 external URP/Lit), 9 bound texture slots, 0 null, 0 error shader(s), 0 non-URP/Lit shader(s), 0 invalid texture(s), shaders: Universal Render Pipeline/Lit" },
+    { "check": "Male FBX feet aligned to temporary floor", "status": "PASS", "detail": "bounds before alignment minY=-0.102; aligned minY=0.000, size=(1.860, 1.916, 0.441)" },
+    { "check": "Male runtime Walk deformation clip", "status": "PASS", "detail": "config.FindClip(Walk)='walking', humanMotion=True, length=1.367 s; 74 registered production clips" },
+    { "check": "Male URP/Lit shader warm-up", "status": "PASS", "detail": "two discarded genuine Editor Camera.Render frames primed the material variants before evidence frames" },
+    { "check": "Male no magenta / error-material pixels", "status": "PASS", "detail": "0 magenta pixels in rest and sampled frames" },
+    { "check": "Male visual animation deformation", "status": "FAIL", "detail": "only 0 pixel(s) changed between Editor samples" },
+    { "check": "Male textured camera capture", "status": "PASS", "detail": "30890 chromatic pixels prove the production diffuse/normal material remap is visible, not a flat grey silhouette" },
+    { "check": "both production FBX characters captured", "status": "PASS", "detail": "Male and Female each produced rest and deformed genuine Editor camera renders" },
+    { "check": "front / facial / UV-seam quality", "status": "NOT VERIFIED", "detail": "committed camera is a rear three-quarter view; no human close-up or front-face inspection was performed" },
+    { "check": "Android device rendering / shader variants / FPS / memory / thermal", "status": "NOT VERIFIED", "detail": "these are Editor software-GL renders, not an APK installed on a physical Android device" },
+    { "check": "screenshot paths", "status": "INFO", "detail": "docs/fbx_production_verification/screenshots/fbx_female_rest.png; docs/fbx_production_verification/screenshots/fbx_female_deformed.png; docs/fbx_production_verification/screenshots/fbx_male_rest.png; docs/fbx_production_verification/screenshots/fbx_male_deformed.png; docs/fbx_production_verification/screenshots/fbx_player_rest.png; docs/fbx_production_verification/screenshots/fbx_player_deformed.png" },
+    { "check": "graphics device", "status": "INFO", "detail": "OpenGLCore / llvmpipe (LLVM 20.1.2, 256 bits)" }
   ]
 }
