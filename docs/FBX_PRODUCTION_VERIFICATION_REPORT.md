@@ -31,9 +31,10 @@ source defects below without explicit user approval.
 
 The final licensed run intentionally continues after FAIL rows so that all
 Editor, PlayMode, GLTF, project and capture evidence is collected, then fails
-the job at the explicit gate. `gh pr checks 26` currently reports **no checks**
-on the branch; this report therefore uses the run/job results above rather than
-claiming a green PR check rollup.
+the job at the explicit gate. The PR check rollup is **not green**: at report
+time `gh pr checks 26` shows 4 passing static jobs, 1 failing island-data job
+and 1 pending licensed Unity job; the completed licensed dispatch above is the
+authoritative FBX evidence. No green PR check rollup is claimed.
 
 Generated evidence lives in:
 
