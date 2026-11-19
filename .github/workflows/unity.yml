@@ -42,6 +42,10 @@ on:
         description: 'Capture isolated GLTF test screenshots and commit generated scene/screenshots'
         type: boolean
         default: false
+      capture_fbx_screenshots:
+        description: 'Capture production FBX player and animation-deformation screenshots (software GL)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -89,6 +93,15 @@ jobs:
             --json static-gltf-import-test.json \
             --report static-gltf-import-test.md
           cat static-gltf-import-test.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Production FBX static verification
+        # Known static FAIL rows are evidence, not a reason to skip the licensed
+        # Unity job. The final gate at the end of that job surfaces the result.
+        continue-on-error: true
+        run: |
+          python3 processing/unity/validate_fbx_production.py \
+            --json docs/fbx_production_verification/static_validation.json \
+            --report docs/fbx_production_verification/STATIC_VALIDATION.md
+          cat docs/fbx_production_verification/STATIC_VALIDATION.md >> "$GITHUB_STEP_SUMMARY"
       - name: FBX reader and static validator unit tests
         run: python3 -m unittest discover -s processing/unity/tests -v
 
@@ -374,6 +387,45 @@ jobs:
             cat "$UNITY_PROJECT_PATH/Assets/Generated/LastImportReport.md" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Verify production FBX in licensed Unity Editor
+        id: fbx_verify
+        if: steps.licence.outputs.available == 'true'
+        # Continue so EditMode/PlayMode, GLTF and visual evidence are gathered
+        # even when this report contains explicit FAIL rows. The final gate
+        # below still marks the licensed job failed on those rows.
+        continue-on-error: true
+        shell: bash
+        env:
+          UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
+        run: |
+          set -euo pipefail
+          mkdir -p unity-test-results/fbx-production
+          xvfb-run --auto-servernum "$UNITY_EDITOR_BIN" \
+            -batchmode \
+            -nographics \
+            -quit \
+            -projectPath "$UNITY_PROJECT_PATH" \
+            -buildTarget Android \
+            -executeMethod BattleHorizons.EditorTools.FBXProductionVerifier.VerifyFromCommandLine \
+            -logFile /tmp/fbx-verify.log || VERIFY_EXIT=$?
+
+          if [[ -f docs/fbx_production_verification/EDITOR_VALIDATION.md ]]; then
+            cat docs/fbx_production_verification/EDITOR_VALIDATION.md
+            cp docs/fbx_production_verification/EDITOR_VALIDATION.md unity-test-results/fbx-production/EDITOR_VALIDATION.md
+            cat docs/fbx_production_verification/EDITOR_VALIDATION.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [[ -f docs/fbx_production_verification/EDITOR_VALIDATION.json ]]; then
+            cp docs/fbx_production_verification/EDITOR_VALIDATION.json unity-test-results/fbx-production/EDITOR_VALIDATION.json
+          fi
+          cp docs/fbx_production_verification/STATIC_VALIDATION.md unity-test-results/fbx-production/STATIC_VALIDATION.md 2>/dev/null || true
+          cp docs/fbx_production_verification/static_validation.json unity-test-results/fbx-production/static_validation.json 2>/dev/null || true
+
+          if [[ ${VERIFY_EXIT:-0} -ne 0 ]]; then
+            echo "::warning::Production FBX verification reported FAIL rows; the report was uploaded and the final gate will fail this job"
+            grep -n -E "\[bh\]\[fbx-production\]|FAIL|error CS|Exception" /tmp/fbx-verify.log | tail -n 30 || true
+            exit 1
+          fi
+
       - name: Build isolated GLTF test scene (batch mode)
         if: steps.licence.outputs.available == 'true'
         shell: bash
@@ -508,10 +560,10 @@ jobs:
 
       - name: Project validation (batch mode)
         if: steps.licence.outputs.available == 'true'
-        # The optional GLTF capture/APK dispatch may continue past known
+        # The optional capture/APK dispatch may continue past known
         # pre-existing LFS/icon failures so visual and Android evidence can be
         # gathered. Normal push/PR checks still fail on these production issues.
-        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.capture_screenshots }}
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && (inputs.capture_screenshots || inputs.capture_fbx_screenshots) }}
         shell: bash
         env:
           UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
@@ -565,6 +617,50 @@ jobs:
             [[ -f /tmp/gltf-capture.log ]] && tail -n 120 /tmp/gltf-capture.log
             exit 1
           fi
+
+      - name: Capture production FBX player and deformation (software GL)
+        id: fbx_capture
+        if: steps.licence.outputs.available == 'true' && github.event_name == 'workflow_dispatch' && inputs.capture_fbx_screenshots
+        continue-on-error: true
+        shell: bash
+        env:
+          UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
+          LIBGL_ALWAYS_SOFTWARE: 1
+        run: |
+          set -euo pipefail
+          mkdir -p unity-test-results/fbx-production
+          # Graphics-enabled on purpose: real Camera.Render screenshots are
+          # required. No -nographics here; software GL is requested above.
+          xvfb-run --auto-servernum "$UNITY_EDITOR_BIN" \
+            -batchmode \
+            -force-opengl \
+            -quit \
+            -projectPath "$UNITY_PROJECT_PATH" \
+            -buildTarget Android \
+            -executeMethod BattleHorizons.EditorTools.FBXProductionCapture.CaptureFromCommandLine \
+            -logFile /tmp/fbx-capture.log || FBX_CAPTURE_EXIT=$?
+
+          if [[ -f docs/fbx_production_verification/CAPTURE_RESULT.md ]]; then
+            cat docs/fbx_production_verification/CAPTURE_RESULT.md
+            cat docs/fbx_production_verification/CAPTURE_RESULT.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [[ -d docs/fbx_production_verification ]]; then
+            cp -a docs/fbx_production_verification/. unity-test-results/fbx-production/
+          fi
+          if [[ ${FBX_CAPTURE_EXIT:-0} -ne 0 ]]; then
+            echo "::warning::Production FBX visual capture reported FAIL or could not run; see CAPTURE_RESULT.md and the job log"
+            grep -n -E "\[bh\]\[fbx-production\]|FAIL|error CS|Exception" /tmp/fbx-capture.log | tail -n 30 || true
+            exit 1
+          fi
+
+      - name: Upload production FBX visual evidence
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.capture_fbx_screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: fbx-production-capture-${{ github.sha }}
+          path: docs/fbx_production_verification/**
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload isolated GLTF screenshots
         if: always() && github.event_name == 'workflow_dispatch' && inputs.capture_screenshots && steps.gltf_capture.outcome == 'success'
@@ -713,3 +809,12 @@ jobs:
           path: unity-test-results/**
           retention-days: 14
           if-no-files-found: warn
+
+      - name: Surface production FBX verification FAIL result
+        # The verifier step is continue-on-error so all later evidence can be
+        # collected. This gate prevents those explicit FAIL rows from being
+        # hidden by an otherwise green licensed job.
+        if: always() && steps.fbx_verify.outcome == 'failure'
+        run: |
+          echo "::error::Production FBX verification reported FAIL rows; see docs/fbx_production_verification/EDITOR_VALIDATION.md in the test-results artifact"
+          exit 1

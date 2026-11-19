@@ -1,0 +1,214 @@
+{
+  "summary": {
+    "pass": 29,
+    "fail": 3,
+    "not_verified": 9
+  },
+  "rows": [
+    {
+      "check": "verification boundary",
+      "status": "PASS",
+      "detail": "Static validator reads committed bytes and source only; it never claims Unity import, rendering, Avatar validity, animation playback, APK output or device behaviour."
+    },
+    {
+      "check": "all 76 production FBX files immutable",
+      "status": "PASS",
+      "detail": "76/76 FBX files match processing/unity/fbx-baseline.json byte-for-byte"
+    },
+    {
+      "check": "production Unity assets and FBX metadata unchanged",
+      "status": "PASS",
+      "detail": "246 protected Assets/ProjectSettings files are byte-identical; both character .fbx.meta GUIDs are unchanged"
+    },
+    {
+      "check": "GLTF fallback files and test scene preserved",
+      "status": "PASS",
+      "detail": "isolated GLTF validator: 33 PASS / 0 FAIL / 4 NOT VERIFIED; original GLTF/BIN/PNG files and test scene are present"
+    },
+    {
+      "check": "Male FBX GUID unchanged",
+      "status": "PASS",
+      "detail": "unity-project/Assets/Characters/Male/Male character.fbx.meta has stable GUID c1867a8de9f4b1f1b76e69e097d73103"
+    },
+    {
+      "check": "Male Unity importer settings",
+      "status": "PASS",
+      "detail": "8 importer settings match the committed Humanoid policy in unity-project/Assets/Characters/Male/Male character.fbx.meta"
+    },
+    {
+      "check": "Male FBX binary structure",
+      "status": "PASS",
+      "detail": "FBX 7400, Z-up, unit scale 100, 3 skinned meshes, 65 bones, 22 canonical humanoid bones mapped, 0 missing required bones, no embedded AnimationStack"
+    },
+    {
+      "check": "Male embedded source textures",
+      "status": "PASS",
+      "detail": "7/7 texture nodes carry embedded PNG bytes (3,939,246 bytes); no unresolved external texture path"
+    },
+    {
+      "check": "Male no dangling committed material/texture asset reference",
+      "status": "PASS",
+      "detail": "unity-project/Assets/Characters/Male/Materials and unity-project/Assets/Characters/Male/Textures contain only .gitkeep; FBX is the self-contained production source"
+    },
+    {
+      "check": "Female FBX GUID unchanged",
+      "status": "PASS",
+      "detail": "unity-project/Assets/Characters/Female/Female character.fbx.meta has stable GUID 103ec3786913589cd676c3534c5074e7"
+    },
+    {
+      "check": "Female Unity importer settings",
+      "status": "PASS",
+      "detail": "8 importer settings match the committed Humanoid policy in unity-project/Assets/Characters/Female/Female character.fbx.meta"
+    },
+    {
+      "check": "Female FBX binary structure",
+      "status": "PASS",
+      "detail": "FBX 7400, Z-up, unit scale 100, 3 skinned meshes, 65 bones, 22 canonical humanoid bones mapped, 0 missing required bones, no embedded AnimationStack"
+    },
+    {
+      "check": "Female embedded source textures",
+      "status": "FAIL",
+      "detail": "6/7 texture nodes carry embedded PNG bytes (2,717,177 bytes); unresolved external path(s): C:\\Dropbox\\Work\\Blender\\_FreeModels\\_Unfinished\\Universal Base Characters\\Base Characters\\textures\\T_Superhero_Female_Normal.png"
+    },
+    {
+      "check": "Female no dangling committed material/texture asset reference",
+      "status": "PASS",
+      "detail": "unity-project/Assets/Characters/Female/Materials and unity-project/Assets/Characters/Female/Textures contain only .gitkeep; FBX is the self-contained production source"
+    },
+    {
+      "check": "available clip: Idle",
+      "status": "PASS",
+      "detail": "unity-project/Assets/Animations/Movement/idle.fbx: FBX 7700, one real AnimationStack, 315 curves, 63 frames, 22 canonical humanoid bones, 0 missing required bones"
+    },
+    {
+      "check": "Idle clip Humanoid import metadata",
+      "status": "PASS",
+      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Movement/idle.fbx.meta"
+    },
+    {
+      "check": "available clip: Walk",
+      "status": "PASS",
+      "detail": "unity-project/Assets/Animations/Movement/walking.fbx: FBX 7700, one real AnimationStack, 315 curves, 41 frames, 22 canonical humanoid bones, 0 missing required bones"
+    },
+    {
+      "check": "Walk clip Humanoid import metadata",
+      "status": "PASS",
+      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Movement/walking.fbx.meta"
+    },
+    {
+      "check": "available clip: Run",
+      "status": "PASS",
+      "detail": "unity-project/Assets/Animations/Movement/Running.fbx: FBX 7700, one real AnimationStack, 315 curves, 21 frames, 22 canonical humanoid bones, 0 missing required bones"
+    },
+    {
+      "check": "Run clip Humanoid import metadata",
+      "status": "PASS",
+      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Movement/Running.fbx.meta"
+    },
+    {
+      "check": "available clip: Jump",
+      "status": "PASS",
+      "detail": "unity-project/Assets/Animations/Movement/jump up.fbx: FBX 7700, one real AnimationStack, 315 curves, 16 frames, 22 canonical humanoid bones, 0 missing required bones"
+    },
+    {
+      "check": "Jump clip Humanoid import metadata",
+      "status": "PASS",
+      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Movement/jump up.fbx.meta"
+    },
+    {
+      "check": "available clip: Aim",
+      "status": "PASS",
+      "detail": "unity-project/Assets/Animations/Combat/idle aiming.fbx: FBX 7700, one real AnimationStack, 315 curves, 63 frames, 22 canonical humanoid bones, 0 missing required bones"
+    },
+    {
+      "check": "Aim clip Humanoid import metadata",
+      "status": "PASS",
+      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Combat/idle aiming.fbx.meta"
+    },
+    {
+      "check": "available clip: Shoot",
+      "status": "PASS",
+      "detail": "unity-project/Assets/Animations/Weapon/firing rifle.fbx: FBX 7700, one real AnimationStack, 315 curves, 8 frames, 22 canonical humanoid bones, 0 missing required bones"
+    },
+    {
+      "check": "Shoot clip Humanoid import metadata",
+      "status": "PASS",
+      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Weapon/firing rifle.fbx.meta"
+    },
+    {
+      "check": "available clip: Reload",
+      "status": "PASS",
+      "detail": "unity-project/Assets/Animations/Weapon/reloading.fbx: FBX 7700, one real AnimationStack, 315 curves, 99 frames, 22 canonical humanoid bones, 0 missing required bones"
+    },
+    {
+      "check": "Reload clip Humanoid import metadata",
+      "status": "PASS",
+      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Weapon/reloading.fbx.meta"
+    },
+    {
+      "check": "runtime FBX spawn path preserved",
+      "status": "PASS",
+      "detail": "PlayerCharacterVisual loads the generated config, instantiates the FBX model, assigns the controller and disables the capsule MeshRenderer when configured"
+    },
+    {
+      "check": "Aim Animator parameter is driven by runtime",
+      "status": "FAIL",
+      "detail": "no SetBool(IsAiming) exists under Assets/Scripts; the generated Aim state uses IsAiming, while PlayerCharacterVisual.SetAiming only changes UpperBody layer weight"
+    },
+    {
+      "check": "Aim gameplay hook is called",
+      "status": "FAIL",
+      "detail": "PlayerCharacterVisual.SetAiming(bool) has no runtime caller in Assets/Scripts; the Aim state cannot be entered from current gameplay input"
+    },
+    {
+      "check": "live shooting gameplay integration",
+      "status": "NOT VERIFIED",
+      "detail": "no live weapon/fire system exists under Assets/Scripts; only PlayerCharacterVisual.TriggerShoot/TriggerReload animation hooks and UI copy were found"
+    },
+    {
+      "check": "committed gameplay prefab / controller / config references",
+      "status": "NOT VERIFIED",
+      "detail": "no committed production prefab (0), controller (0) or config asset (0) exists; generated config/controllers and PlayerTest scene are Editor-created and must be checked in licensed Unity"
+    },
+    {
+      "check": "Android-compatible rendering configuration",
+      "status": "PASS",
+      "detail": "Linear, GPU skinning, min SDK 26, ARMv7+ARM64, IL2CPP, URP 17 and ASTC source settings are present"
+    },
+    {
+      "check": "Android device rendering / shader variants / FPS / memory / thermal",
+      "status": "NOT VERIFIED",
+      "detail": "configuration is static evidence only; no APK was built or installed and no physical Android device measurement was performed by this validator"
+    },
+    {
+      "check": "Unity Editor import settings and Humanoid Avatar validity",
+      "status": "NOT VERIFIED",
+      "detail": "requires licensed Unity 6; see EDITOR_VALIDATION.md"
+    },
+    {
+      "check": "Animator transitions and missing generated references",
+      "status": "NOT VERIFIED",
+      "detail": "requires the Editor-generated config/controllers; see EDITOR_VALIDATION.md"
+    },
+    {
+      "check": "animation deformation and visual mesh quality",
+      "status": "NOT VERIFIED",
+      "detail": "requires AnimationMode sampling and genuine Editor renders; see EDITOR_VALIDATION.md and CAPTURE_RESULT.md"
+    },
+    {
+      "check": "visible player mesh in gameplay scene",
+      "status": "NOT VERIFIED",
+      "detail": "requires PlayerTest scene and generated config in licensed Unity; see EDITOR_VALIDATION.md"
+    },
+    {
+      "check": "movement / camera / collision / ground alignment",
+      "status": "NOT VERIFIED",
+      "detail": "requires PlayMode tests in licensed Unity; see the PlayMode results in the CI job"
+    },
+    {
+      "check": "human front / facial / UV seam inspection",
+      "status": "NOT VERIFIED",
+      "detail": "requires human visual review; rear-view software-GL renders are not sufficient"
+    }
+  ]
+}
