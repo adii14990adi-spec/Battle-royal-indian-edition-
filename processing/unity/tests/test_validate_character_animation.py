@@ -105,6 +105,9 @@ class RuleMirrorTests(unittest.TestCase):
             _, problems = vca.guid_map([first, second])
             self.assertEqual(len(problems), 1)
 
+    def test_urp_default_material_guid_is_builtin(self):
+        self.assertIn("31321ba15b8f8eb4c954353edc038b1d", vca.BUILTIN_GUIDS)
+
 
 @unittest.skipUnless(
     (REPO_ROOT / "unity-project/Assets/Animations").is_dir(),

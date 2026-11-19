@@ -81,11 +81,14 @@ REQUIRED_GAMEPLAY_CATEGORIES = (
 )
 
 # Unity built-in GUIDs that are never backed by a .meta file in this project.
+# 31321ba... is the URP default material GUID used by GameObject.CreatePrimitive
+# in the isolated GLTF test scene; it resolves from URP global settings.
 BUILTIN_GUIDS = frozenset({
     "00000000000000000000000000000000",
     "0000000000000000f000000000000000",
     "0000000000000000e000000000000000",
     "00000000000000001000000000000000",
+    "31321ba15b8f8eb4c954353edc038b1d",
 })
 
 

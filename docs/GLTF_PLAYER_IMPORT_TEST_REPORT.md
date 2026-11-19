@@ -137,7 +137,7 @@ Both licence files are byte-identical and state **CC0 1.0 Universal / Public Dom
 - No texture quality reduction, mesh simplification, animation removal or runtime allocation change was made. No real-device FPS, thermal, memory or startup measurement was performed.
 
 ## 11. CI / test results
-**Local static sweep:** `validate_gltf_import_test.py` 33 PASS / 0 FAIL / 4 NOT VERIFIED; `processing/unity/tests` 23/23; `validate_structure.py` 17/0; `validate_csharp.py` 36/0 (tree-sitter, not a Unity compile); existing character/animation validator 20/0 with 7 Editor-only SKIP / 6 INFO; Blender 13/13; metadata sync 26/26. `docs/gltf_import_test/STATIC_VALIDATION.md` and `static_validation.json` are committed.
+**Local static sweep:** `validate_gltf_import_test.py` 33 PASS / 0 FAIL / 4 NOT VERIFIED; `processing/unity/tests` 24/24; `validate_structure.py` 17/0; `validate_csharp.py` 36/0 (tree-sitter, not a Unity compile); existing character/animation validator 20/0 with 7 Editor-only SKIP / 6 INFO; Blender 13/13; metadata sync 26/26. `docs/gltf_import_test/STATIC_VALIDATION.md` and `static_validation.json` are committed.
 
 **Main-branch note:** `main` deleted four `Assets/UserAssets` placeholder/demo files after this branch was created. The PR merge inherits those deletions; they are not caused by the GLTF experiment and are excluded from the protected-asset hash comparison. `validate_structure.py` now treats only those recorded main deletions as allowed missing directories.
 
@@ -202,6 +202,7 @@ The two PNG paths are Git LFS pointer files in this checkout, so Unity cannot im
 - **ProjectValidator FAIL (pre-existing):** `water_normal_256.png`, `battle_horizons_logo.png` and the default application icon. The PNGs are LFS pointers in the CI checkout; the icon is not assigned in ProjectSettings. These failures are inherited from the production project/main branch, not introduced by the isolated GLTF test.
 - **APK build FAIL:** `AndroidBuild.ConfigureValidateAndBuildApk` refuses to call `BuildPipeline.BuildPlayer` while `ProjectValidator.ValidateAll` reports failures. It exited before producing `build/battle-horizons.apk`. No Gradle/Android packaging error was reached.
 - **Unity island data integrity FAIL (independent):** `validate_unity_map.py` reports the `water_normal_256.png` LFS pointer and manifest hash mismatch. It is a separate pre-existing data job and does not invalidate the licensed GLTF Editor results.
+- **Generated scene GUID false positive (fixed):** the licensed scene builder uses `GameObject.CreatePrimitive` for the neutral floor, which serializes URP's built-in default material GUID `31321ba15b8f8eb4c954353edc038b1d`. The committed-reference validator initially treated it as a missing project asset and skipped the final-head licensed Unity job. `validate_character_animation.py` now recognises that GUID as a Unity built-in; no material asset was created or committed.
 - **Static structure check adjustment:** PR merge inherits four `Assets/UserAssets` deletions from `main`. `validate_structure.py` now allows only those recorded deleted directories to be absent; no deleted file was re-added.
 - No production FBX, `.fbx.meta`, GUID, Avatar, Animator Controller, gameplay prefab, scene reference or gameplay script was modified by this experiment.
 
