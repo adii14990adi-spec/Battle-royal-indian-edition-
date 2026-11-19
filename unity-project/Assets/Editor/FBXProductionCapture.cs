@@ -316,7 +316,13 @@ namespace BattleHorizons.EditorTools
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
                 var animatorWasEnabled = animator.enabled;
-                animator.enabled = false;
+                // Humanoid clips are sampled through the Animator's Avatar.
+                // Keep the Animator enabled while AnimationMode writes the
+                // sampled bone/muscle pose; disabling it leaves the skinned
+                // renderers in their bind pose even when SampleAnimationClip
+                // succeeds. The generated controller is removed above so no
+                // state machine can overwrite the sampled frames.
+                animator.enabled = true;
 
                 Color32[] restPixels;
                 Color32[] deformedPixels;
