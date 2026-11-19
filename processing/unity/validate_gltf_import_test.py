@@ -534,7 +534,7 @@ def check_protected_assets(report: Report) -> None:
             problems.append("changed " + rel)
     report.check("production assets unchanged",
                  not problems,
-                 f"{len(manifest['files']) - len(allowlisted)} protected Unity Assets/ProjectSettings files are byte-identical; only the two allowlisted test asmdefs were updated to reference new test assemblies",
+                 f"{len(manifest['files']) - len(allowlisted)} protected Unity Assets/ProjectSettings files are byte-identical; the two test asmdefs plus {len(allowlisted) - 2} explicitly hashed targeted FBX repair files are allowlisted in processing/unity/fbx_production_repair_manifest.json",
                  "; ".join(problems[:8]))
     report.info("main-branch deletions inherited by PR",
                 "main deleted " + str(len(manifest.get("main_deleted_after_branch_creation", []))) +

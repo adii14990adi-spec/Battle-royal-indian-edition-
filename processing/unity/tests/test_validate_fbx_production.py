@@ -42,16 +42,27 @@ class ProductionFbxValidatorTests(unittest.TestCase):
             self.assertTrue(fbx.is_file(), f"missing required clip: {fbx}")
             self.assertTrue(Path(str(fbx) + ".meta").is_file(), f"missing meta: {fbx}.meta")
 
-    def test_static_report_counts_known_failures_explicitly(self) -> None:
+    def test_static_report_accepts_only_scoped_repairs(self) -> None:
         report = validator.run_validation()
         statuses = {row["check"]: row["status"] for row in report.rows}
-        self.assertEqual(statuses["Female embedded source textures"], "FAIL")
-        self.assertEqual(statuses["Male Unity material import mode"], "FAIL")
-        self.assertEqual(statuses["Female Unity material import mode"], "FAIL")
-        self.assertEqual(statuses["runtime shared-assignment lookup handles Unity empty strings"], "FAIL")
-        self.assertEqual(statuses["Aim Animator parameter is driven by runtime"], "FAIL")
-        self.assertEqual(statuses["live shooting gameplay integration"], "NOT VERIFIED")
+        self.assertEqual(statuses["Female embedded source textures"], "PASS")
+        self.assertEqual(statuses["Male Unity material import mode"], "PASS")
+        self.assertEqual(statuses["Female Unity material import mode"], "PASS")
+        self.assertEqual(statuses["runtime shared-assignment lookup handles Unity empty strings"], "PASS")
+        self.assertEqual(statuses["Animator controller shared-assignment resolution handles Unity empty strings"], "PASS")
+        self.assertEqual(statuses["Aim Animator parameter is driven by runtime"], "PASS")
+        self.assertEqual(statuses["Aim gameplay hook is called"], "PASS")
+        self.assertEqual(statuses["14 exact production character textures and importer settings"], "PASS")
+        self.assertEqual(statuses["6 deterministic URP/Lit material remaps"], "PASS")
+        self.assertEqual(statuses["targeted repair protected file hashes verified"], "PASS")
+        self.assertEqual(statuses["Git LFS object identity and checkout smudge rules"], "PASS")
         self.assertEqual(statuses["all 76 production FBX files immutable"], "PASS")
+        self.assertEqual(statuses["all other production Unity assets and FBX metadata unchanged"], "PASS")
+        self.assertEqual(statuses["GLTF fallback files and test scene preserved"], "PASS")
+        self.assertEqual(statuses["live shooting gameplay integration"], "NOT VERIFIED")
+        self.assertEqual(statuses["Android device rendering / shader variants / FPS / memory / thermal"], "NOT VERIFIED")
+        self.assertEqual(statuses["correct textured Male/Female Editor camera captures"], "NOT VERIFIED")
+        self.assertFalse(report.failures, "\n".join(str(row) for row in report.failures))
 
 
 if __name__ == "__main__":

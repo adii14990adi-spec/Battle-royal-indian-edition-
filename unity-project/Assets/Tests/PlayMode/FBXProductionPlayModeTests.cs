@@ -181,13 +181,25 @@ namespace BattleHorizons.Tests.PlayMode
             Assert.Greater(animator.layerCount, CharacterAnimParameters.UpperBodyLayerIndex,
                 "generated controller must expose the UpperBody layer");
 
-            visual.SetAiming(true);
+            motor.AimInput = true;
             for (var i = 0; i < 20; i++)
             {
                 yield return null;
             }
+            Assert.IsTrue(animator.GetBool(CharacterAnimParameters.IsAiming),
+                "actual motor aim state must drive the IsAiming Animator bool");
             Assert.Greater(animator.GetLayerWeight(CharacterAnimParameters.UpperBodyLayerIndex), 0.5f,
                 "the existing SetAiming hook must ramp the UpperBody layer");
+
+            motor.AimInput = false;
+            for (var i = 0; i < 20; i++)
+            {
+                yield return null;
+            }
+            Assert.IsFalse(animator.GetBool(CharacterAnimParameters.IsAiming),
+                "leaving aim state must clear the IsAiming Animator bool");
+            Assert.Less(animator.GetLayerWeight(CharacterAnimParameters.UpperBodyLayerIndex), 0.1f,
+                "leaving aim state must ramp the UpperBody layer back down");
 
             visual.TriggerShoot();
             visual.TriggerReload();

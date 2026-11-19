@@ -59,6 +59,11 @@ namespace BattleHorizons.Player
         /// <summary>True while the crouch input is held.</summary>
         public bool CrouchInput { get; set; }
 
+        /// <summary>True while the gameplay aim input is held.</summary>
+        public bool AimInput { get; set; }
+
+        public bool IsAiming => AimInput;
+
         public bool IsGrounded => _controller != null && _controller.isGrounded;
         public bool IsCrouching => _crouching;
         public Vector3 Velocity => _velocity + Vector3.up * _verticalVelocity;

@@ -36,6 +36,7 @@ namespace BattleHorizons.Player
         private Vector2 _lookDelta;
         private bool _touchCrouchHeld;
         private bool _touchSprintHeld;
+        private bool _touchAimHeld;
 
         /// <summary>Last look input, degrees accumulated this frame (for the camera).</summary>
         public Vector2 LookDelta => _lookDelta;
@@ -49,6 +50,9 @@ namespace BattleHorizons.Player
 
         /// <summary>See <see cref="SetCrouchHeld"/>.</summary>
         public void SetSprintHeld(bool held) => _touchSprintHeld = held;
+
+        /// <summary>On-screen AIM hold button; ORed with physical aim bindings.</summary>
+        public void SetAimHeld(bool held) => _touchAimHeld = held;
 
         public void Configure(ThirdPersonMotor targetMotor, ThirdPersonCameraController targetCamera,
             VirtualJoystick move, VirtualJoystick look)
@@ -73,6 +77,7 @@ namespace BattleHorizons.Player
             motor.MoveInput = CameraRelative(move);
             motor.SprintInput = ReadSprint(move);
             motor.CrouchInput = ReadCrouch();
+            motor.AimInput = ReadAim();
 
             if (ReadJump())
             {
@@ -166,6 +171,23 @@ namespace BattleHorizons.Player
 
             var gamepad = Gamepad.current;
             return gamepad != null && gamepad.leftStickButton.isPressed;
+        }
+
+        private bool ReadAim()
+        {
+            if (_touchAimHeld)
+            {
+                return true;
+            }
+
+            var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.qKey.isPressed)
+            {
+                return true;
+            }
+
+            var gamepad = Gamepad.current;
+            return gamepad != null && gamepad.leftTrigger.ReadValue() > 0.5f;
         }
 
         private bool ReadCrouch()

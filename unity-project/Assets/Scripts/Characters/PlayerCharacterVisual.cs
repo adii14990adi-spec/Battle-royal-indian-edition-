@@ -18,6 +18,7 @@ namespace BattleHorizons.Characters
     ///   IsAirborne     ← !motor.IsGrounded
     ///   VerticalSpeed  ← motor.Velocity.y (clamped)
     ///   IsCrouching    ← motor.IsCrouching
+    ///   IsAiming       ← motor.IsAiming
     ///   UpperBody layer weight ← current aiming state (damped)
     /// </summary>
     [DefaultExecutionOrder(20)]
@@ -105,6 +106,9 @@ namespace BattleHorizons.Characters
                 GameLog.Error("characters", _active.displayName + " has no generated Animator controller");
             }
 
+            // A caller may have set aim state before the FBX was spawned.
+            _animator.SetBool(CharacterAnimParameters.IsAiming, _aiming);
+
             // A Generic (non-converted) Mixamo clip inside a Humanoid
             // controller plays nothing — the character freezes in its bind
             // pose. Say that out loud instead of letting it look like a bug.
@@ -121,10 +125,17 @@ namespace BattleHorizons.Characters
             return true;
         }
 
-        /// <summary>Gameplay hook: aiming changes the UpperBody layer weight.</summary>
+        /// <summary>
+        /// Gameplay hook: aiming drives the existing IsAiming Animator bool and
+        /// the UpperBody layer weight. Shoot/Reload triggers are unchanged.
+        /// </summary>
         public void SetAiming(bool aiming)
         {
             _aiming = aiming;
+            if (_animator != null)
+            {
+                _animator.SetBool(CharacterAnimParameters.IsAiming, aiming);
+            }
         }
 
         /// <summary>Gameplay hooks for the weapon one-shots (no-op when dormant).</summary>
@@ -170,6 +181,10 @@ namespace BattleHorizons.Characters
             }
 
             var dt = Time.deltaTime;
+            if (_aiming != motor.IsAiming)
+            {
+                SetAiming(motor.IsAiming);
+            }
             _animator.SetFloat(CharacterAnimParameters.Speed, motor.HorizontalSpeed, 0.12f, dt);
             _animator.SetBool(CharacterAnimParameters.IsAirborne, !motor.IsGrounded);
             _animator.SetFloat(CharacterAnimParameters.VerticalSpeed,

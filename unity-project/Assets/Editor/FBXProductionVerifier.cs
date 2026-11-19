@@ -312,12 +312,15 @@ namespace BattleHorizons.EditorTools
             {
                 var assignment = config.assignments[i];
                 if (assignment == null) continue;
-                if (assignment.characterId == null) nullShared++;
-                else if (assignment.characterId.Length == 0) emptyShared++;
+                if (CharacterAnimationConfig.IsSharedCharacterId(assignment.characterId))
+                {
+                    if (assignment.characterId == null) nullShared++;
+                    else emptyShared++;
+                }
                 else perCharacter++;
             }
             report.Info("generated assignment characterId representation",
-                nullShared + " null, " + emptyShared + " empty-string, " + perCharacter + " per-character entries; Unity serializes a null string as an empty string after domain reload");
+                nullShared + " null, " + emptyShared + " empty/whitespace shared, " + perCharacter + " per-character entries; Unity serializes a null string as an empty string after domain reload");
 
             var lookupFailures = new List<string>();
             for (var c = 0; c < RequiredCategories.Length; c++)
@@ -335,40 +338,22 @@ namespace BattleHorizons.EditorTools
             report.Check("runtime CharacterAnimationConfig.FindClip lookup", lookupFailures.Count == 0,
                 "FindClip returns the direct assignment for all 7 required categories",
                 "FindClip returned null for " + string.Join(", ", lookupFailures.ToArray())
-                    + " although the assignment list contains those clips; FindAssignment only treats assignment.characterId == null as shared, but " + emptyShared
-                    + " shared entries deserialize as empty string. This is a runtime config-lookup defect, not a missing clip.");
+                    + " although the assignment list contains those clips; CharacterAnimationConfig.FindAssignment must treat null, empty and whitespace shared IDs with case-insensitive per-character overrides.");
         }
 
         /// <summary>
-        /// Resolve a generated assignment directly, tolerating Unity's empty-string
-        /// deserialization of a null shared characterId. This is verification-only;
-        /// production runtime code is intentionally not modified.
+        /// Resolve a generated category through the repaired runtime lookup.
+        /// Unity deserializes null shared IDs as empty strings; the runtime
+        /// config now handles that representation directly.
         /// </summary>
         public static AnimationClip ResolveClipForCategory(
             CharacterAnimationConfig config,
             string characterId,
             CharacterAnimCategory category)
         {
-            if (config == null || config.assignments == null) return null;
-            var runtimeLookup = config.FindClip(characterId, category);
-            if (runtimeLookup != null) return runtimeLookup;
-
-            AnimationClip shared = null;
-            for (var i = 0; i < config.assignments.Count; i++)
-            {
-                var assignment = config.assignments[i];
-                if (assignment == null || assignment.category != category || assignment.clip == null) continue;
-                if (!string.IsNullOrEmpty(characterId)
-                    && string.Equals(assignment.characterId, characterId, StringComparison.OrdinalIgnoreCase))
-                {
-                    return assignment.clip;
-                }
-                if (string.IsNullOrEmpty(assignment.characterId) && shared == null)
-                {
-                    shared = assignment.clip;
-                }
-            }
-            return shared;
+            if (config == null) return null;
+            var assignment = config.FindAssignment(characterId, category);
+            return assignment != null ? assignment.clip : null;
         }
 
         private static void CheckModel(
@@ -399,10 +384,10 @@ namespace BattleHorizons.EditorTools
 
             var materialMode = importer == null ? "no importer" : importer.materialImportMode.ToString();
             report.Check(sex + " Unity material import mode",
-                importer != null && importer.materialImportMode != ModelImporterMaterialImportMode.None,
-                importer == null ? "" : "materialImportMode=" + materialMode + "; Unity can import the FBX's embedded materials/textures",
+                importer != null && importer.materialImportMode == ModelImporterMaterialImportMode.ImportStandard,
+                "materialImportMode=" + materialMode + "; exact committed URP/Lit external material remaps are active",
                 "materialImportMode=" + materialMode
-                    + ". Unity's None mode (serialized as 0) does not import materials, so the embedded FBX textures are not bound to the spawned character. No .fbx.meta was changed by this verifier.");
+                    + ". Unity's ImportStandard mode is required for the deterministic FBX material remaps.");
 
             var avatarOk = rig.success && rig.kind == RigKind.Humanoid
                 && avatar != null && avatar.isValid && avatar.isHuman;
@@ -459,6 +444,10 @@ namespace BattleHorizons.EditorTools
                 var errorShaders = 0;
                 var textureSlots = 0;
                 var invalidTextures = 0;
+                var materialSlots = 0;
+                var externalMaterials = 0;
+                var nonUrpShaders = 0;
+                var expectedMaterialsPrefix = "Assets/Characters/" + sex + "/Materials/";
                 var shaderNames = new HashSet<string>();
                 for (var r = 0; r < renderers.Length; r++)
                 {
@@ -476,6 +465,12 @@ namespace BattleHorizons.EditorTools
                             nullMaterials++;
                             continue;
                         }
+                        materialSlots++;
+                        if (AssetDatabase.GetAssetPath(material).StartsWith(expectedMaterialsPrefix,
+                            StringComparison.OrdinalIgnoreCase))
+                        {
+                            externalMaterials++;
+                        }
                         var shader = material.shader;
                         if (shader == null
                             || shader.name.IndexOf("Error", StringComparison.OrdinalIgnoreCase) >= 0
@@ -485,6 +480,7 @@ namespace BattleHorizons.EditorTools
                             continue;
                         }
                         shaderNames.Add(shader.name);
+                        if (shader.name != "Universal Render Pipeline/Lit") nonUrpShaders++;
                         for (var p = 0; p < shader.GetPropertyCount(); p++)
                         {
                             if (shader.GetPropertyType(p) != ShaderPropertyType.Texture) continue;
@@ -497,14 +493,34 @@ namespace BattleHorizons.EditorTools
                 }
 
                 var materialOk = nullMaterials == 0 && errorShaders == 0 && invalidTextures == 0
-                    && (textureSlots > 0 || textures > 0);
+                    && materialSlots >= 3 && externalMaterials == materialSlots
+                    && nonUrpShaders == 0 && textureSlots >= 6;
                 report.Check(sex + " imported materials/textures", materialOk,
                     renderers.Length + " renderers, " + skinned.Length + " SkinnedMeshRenderers, "
+                    + materialSlots + " material slots (" + externalMaterials + " external URP/Lit), "
                     + textureSlots + " bound texture slots, " + textures + " Texture2D sub-assets, "
                     + materials + " Material sub-assets, shaders: " + string.Join(", ", Sorted(shaderNames)),
                     nullMaterials + " null material(s), " + errorShaders + " error shader(s), "
-                    + invalidTextures + " invalid texture(s), " + textureSlots + " bound texture slots, "
-                    + textures + " Texture2D sub-assets");
+                    + invalidTextures + " invalid texture(s), " + materialSlots + " material slots ("
+                    + externalMaterials + " external), " + nonUrpShaders + " non-URP/Lit shader(s), "
+                    + textureSlots + " bound texture slots, " + textures + " Texture2D sub-assets");
+
+                var normalPath = sex == "Female"
+                    ? "Assets/Characters/Female/Textures/T_Superhero_Female_Normal.png"
+                    : "Assets/Characters/Male/Textures/T_Superhero_Male_Normal.png";
+                var normalImporter = AssetImporter.GetAtPath(normalPath) as TextureImporter;
+                var normalSettings = new TextureImporterSettings();
+                if (normalImporter != null) normalImporter.ReadTextureSettings(normalSettings);
+                report.Check(sex + " normal map resolves as NormalMap",
+                    normalImporter != null
+                        && normalSettings.textureType == TextureImporterType.NormalMap
+                        && !normalSettings.sRGBTexture
+                        && !normalSettings.convertToNormalMap,
+                    normalPath + ": TextureImporterType.NormalMap, linear sRGB=false, convertToNormalMap=false",
+                    normalPath + ": importer=" + (normalImporter != null)
+                        + ", type=" + normalSettings.textureType
+                        + ", sRGB=" + normalSettings.sRGBTexture
+                        + ", convert=" + normalSettings.convertToNormalMap);
 
                 var bounds = CalculateBounds(renderers);
                 var boundsOk = bounds.size.y >= 1.35f && bounds.size.y <= 2.25f
@@ -549,6 +565,39 @@ namespace BattleHorizons.EditorTools
             report.Check("Animator parameters: " + character.id, missingParameters.Count == 0,
                 RequiredParameters.Length + "/" + RequiredParameters.Length + " shared runtime parameters present with expected types",
                 "missing/wrong-type: " + string.Join(", ", missingParameters.ToArray()));
+
+            var parameterCounts = new Dictionary<string, int>();
+            for (var i = 0; i < controller.parameters.Length; i++)
+            {
+                var name = controller.parameters[i].name;
+                int count;
+                parameterCounts.TryGetValue(name, out count);
+                parameterCounts[name] = count + 1;
+            }
+            var duplicateParameters = new List<string>();
+            foreach (var pair in parameterCounts)
+            {
+                if (pair.Value > 1) duplicateParameters.Add(pair.Key + " x" + pair.Value);
+            }
+            var aimEntryTransitions = 0;
+            if (controller.layers.Length > 0)
+            {
+                foreach (var transition in controller.layers[0].stateMachine.anyStateTransitions)
+                {
+                    for (var c = 0; c < transition.conditions.Length; c++)
+                    {
+                        if (transition.conditions[c].parameter == CharacterAnimParameters.IsAiming)
+                        {
+                            aimEntryTransitions++;
+                        }
+                    }
+                }
+            }
+            report.Check("Animator parameter/transition uniqueness: " + character.id,
+                duplicateParameters.Count == 0 && aimEntryTransitions == 1,
+                controller.parameters.Length + " parameters with unique names; exactly one IsAiming Any-State entry transition",
+                "duplicate parameters: " + string.Join(", ", duplicateParameters.ToArray())
+                    + "; IsAiming Any-State conditions=" + aimEntryTransitions);
 
             if (controller.layers.Length == 0)
             {
@@ -770,8 +819,11 @@ namespace BattleHorizons.EditorTools
         private static void CheckRuntimeAimAndShootingSources(Report report)
         {
             var runtimeRoot = Path.Combine(Application.dataPath, "Scripts");
+            var editorRoot = Path.Combine(Application.dataPath, "Editor");
             var setBoolLines = new List<string>();
             var setAimingCalls = new List<string>();
+            var aimStateLines = new List<string>();
+            var aimTouchLines = new List<string>();
             var sourceCount = 0;
             if (Directory.Exists(runtimeRoot))
             {
@@ -785,12 +837,28 @@ namespace BattleHorizons.EditorTools
                     {
                         var line = lines[l];
                         if (line.Contains("SetBool") && line.Contains("IsAiming"))
-                        {
                             setBoolLines.Add(relative + ":" + (l + 1));
-                        }
                         if (line.Contains("SetAiming(") && !line.Contains("public void SetAiming"))
-                        {
                             setAimingCalls.Add(relative + ":" + (l + 1));
+                        if (line.Contains("AimInput") || line.Contains("IsAiming"))
+                            aimStateLines.Add(relative + ":" + (l + 1));
+                        if (line.Contains("SetAimHeld") || line.Contains("AimButton"))
+                            aimTouchLines.Add(relative + ":" + (l + 1));
+                    }
+                }
+            }
+
+            var isAimingParameterDeclarations = 0;
+            if (Directory.Exists(editorRoot))
+            {
+                foreach (var file in Directory.GetFiles(editorRoot, "*.cs", SearchOption.AllDirectories))
+                {
+                    foreach (var line in File.ReadAllLines(file))
+                    {
+                        if (line.TrimStart().StartsWith("AddParameter(", StringComparison.Ordinal)
+                            && line.Contains("CharacterAnimParameters.IsAiming"))
+                        {
+                            isAimingParameterDeclarations++;
                         }
                     }
                 }
@@ -798,13 +866,20 @@ namespace BattleHorizons.EditorTools
 
             report.Check("Aim Animator parameter is driven by runtime", setBoolLines.Count > 0,
                 "found SetBool(IsAiming) in " + string.Join(", ", setBoolLines.ToArray()),
-                "scanned " + sourceCount + " runtime C# files; no SetBool(IsAiming) exists. "
-                    + "The generated Aim state uses IsAiming, but PlayerCharacterVisual.SetAiming only changes UpperBody layer weight.");
+                "scanned " + sourceCount + " runtime C# files; no SetBool(IsAiming) exists.");
             report.Check("Aim gameplay hook is called", setAimingCalls.Count > 0,
                 "found runtime caller(s): " + string.Join(", ", setAimingCalls.ToArray()),
-                "PlayerCharacterVisual.SetAiming(bool) has no runtime caller; the Aim state cannot be entered from current gameplay input.");
+                "PlayerCharacterVisual.SetAiming(bool) has no runtime caller.");
+            report.Check("actual runtime aim state and touch input exist",
+                aimStateLines.Count > 0 && aimTouchLines.Count > 0,
+                "motor AimInput/IsAiming and PlayerInputRouter/MobileControlsBuilder AIM hold-button wiring found",
+                "scanned " + sourceCount + " runtime C# files; missing AimInput state or SetAimHeld/AimButton wiring.");
+            report.Check("IsAiming parameter definition is not duplicated",
+                isAimingParameterDeclarations == 1,
+                "exactly one AddParameter(CharacterAnimParameters.IsAiming) builder declaration",
+                "found " + isAimingParameterDeclarations + " IsAiming parameter declarations under Assets/Editor");
             report.NotVerified("live shooting gameplay integration",
-                "no weapon/fire gameplay system is present in runtime scripts; only PlayerCharacterVisual.TriggerShoot/TriggerReload animation hooks and PlayMode hook safety tests exist");
+                "aiming state now drives IsAiming and SetAiming, but no weapon/fire gameplay system is present; only PlayerCharacterVisual.TriggerShoot/TriggerReload animation hooks and PlayMode hook safety tests exist");
         }
 
         private static void CheckAndroidConfiguration(Report report, List<ModelEntry> models)

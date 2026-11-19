@@ -47,6 +47,25 @@ jobs:
           fetch-depth: 1
           lfs: true
 
+      - name: Verify Git LFS smudge
+        shell: bash
+        run: |
+          set -euo pipefail
+          git lfs version
+          git lfs ls-files
+          for f in \
+            "unity-project/Assets/Resources/Art/Textures/water_normal_256.png" \
+            "unity-project/Assets/Resources/UI/battle_horizons_loading_bar.png" \
+            "unity-project/Assets/Resources/UI/battle_horizons_loading_spinner.png" \
+            "unity-project/Assets/Resources/UI/battle_horizons_logo.png" \
+            "unity-project/Assets/UI/Icons/battle_horizons_icon.png"; do
+            if head -c 60 "$f" | grep -q 'version https://git-lfs.github.com/spec/v1'; then
+              echo "::error::$f is still an LFS pointer after checkout"
+              exit 1
+            fi
+            stat -c '%n %s bytes' "$f"
+          done
+
       - name: Verify Unity and signing secrets
         id: secrets
         shell: bash

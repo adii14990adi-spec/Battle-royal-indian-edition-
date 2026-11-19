@@ -55,7 +55,7 @@ namespace BattleHorizons.Characters
     [Serializable]
     public sealed class CharacterAnimAssignment
     {
-        /// <summary>Null = shared default; otherwise this character's override.</summary>
+        /// <summary>Null, empty or whitespace = shared default; otherwise this character's override.</summary>
         public string characterId;
         public CharacterAnimCategory category;
         public AnimationClip clip;
@@ -106,6 +106,23 @@ namespace BattleHorizons.Characters
     {
         /// <summary>Resources.Load path (file lives in any Resources folder).</summary>
         public const string ResourcePath = "CharacterAnimationConfig";
+
+        /// <summary>
+        /// Unity deserializes a null serialized string as an empty string. A
+        /// shared assignment can therefore be null, empty or whitespace after a
+        /// domain reload. Whitespace-only IDs are treated as shared too, so an
+        /// accidental inspector value can never masquerade as a character ID.
+        /// </summary>
+        public static bool IsSharedCharacterId(string id)
+        {
+            return string.IsNullOrEmpty(id) || string.IsNullOrEmpty(id.Trim());
+        }
+
+        /// <summary>Trimmed ID used for case-insensitive per-character lookups.</summary>
+        public static string NormalizeCharacterId(string id)
+        {
+            return string.IsNullOrEmpty(id) ? string.Empty : id.Trim();
+        }
 
         public List<CharacterDefinition> characters = new List<CharacterDefinition>();
         public List<ImportedSourceRecord> importedSources = new List<ImportedSourceRecord>();
@@ -165,8 +182,10 @@ namespace BattleHorizons.Characters
         }
 
         /// <summary>
-        /// The assignment for a category: the character's own override when
-        /// present, otherwise the shared default (characterId null).
+        /// The assignment for a category: a case-insensitive character override
+        /// when present, otherwise the null/empty/whitespace shared default.
+        /// Unmatched or null character IDs deliberately fall back to the shared
+        /// assignment; Male and Female overrides stay independent.
         /// </summary>
         public CharacterAnimAssignment FindAssignment(string characterId, CharacterAnimCategory category)
         {
@@ -175,6 +194,8 @@ namespace BattleHorizons.Characters
                 return null;
             }
 
+            var requested = NormalizeCharacterId(characterId);
+            var hasRequested = !string.IsNullOrEmpty(requested);
             CharacterAnimAssignment fallback = null;
             for (var i = 0; i < assignments.Count; i++)
             {
@@ -184,15 +205,21 @@ namespace BattleHorizons.Characters
                     continue;
                 }
 
-                if (assignment.characterId != null
-                    && string.Equals(assignment.characterId, characterId, StringComparison.OrdinalIgnoreCase))
+                var shared = IsSharedCharacterId(assignment.characterId);
+                if (shared)
                 {
-                    return assignment;
+                    if (fallback == null)
+                    {
+                        fallback = assignment;
+                    }
+                    continue;
                 }
 
-                if (assignment.characterId == null)
+                if (hasRequested && string.Equals(
+                        NormalizeCharacterId(assignment.characterId), requested,
+                        StringComparison.OrdinalIgnoreCase))
                 {
-                    fallback = assignment;
+                    return assignment;
                 }
             }
 

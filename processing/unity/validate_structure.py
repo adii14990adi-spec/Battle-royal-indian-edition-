@@ -285,6 +285,22 @@ def main() -> int:
                  (": " + "; ".join(syntax_errors[:4]) if syntax_errors else ""))
 
     artifacts = [path for path in files if Path(path).suffix.lower() in FORBIDDEN_ARTIFACT_SUFFIXES]
+    gitattributes = REPO_ROOT / ".gitattributes"
+    lfs_paths = [
+        "unity-project/Assets/Resources/Art/Textures/water_normal_256.png",
+        "unity-project/Assets/Resources/UI/battle_horizons_loading_bar.png",
+        "unity-project/Assets/Resources/UI/battle_horizons_loading_spinner.png",
+        "unity-project/Assets/Resources/UI/battle_horizons_logo.png",
+        "unity-project/Assets/UI/Icons/battle_horizons_icon.png",
+    ]
+    lfs_text = gitattributes.read_text(encoding="utf-8") if gitattributes.is_file() else ""
+    missing_lfs_rules = [path for path in lfs_paths
+                         if f'"{path}" filter=lfs diff=lfs merge=lfs -text' not in lfs_text]
+    report.check(not missing_lfs_rules,
+                 "five committed Git LFS PNG pointers have explicit checkout smudge rules")
+    if missing_lfs_rules:
+        report.check(False, "missing LFS smudge rules: " + ", ".join(missing_lfs_rules))
+
     report.check(not artifacts,
                  "no APK, AAB, keystore or Unity license artifact is committed" +
                  (": " + ", ".join(artifacts) if artifacts else ""))

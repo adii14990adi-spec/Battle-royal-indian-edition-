@@ -38,6 +38,20 @@ namespace BattleHorizons.Tests.EditMode
         }
 
         [Test]
+        public void ProductionCharacterTexturesAreScopedOutsideThePropBudget()
+        {
+            Assert.IsTrue(AssetImportRules.IsProductionCharacterTexture(
+                "Assets/Characters/Male/Textures/T_Superhero_Male_Normal.png"), "Male normal map");
+            Assert.IsTrue(AssetImportRules.IsProductionCharacterTexture(
+                "Assets/Characters/Female/Textures/T_Superhero_Female_Normal.png"), "Female normal map");
+            Assert.IsFalse(AssetImportRules.IsProductionCharacterTexture(
+                "Assets/Characters/GLTF_Import_Test/Female/Original/T_Superhero_Female_Normal.png"), "GLTF fallback");
+            Assert.IsFalse(AssetImportRules.IsProductionCharacterTexture(
+                "Assets/Resources/Art/Textures/water_normal_256.png"), "environment texture");
+            Assert.IsFalse(AssetImportRules.IsProductionCharacterTexture(null), "null path");
+        }
+
+        [Test]
         public void EnvironmentPropsAreNotHumanoid()
         {
             Assert.IsFalse(AssetImportRules.IsHumanoidAsset(

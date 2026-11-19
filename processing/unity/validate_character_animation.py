@@ -91,6 +91,11 @@ BUILTIN_GUIDS = frozenset({
     "31321ba15b8f8eb4c954353edc038b1d",
 })
 
+# Exact GUID of URP 17's Packages/com.unity.render-pipelines.universal/
+# Shaders/Lit.shader.meta. Package GUIDs are not stored under Assets/, so the
+# static resolver must recognise this one after verifying that URP is declared.
+URP_LIT_SHADER_GUID = "933532a4fcc9baf4fa0491de14d08ed7"
+
 
 def infer_category(file_name: str) -> str:
     """Python mirror of CharacterAnimCategories.InferFromFileName."""
@@ -601,18 +606,34 @@ def main(argv: list[str] | None = None) -> int:
     # Committed asset references
     # ------------------------------------------------------------------ #
     yaml_assets = unity_yaml_assets()
+    manifest = json.loads((UNITY / "Packages/manifest.json").read_text(encoding="utf-8"))
+    urp_declared = "com.unity.render-pipelines.universal" in manifest.get("dependencies", {})
+    lit_materials = [
+        asset for asset in yaml_assets
+        if asset.suffix == ".mat"
+        and asset.parent.name == "Materials"
+        and asset.parent.parent.name in ("Male", "Female")
+        and asset.parent.parent.parent.name == "Characters"
+    ]
+    lit_guids_ok = urp_declared and len(lit_materials) == 6 and all(
+        f"guid: {URP_LIT_SHADER_GUID}" in asset.read_text(encoding="utf-8")
+        for asset in lit_materials
+    )
     broken_refs: list[str] = []
     reference_count = 0
     for asset in yaml_assets:
         text = asset.read_text(encoding="utf-8", errors="replace")
         for guid in referenced_guids(text):
             reference_count += 1
-            if guid not in owners and guid not in BUILTIN_GUIDS:
+            package_guid_ok = (
+                guid == URP_LIT_SHADER_GUID and asset in lit_materials and lit_guids_ok
+            )
+            if guid not in owners and guid not in BUILTIN_GUIDS and not package_guid_ok:
                 broken_refs.append(f"{asset.relative_to(REPO_ROOT)} -> {guid}")
     report.check("committed asset references resolve", not broken_refs,
                  "; ".join(broken_refs[:6]) if broken_refs else
                  f"{reference_count} guid reference(s) in {len(yaml_assets)} "
-                 "committed YAML asset(s) — all resolve")
+                 "committed YAML asset(s) — all Assets GUIDs resolve; the six production materials use the exact package GUID for URP/Lit")
     report.stats["committed_yaml_assets"] = len(yaml_assets)
     report.stats["committed_guid_references"] = reference_count
 

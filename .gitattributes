@@ -7,3 +7,13 @@
 "unity-project/Assets/Characters/GLTF_Import_Test/Female/UnityTestCopy/License_Standard(1).txt" -text
 "unity-project/Assets/Characters/GLTF_Import_Test/Documentation/Male_License_Standard.txt" -text
 "unity-project/Assets/Characters/GLTF_Import_Test/Documentation/Female_License_Standard(1).txt" -text
+
+# These five committed PNG blobs are Git LFS pointers whose objects exist on
+# GitHub. Declaring the LFS filter lets actions/checkout with lfs:true smudge
+# them into the exact SHA-256 binaries expected by the island-data and Unity
+# ProjectValidator checks. Without these rules CI kept the 131-byte pointers.
+"unity-project/Assets/Resources/Art/Textures/water_normal_256.png" filter=lfs diff=lfs merge=lfs -text
+"unity-project/Assets/Resources/UI/battle_horizons_loading_bar.png" filter=lfs diff=lfs merge=lfs -text
+"unity-project/Assets/Resources/UI/battle_horizons_loading_spinner.png" filter=lfs diff=lfs merge=lfs -text
+"unity-project/Assets/Resources/UI/battle_horizons_logo.png" filter=lfs diff=lfs merge=lfs -text
+"unity-project/Assets/UI/Icons/battle_horizons_icon.png" filter=lfs diff=lfs merge=lfs -text

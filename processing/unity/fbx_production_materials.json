@@ -1,0 +1,85 @@
+{
+  "description": "Deterministic URP/Lit production FBX material remaps. Each FBX material name is mapped to one committed .mat with its exact embedded/existing base-color and normal-map texture GUIDs. Roughness textures are preserved as production assets but are not bound to URP/Lit roughness because no conversion/generation is permitted.",
+  "urp_lit_shader_guid": "933532a4fcc9baf4fa0491de14d08ed7",
+  "material_count": 6,
+  "materials": [
+    {
+      "sex": "Male",
+      "name": "MI_Eyes",
+      "path": "unity-project/Assets/Characters/Male/Materials/MI_Eyes.mat",
+      "meta_path": "unity-project/Assets/Characters/Male/Materials/MI_Eyes.mat.meta",
+      "guid": "a1d1117731fafaf33db3f371f5bddff9",
+      "shader_guid": "933532a4fcc9baf4fa0491de14d08ed7",
+      "shader_name": "Universal Render Pipeline/Lit",
+      "base_texture": "unity-project/Assets/Characters/Male/Textures/T_Eye_Brown(Copy).png",
+      "base_texture_guid": "e4e98d52127ace3c6282a20fe207e182",
+      "normal_texture": "unity-project/Assets/Characters/Male/Textures/T_Eye_Normal(Copy).png",
+      "normal_texture_guid": "0d4258aa16d33678a5219611a87b8807"
+    },
+    {
+      "sex": "Male",
+      "name": "MI_Hair_1",
+      "path": "unity-project/Assets/Characters/Male/Materials/MI_Hair_1.mat",
+      "meta_path": "unity-project/Assets/Characters/Male/Materials/MI_Hair_1.mat.meta",
+      "guid": "541593e014f10e2c814e52558731bfe4",
+      "shader_guid": "933532a4fcc9baf4fa0491de14d08ed7",
+      "shader_name": "Universal Render Pipeline/Lit",
+      "base_texture": "unity-project/Assets/Characters/Male/Textures/T_Hair_2_BaseColor.png",
+      "base_texture_guid": "0cbb5f84b5771f8e828cabf45a1dada4",
+      "normal_texture": "unity-project/Assets/Characters/Male/Textures/T_Hair_2_Normal.png",
+      "normal_texture_guid": "f5ac2973d988567feedab8efd0542fc3"
+    },
+    {
+      "sex": "Male",
+      "name": "MI_Superhero_Male",
+      "path": "unity-project/Assets/Characters/Male/Materials/MI_Superhero_Male.mat",
+      "meta_path": "unity-project/Assets/Characters/Male/Materials/MI_Superhero_Male.mat.meta",
+      "guid": "0d4e37e246be8320a69c12b041e77ea1",
+      "shader_guid": "933532a4fcc9baf4fa0491de14d08ed7",
+      "shader_name": "Universal Render Pipeline/Lit",
+      "base_texture": "unity-project/Assets/Characters/Male/Textures/T_Superhero_Male_Dark.png",
+      "base_texture_guid": "1a04515f26d0eea5bca65d8c7a202103",
+      "normal_texture": "unity-project/Assets/Characters/Male/Textures/T_Superhero_Male_Normal.png",
+      "normal_texture_guid": "d183aaf5a86236c29400a1fed04be97d"
+    },
+    {
+      "sex": "Female",
+      "name": "MI_Eyes",
+      "path": "unity-project/Assets/Characters/Female/Materials/MI_Eyes.mat",
+      "meta_path": "unity-project/Assets/Characters/Female/Materials/MI_Eyes.mat.meta",
+      "guid": "c166a17fe1088ea8365f7e0d87a9d70f",
+      "shader_guid": "933532a4fcc9baf4fa0491de14d08ed7",
+      "shader_name": "Universal Render Pipeline/Lit",
+      "base_texture": "unity-project/Assets/Characters/Female/Textures/T_Eye_Brown.png",
+      "base_texture_guid": "586a4802de73fae877c07724de61c389",
+      "normal_texture": "unity-project/Assets/Characters/Female/Textures/T_Eye_Normal.png",
+      "normal_texture_guid": "3f63f69f25896963e8b2f4601fc38a51"
+    },
+    {
+      "sex": "Female",
+      "name": "MI_Hair_2",
+      "path": "unity-project/Assets/Characters/Female/Materials/MI_Hair_2.mat",
+      "meta_path": "unity-project/Assets/Characters/Female/Materials/MI_Hair_2.mat.meta",
+      "guid": "5a829b520afb177f228735beb151b4b1",
+      "shader_guid": "933532a4fcc9baf4fa0491de14d08ed7",
+      "shader_name": "Universal Render Pipeline/Lit",
+      "base_texture": "unity-project/Assets/Characters/Female/Textures/T_Hair_1_BaseColor.png",
+      "base_texture_guid": "4457a9bb13ea7f455e089154eb894bed",
+      "normal_texture": "unity-project/Assets/Characters/Female/Textures/T_Hair_1_Normal.png",
+      "normal_texture_guid": "47eff7a6196a3f74dc77300865b6d1c8"
+    },
+    {
+      "sex": "Female",
+      "name": "MI_Superhero_Female",
+      "path": "unity-project/Assets/Characters/Female/Materials/MI_Superhero_Female.mat",
+      "meta_path": "unity-project/Assets/Characters/Female/Materials/MI_Superhero_Female.mat.meta",
+      "guid": "1f7dafde68f908c7b2a165f722dbe075",
+      "shader_guid": "933532a4fcc9baf4fa0491de14d08ed7",
+      "shader_name": "Universal Render Pipeline/Lit",
+      "base_texture": "unity-project/Assets/Characters/Female/Textures/T_Superhero_Female_Light_BaseColor.png",
+      "base_texture_guid": "0ced3f70236d38c0a49e61e0d35dbe18",
+      "normal_texture": "unity-project/Assets/Characters/Female/Textures/T_Superhero_Female_Normal.png",
+      "normal_texture_guid": "fa42b100c15dedde87b9c899414524b3"
+    }
+  ]
+}

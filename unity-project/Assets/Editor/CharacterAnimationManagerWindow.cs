@@ -656,8 +656,11 @@ namespace BattleHorizons.EditorTools
                     continue;
                 }
 
-                var isDefault = assignment.characterId == null;
-                var isOurs = string.Equals(assignment.characterId, character.id, StringComparison.Ordinal);
+                var isDefault = CharacterAnimationConfig.IsSharedCharacterId(assignment.characterId);
+                var isOurs = string.Equals(
+                    CharacterAnimationConfig.NormalizeCharacterId(assignment.characterId),
+                    CharacterAnimationConfig.NormalizeCharacterId(character.id),
+                    StringComparison.OrdinalIgnoreCase);
                 if (isDefault || isOurs)
                 {
                     _draftAssignments[assignment.category.ToString()] = assignment.clip;
