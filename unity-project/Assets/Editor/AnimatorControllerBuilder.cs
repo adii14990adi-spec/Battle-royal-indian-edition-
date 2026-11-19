@@ -65,7 +65,12 @@ namespace BattleHorizons.EditorTools
             }
 
             // ---- resolve clips -------------------------------------------
+            // Unity serializes null shared characterId values as empty strings.
+            // Treat null/empty/whitespace as shared, match real IDs without
+            // case sensitivity, and let per-character overrides win for their
+            // own character only.
             var resolved = new Dictionary<CharacterAnimCategory, AnimationClip>();
+            var requested = CharacterAnimationConfig.NormalizeCharacterId(character.id);
             for (var i = 0; i < config.assignments.Count; i++)
             {
                 var assignment = config.assignments[i];
@@ -74,14 +79,15 @@ namespace BattleHorizons.EditorTools
                     continue;
                 }
 
-                if (assignment.characterId != null
-                    && !string.Equals(assignment.characterId, character.id, StringComparison.Ordinal))
+                var shared = CharacterAnimationConfig.IsSharedCharacterId(assignment.characterId);
+                if (!shared && !string.Equals(
+                        CharacterAnimationConfig.NormalizeCharacterId(assignment.characterId),
+                        requested, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
 
-                // Per-character entries win over the shared default (null id).
-                if (!resolved.ContainsKey(assignment.category) || assignment.characterId != null)
+                if (!resolved.ContainsKey(assignment.category) || !shared)
                 {
                     resolved[assignment.category] = assignment.clip;
                 }

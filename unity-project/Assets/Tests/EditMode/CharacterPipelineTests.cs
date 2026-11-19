@@ -355,129 +355,151 @@ namespace BattleHorizons.Tests
         [Test]
         public void BuildController_CreatesAllParametersStatesAndUpperBodyLayer()
         {
-            var config = CharacterAnimationConfigLibrary.LoadOrCreate();
-            var character = CharacterAnimationConfigLibrary.GetOrCreateCharacter(
-                config, "male", "Male");
-            character.model = AssetDatabase.LoadAssetAtPath<GameObject>(MalePath);
-            character.humanoidRigValid = true;
-
-            // Assign a real clip for every category the library covers.
-            var clipsByCategory = LoadRealClipsByCategory();
-            foreach (var pair in clipsByCategory)
+            // Use a scratch config and a scratch controller path. The old test
+            // wrote arbitrary GUID-order clips as per-character overrides into
+            // the real generated config, which later leaked into captures and
+            // the APK as a non-canonical Walk assignment.
+            var config = ScriptableObject.CreateInstance<CharacterAnimationConfig>();
+            var character = new CharacterDefinition
             {
-                config.AddOrUpdateAssignment(new CharacterAnimAssignment
+                id = "pipeline_male",
+                displayName = "Pipeline Male",
+                model = AssetDatabase.LoadAssetAtPath<GameObject>(MalePath),
+                humanoidRigValid = true,
+            };
+            config.characters.Add(character);
+            var controllerPath = CharacterAnimationConfigLibrary.ControllersFolder
+                + "/" + character.id + "_Locomotion.controller";
+
+            try
+            {
+                // Assign a real clip for every category the library covers.
+                var clipsByCategory = LoadRealClipsByCategory();
+                foreach (var pair in clipsByCategory)
                 {
-                    characterId = character.id,
-                    category = pair.Key,
-                    clip = pair.Value,
-                    sourcePath = pair.Value.name + ".fbx",
-                }, character.id);
+                    config.AddOrUpdateAssignment(new CharacterAnimAssignment
+                    {
+                        characterId = character.id,
+                        category = pair.Key,
+                        clip = pair.Value,
+                        sourcePath = pair.Value.name + ".fbx",
+                    }, character.id);
+                }
+
+                Assert.IsTrue(clipsByCategory.ContainsKey(CharacterAnimCategory.Idle),
+                    "the library must contain an Idle clip for the required state");
+
+                var build = AnimatorControllerBuilder.BuildController(config, character);
+
+                Assert.IsTrue(build.success, "controller build failed: " + build.summary);
+                Assert.IsNotNull(build.controller, "controller asset created");
+                Assert.IsTrue(character.controller == build.controller,
+                    "controller assigned back onto the character definition");
+
+                var controller = build.controller;
+
+                // All ten parameters.
+                var parameterNames = new List<string>();
+                foreach (var parameter in controller.parameters)
+                {
+                    parameterNames.Add(parameter.name);
+                }
+
+                foreach (var expected in new[]
+                {
+                    CharacterAnimParameters.Speed,
+                    CharacterAnimParameters.VerticalSpeed,
+                    CharacterAnimParameters.IsAirborne,
+                    CharacterAnimParameters.IsCrouching,
+                    CharacterAnimParameters.IsAiming,
+                    CharacterAnimParameters.Shoot,
+                    CharacterAnimParameters.Reload,
+                    CharacterAnimParameters.Death,
+                    CharacterAnimParameters.WeaponSwitch,
+                    CharacterAnimParameters.Melee,
+                })
+                {
+                    Assert.Contains(expected, parameterNames, "missing parameter " + expected);
+                }
+
+                // Base layer states for every assigned category that has a state.
+                var baseMachine = controller.layers[0].stateMachine;
+                var stateNames = new List<string>();
+                foreach (var state in baseMachine.states)
+                {
+                    stateNames.Add(state.state.name);
+                }
+
+                foreach (var required in new[]
+                {
+                    "Idle", "Walk", "Run", "Sprint", "Crouch", "Jump", "Fall",
+                    "Aim", "Shoot", "Reload", "WeaponSwitch", "Melee", "Death",
+                })
+                {
+                    Assert.Contains(required, stateNames, "missing base state " + required);
+                }
+
+                // Smooth Any State transitions actually exist.
+                Assert.Greater(baseMachine.anyStateTransitions.Length, 0,
+                    "locomotion must have Any State transitions");
+
+                // UpperBody layer with avatar mask (legs disabled, arms enabled).
+                Assert.AreEqual(2, controller.layers.Length,
+                    "UpperBody weapon layer must exist");
+                var upper = controller.layers[1];
+                Assert.AreEqual("UpperBody", upper.name);
+                Assert.IsNotNull(upper.avatarMask, "UpperBody layer needs an avatar mask");
+                Assert.IsFalse(upper.avatarMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftLeg),
+                    "mask must disable the left leg");
+                Assert.IsFalse(upper.avatarMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.RightLeg),
+                    "mask must disable the right leg");
+                Assert.IsTrue(upper.avatarMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftArm),
+                    "mask must enable the left arm");
+                var upperStates = new List<string>();
+                foreach (var state in upper.stateMachine.states)
+                {
+                    upperStates.Add(state.state.name);
+                }
+
+                Assert.Contains("RifleIdle", upperStates, "Rifle Idle state on UpperBody layer");
+                Assert.Contains("RifleRun", upperStates, "Rifle Run state on UpperBody layer");
             }
-
-            Assert.IsTrue(clipsByCategory.ContainsKey(CharacterAnimCategory.Idle),
-                "the library must contain an Idle clip for the required state");
-
-            CharacterAnimationConfigLibrary.Save(config);
-            var build = AnimatorControllerBuilder.BuildController(config, character);
-            CharacterAnimationConfigLibrary.Save(config);
-
-            Assert.IsTrue(build.success, "controller build failed: " + build.summary);
-            Assert.IsNotNull(build.controller, "controller asset created");
-            Assert.IsTrue(character.controller == build.controller,
-                "controller assigned back onto the character definition");
-
-            var controller = build.controller;
-
-            // All ten parameters.
-            var parameterNames = new List<string>();
-            foreach (var parameter in controller.parameters)
+            finally
             {
-                parameterNames.Add(parameter.name);
+                if (AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath) != null)
+                {
+                    AssetDatabase.DeleteAsset(controllerPath);
+                }
+                UnityEngine.Object.DestroyImmediate(config);
             }
-
-            foreach (var expected in new[]
-            {
-                CharacterAnimParameters.Speed,
-                CharacterAnimParameters.VerticalSpeed,
-                CharacterAnimParameters.IsAirborne,
-                CharacterAnimParameters.IsCrouching,
-                CharacterAnimParameters.IsAiming,
-                CharacterAnimParameters.Shoot,
-                CharacterAnimParameters.Reload,
-                CharacterAnimParameters.Death,
-                CharacterAnimParameters.WeaponSwitch,
-                CharacterAnimParameters.Melee,
-            })
-            {
-                Assert.Contains(expected, parameterNames, "missing parameter " + expected);
-            }
-
-            // Base layer states for every assigned category that has a state.
-            var baseMachine = controller.layers[0].stateMachine;
-            var stateNames = new List<string>();
-            foreach (var state in baseMachine.states)
-            {
-                stateNames.Add(state.state.name);
-            }
-
-            foreach (var required in new[]
-            {
-                "Idle", "Walk", "Run", "Sprint", "Crouch", "Jump", "Fall",
-                "Aim", "Shoot", "Reload", "WeaponSwitch", "Melee", "Death",
-            })
-            {
-                Assert.Contains(required, stateNames, "missing base state " + required);
-            }
-
-            // Smooth Any State transitions actually exist.
-            Assert.Greater(baseMachine.anyStateTransitions.Length, 0,
-                "locomotion must have Any State transitions");
-
-            // UpperBody layer with avatar mask (legs disabled, arms enabled).
-            Assert.AreEqual(2, controller.layers.Length,
-                "UpperBody weapon layer must exist");
-            var upper = controller.layers[1];
-            Assert.AreEqual("UpperBody", upper.name);
-            Assert.IsNotNull(upper.avatarMask, "UpperBody layer needs an avatar mask");
-            Assert.IsFalse(upper.avatarMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftLeg),
-                "mask must disable the left leg");
-            Assert.IsFalse(upper.avatarMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.RightLeg),
-                "mask must disable the right leg");
-            Assert.IsTrue(upper.avatarMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftArm),
-                "mask must enable the left arm");
-            var upperStates = new List<string>();
-            foreach (var state in upper.stateMachine.states)
-            {
-                upperStates.Add(state.state.name);
-            }
-
-            Assert.Contains("RifleIdle", upperStates, "Rifle Idle state on UpperBody layer");
-            Assert.Contains("RifleRun", upperStates, "Rifle Run state on UpperBody layer");
         }
 
         [Test]
         public void BuildController_WithoutIdle_FailsWithClearMessage()
         {
-            var config = CharacterAnimationConfigLibrary.LoadOrCreate();
-            var character = CharacterAnimationConfigLibrary.GetOrCreateCharacter(
-                config, "male", "Male");
-            character.model = AssetDatabase.LoadAssetAtPath<GameObject>(MalePath);
-
-            // Wipe this character's assignments (including Idle).
-            for (var i = config.assignments.Count - 1; i >= 0; i--)
+            // Shared assignments (null/empty/whitespace characterId) now resolve
+            // for every character. Use an empty scratch config rather than
+            // mutating the generated project config: both shared and per-
+            // character Idle clips are genuinely absent here.
+            var config = ScriptableObject.CreateInstance<CharacterAnimationConfig>();
+            try
             {
-                var assignment = config.assignments[i];
-                if (assignment != null && assignment.characterId == character.id)
+                var character = new CharacterDefinition
                 {
-                    config.assignments.RemoveAt(i);
-                }
-            }
+                    id = "male",
+                    displayName = "Male",
+                    model = AssetDatabase.LoadAssetAtPath<GameObject>(MalePath),
+                };
 
-            CharacterAnimationConfigLibrary.Save(config);
-            var build = AnimatorControllerBuilder.BuildController(config, character);
-            Assert.IsFalse(build.success, "build must fail without an Idle clip");
-            StringAssert.Contains("Idle", build.summary,
-                "failure must name the missing category: " + build.summary);
+                var build = AnimatorControllerBuilder.BuildController(config, character);
+                Assert.IsFalse(build.success, "build must fail without an Idle clip");
+                StringAssert.Contains("Idle", build.summary,
+                    "failure must name the missing category: " + build.summary);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(config);
+            }
         }
 
         [Test]

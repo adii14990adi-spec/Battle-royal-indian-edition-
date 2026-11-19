@@ -30,6 +30,8 @@ namespace BattleHorizons.UI
             public Button JumpButton;
             public HoldButton CrouchButton;
             public HoldButton SprintButton;
+            public HoldButton AimButton;
+            public Button AimUiButton;
             public Button CrouchUiButton;
             public Button SprintUiButton;
             public GameObject Root;
@@ -111,6 +113,12 @@ namespace BattleHorizons.UI
                 playerController == null && router != null ? (Action<bool>)router.SetSprintHeld : null,
                 playerController != null ? (UnityEngine.Events.UnityAction)playerController.OnSprintButtonClicked : null,
                 out var sprintUiButton);
+            var aim = CreateHoldButton(canvasObject.transform, "AimButton", "AIM",
+                new Vector2(1f, 0f), new Vector2(180f, 130f), new Vector2(-220f, 370f),
+                new Color(1f, 0.62f, 0.35f, 0.55f),
+                router != null ? (Action<bool>)router.SetAimHeld : null,
+                null,
+                out var aimUiButton);
 
             var rig = new Rig
             {
@@ -120,6 +128,8 @@ namespace BattleHorizons.UI
                 JumpButton = jump,
                 CrouchButton = crouch,
                 SprintButton = sprint,
+                AimButton = aim,
+                AimUiButton = aimUiButton,
                 CrouchUiButton = crouchUiButton,
                 SprintUiButton = sprintUiButton,
                 Root = canvasObject,

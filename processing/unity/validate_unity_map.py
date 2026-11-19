@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 import struct
 import sys
 from pathlib import Path
@@ -24,6 +25,19 @@ UNITY = REPO_ROOT / "unity-project"
 CONFIG = UNITY / "Assets" / "Resources" / "Config"
 MANIFEST = CONFIG / "siran_island_manifest.json"
 TERRAIN_JSON = CONFIG / "siran_island_terrain.json"
+GITATTRIBUTES = REPO_ROOT / ".gitattributes"
+LFS_EXPECTED = {
+    "unity-project/Assets/Resources/Art/Textures/water_normal_256.png":
+        ("e1067e8199f050f9d4e912c1af189a72a6f2dc0d7d89372ec0d074ef4b4ca4a7", 137293),
+    "unity-project/Assets/Resources/UI/battle_horizons_loading_bar.png":
+        ("28e6e78493e9d018e596012a4647bfa595b01e4b333ed1ee0ce0d75b26b2605f", 3242),
+    "unity-project/Assets/Resources/UI/battle_horizons_loading_spinner.png":
+        ("545cc7fea9b72aa2e90a52cb5bd906b85875c266bc94069db661c16d594e2e15", 6881),
+    "unity-project/Assets/Resources/UI/battle_horizons_logo.png":
+        ("b8c062fdb0a29b6e66297d2d1c4f7004da7ccbf291e6bc109d951ad34a92a8ce", 312823),
+    "unity-project/Assets/UI/Icons/battle_horizons_icon.png":
+        ("5c3e6ef0224050b3c1a460c653edbce4f6e518ef9bdb92ccb18515f0e0838b1f", 205254),
+}
 
 
 class Report:
@@ -53,6 +67,49 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def repo_relative(path: Path) -> str:
+    try:
+        return path.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def lfs_pointer(data: bytes) -> tuple[str, int] | None:
+    if not data.startswith(b"version https://git-lfs.github.com/spec/v1"):
+        return None
+    match = re.search(rb"oid sha256:([0-9a-f]{64})\s+size (\d+)", data)
+    if match is None:
+        return None
+    return match.group(1).decode("ascii"), int(match.group(2))
+
+
+def has_lfs_rule(relative: str) -> bool:
+    if not GITATTRIBUTES.is_file():
+        return False
+    needle = f'"{relative}"'
+    for line in GITATTRIBUTES.read_text(encoding="utf-8").splitlines():
+        if needle in line and "filter=lfs" in line and "diff=lfs" in line and "merge=lfs" in line:
+            return True
+    return False
+
+
+def matches_manifest_payload(path: Path, info: dict) -> bool:
+    """A real smudged blob or an exact LFS pointer with a declared smudge rule."""
+    data = path.read_bytes()
+    expected_sha = info.get("sha256")
+    expected_size = info.get("bytes")
+    pointer = lfs_pointer(data)
+    if pointer is not None:
+        oid, size = pointer
+        known = LFS_EXPECTED.get(repo_relative(path))
+        return (has_lfs_rule(repo_relative(path))
+                and oid == expected_sha
+                and (expected_size is None or size == expected_size)
+                and (known is None or known == (oid, size)))
+    return (len(data) == expected_size
+            and hashlib.sha256(data).hexdigest() == expected_sha)
+
+
 def main() -> int:
     report = Report()
     print("=" * 62)
@@ -76,6 +133,12 @@ def main() -> int:
                  "manifest points to the committed Unity metadata")
     report.check(manifest.get("streaming_radius_m") == 50,
                  "manifest records the fixed 50 m circular streaming radius")
+    lfs_rule_failures = [p for p in LFS_EXPECTED if not has_lfs_rule(p)]
+    report.check(not lfs_rule_failures,
+                 "all five committed Git LFS PNG pointer paths declare filter/diff/merge=lfs smudge rules",
+                 )
+    if lfs_rule_failures:
+        report.check(False, "missing LFS rules: " + ", ".join(lfs_rule_failures))
 
     manifest_failures = 0
     files = manifest.get("files", {})
@@ -87,8 +150,7 @@ def main() -> int:
             report.check(False, f"manifest payload {name} exists")
             manifest_failures += 1
             continue
-        data = path.read_bytes()
-        ok = len(data) == info.get("bytes") and sha256(path) == info.get("sha256")
+        ok = matches_manifest_payload(path, info)
         report.check(ok, f"{name} matches its recorded byte count and SHA-256")
         manifest_failures += not ok
     report.check(bool(files) and manifest_failures == 0,
@@ -202,7 +264,11 @@ def main() -> int:
 
     texture = manifest.get("textures", {}).get("water_normal_256.png", {})
     texture_path = REPO_ROOT / texture.get("path", "")
-    report.check(texture_path.is_file() and sha256(texture_path) == texture.get("sha256"),
+    texture_ok = texture_path.is_file() and matches_manifest_payload(texture_path, {
+        "sha256": texture.get("sha256"),
+        "bytes": LFS_EXPECTED[repo_relative(texture_path)][1],
+    })
+    report.check(texture_ok,
                  "water normal texture is present at its Unity path and matches its recorded SHA-256")
 
     return report.summary()

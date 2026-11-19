@@ -285,6 +285,13 @@ namespace BattleHorizons.EditorTools
             var guids = AssetDatabase.FindAssets("t:AnimationClip",
                 new[] { CharacterAnimationConfigLibrary.AnimationsRoot });
             var added = 0;
+
+            // AssetDatabase returns GUIDs in an unspecified order. Collect all
+            // candidates first, then rank them so the shared default for a
+            // category is reproducible ("walking.fbx" beats "strafe (2).fbx"),
+            // and never let a later clip silently replace a clip the user
+            // assigned in the Manager window.
+            var candidates = new List<ClipCandidate>();
             for (var i = 0; i < guids.Length; i++)
             {
                 var path = AssetDatabase.GUIDToAssetPath(guids[i]);
@@ -294,35 +301,79 @@ namespace BattleHorizons.EditorTools
                     continue;
                 }
 
-                if (config.clips.Contains(clip))
+                if (!config.clips.Contains(clip))
+                {
+                    config.AddClip(clip);
+                    added++;
+                }
+
+                var category = CharacterAnimCategories.InferFromFileName(Path.GetFileName(path));
+                candidates.Add(new ClipCandidate
+                {
+                    path = path,
+                    clip = clip,
+                    category = category,
+                    rank = CharacterAnimationIntegration.ClipPreferenceRank(
+                        Path.GetFileName(path), category),
+                });
+            }
+
+            candidates.Sort((a, b) =>
+            {
+                var byRank = a.rank.CompareTo(b.rank);
+                return byRank != 0
+                    ? byRank
+                    : string.Compare(a.path, b.path, StringComparison.Ordinal);
+            });
+
+            var assigned = new HashSet<CharacterAnimCategory>();
+            var assignmentsAdded = 0;
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                var candidate = candidates[i];
+                if (!assigned.Add(candidate.category))
                 {
                     continue;
                 }
 
-                config.AddClip(clip);
-                var category = CharacterAnimCategories.InferFromFileName(Path.GetFileName(path));
+                var existing = config.FindAssignment(null, candidate.category);
+                if (existing != null && existing.clip != null)
+                {
+                    continue; // preserve a deliberate assignment
+                }
+
                 config.AddOrUpdateAssignment(new CharacterAnimAssignment
                 {
                     characterId = null,
-                    category = category,
-                    clip = clip,
-                    sourcePath = Path.GetFileName(path),
-                    duration = clip.length,
-                    frameRate = clip.frameRate,
-                    loop = clip.isLooping,
-                    retargetable = clip.humanMotion,
+                    category = candidate.category,
+                    clip = candidate.clip,
+                    sourcePath = Path.GetFileName(candidate.path),
+                    duration = candidate.clip.length,
+                    frameRate = candidate.clip.frameRate,
+                    loop = candidate.clip.isLooping,
+                    retargetable = candidate.clip.humanMotion,
                 }, characterId: null);
-                added++;
+                assignmentsAdded++;
             }
 
-            if (added > 0 || guids.Length > 0)
+            if (added > 0 || assignmentsAdded > 0 || guids.Length > 0)
             {
-                report.Success("scan", "registered " + added + " new clip(s) from "
-                    + guids.Length + " animation asset(s) under " + CharacterAnimationConfigLibrary.AnimationsRoot);
+                report.Success("scan", "registered " + added + " new clip(s) and "
+                    + assignmentsAdded + " deterministic category assignment(s) from "
+                    + guids.Length + " animation asset(s) under "
+                    + CharacterAnimationConfigLibrary.AnimationsRoot);
                 CharacterAnimationConfigLibrary.Save(config);
             }
 
             return added;
+        }
+
+        private sealed class ClipCandidate
+        {
+            public string path;
+            public AnimationClip clip;
+            public CharacterAnimCategory category;
+            public int rank;
         }
 
         // ------------------------------------------------------------------

@@ -57,14 +57,46 @@ Assets/Generated/       config + import reports (git-ignored, code-generated)
 The same preview runs in-game: the **Character** hotspot on the Home Screen
 opens the *Character Bay* modal (existing UI, no external dependencies).
 
+## Headless integration (no desktop Editor needed)
+
+The Manager window is an interactive authoring tool. For CI and for a user with
+only Android/Termux or a low-storage Chromebook, `CharacterAnimationIntegration`
+is the reproducible equivalent:
+
+```text
+Battle Horizons > Asset Management > Build Character & Animation Integration
+-executeMethod BattleHorizons.EditorTools.CharacterAnimationIntegration.BuildFromCommandLine
+```
+
+It scans `Assets/Animations/` and `Assets/UserAssets/Models/Animation/`, asks
+`AssetDatabase` which `AnimationClip` sub-assets actually imported (it never
+invents a clip), registers each clip once and each source file once by SHA-256,
+assigns one **deterministic** clip per category (canonical names such as
+`walking.fbx`, `firing rifle.fbx` and `reloading.fbx` win over directional
+variants), verifies each character's Humanoid Avatar and skinned meshes, and
+rebuilds the Animator Controllers. Explicit Generic rigs are reported and left
+alone; no skeleton is forced into Humanoid. The original FBX files are never
+written.
+
+`unity.yml` and `build.yml` call this before EditMode tests and before the APK
+build, so a licensed CI run produces a config and controllers that are actually
+in the package. Without a licence, those jobs report SKIP.
+
+Deterministic selection matters: the old `RegisterExistingAnimationAssets`
+replaced the shared default for a category on every clip it saw, in
+`AssetDatabase`'s unspecified GUID order, so which clip won was arbitrary.
+
 ## Mixamo import settings (Rig · Animation · Animator)
 
 A Mixamo FBX that is left on Unity's default imports as **Generic**, and a
 Generic clip is silently ignored by a Humanoid character's Animator — the
-controller looks wired up, the character never moves. The three settings that
-fix it are enforced in code, because this repository commits no `.meta` files:
-anything ticked by hand in the Inspector is gone after the next clone or CI
-import.
+controller looks wired up, the character never moves. PR #25 committed the 74
+authoritative `.fbx.meta` files for the animation library, and this branch adds
+the two missing character `.fbx.meta` files, so **every FBX now has a stable
+GUID and a committed importer configuration**. The three settings below are
+still enforced in code, because newly uploaded FBX files arrive without
+`.meta` files and anything ticked by hand in the Inspector is lost after the
+next clone or CI import.
 
 | Step | Inspector (manual) | Enforced by |
 | --- | --- | --- |
@@ -100,7 +132,18 @@ the generated controllers and writes `Assets/Generated/LastImportReport.md`.
 Verification: the EditMode test
 `MixamoLibrary_ImportsHumanoidWithLoopAndBakedRootMotion` audits all 74 clips
 and the same audit runs in `ProjectBootstrap.ValidateFromCommandLine`, so a
-Generic or unbaked clip fails CI instead of shipping.
+Generic or unbaked clip fails CI instead of shipping. The turn clips
+(`turn 90 left/right`, `turn left`, `turning right 45 degrees`,
+`crouching turn 90 left/right`) are one-shots: the committed `.meta` files have
+Loop Time off, and `MixamoImportSettings.ForceOneShotTokens` now agrees, so the
+import hook no longer turns them into infinite loops.
+
+`processing/unity/validate_character_animation.py` is the **static** half of
+that gate. It parses every FBX directly (no Unity) and proves that each
+`clipAnimations` name, take name and frame range match the real FBX
+`AnimationStack`, that all GUIDs are unique, that clip loop flags agree with
+`WantsLoop`, and that all 76 skeletons map the 15 Unity-required humanoid
+bones. It reports Editor-only checks as `SKIP`, never as a pass.
 
 ## Generated Animator Controllers
 
@@ -149,6 +192,14 @@ used — none are required by this setup.
 * PlayMode `CharacterPreviewRuntimeTests`: preview texture lifecycle and
   navigation APIs, Character Bay opens from the Home Screen hotspot, and the
   player visual spawns the configured character (or honestly stays a capsule).
+* Static `processing/unity/validate_character_animation.py` + its Python unit
+  tests: FBX ↔ `.meta` pairing, GUID uniqueness, SHA-256 source baseline,
+  FBX clip/take/frame agreement with the committed clip definitions, loop-rule
+  agreement, bone/hierarchy conventions and Android settings. These run in CI
+  without Unity; Editor-only checks are printed as SKIP.
+* EditMode `CharacterAnimationIntegrationTests`: pins the canonical preferred
+  clip names, deterministic rank, the six turn one-shots and the two stable
+  character metadata GUIDs.
 * CI (`unity.yml`): structure, C# static analysis, island-data integrity
   (with LFS), Blender pipeline tests, then the real Unity 6000.0.85f2
   EditMode → PlayMode test runs and an Android build entry point.

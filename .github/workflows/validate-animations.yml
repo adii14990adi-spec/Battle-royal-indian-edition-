@@ -7,6 +7,8 @@ on:
   push:
     paths:
       - 'unity-project/Assets/UserAssets/Models/Animation/**'
+      - 'unity-project/Assets/Animations/**'
+      - 'unity-project/Assets/Characters/**'
   workflow_dispatch:
 
 permissions:
@@ -155,6 +157,13 @@ jobs:
 
           echo "Total errors: $ERRORS"
           exit $ERRORS
+
+      - name: "Real FBX / .meta / GUID / clip integrity validation"
+        run: |
+          # Static only: parses every FBX, verifies clip frame ranges against the
+          # real animation stacks, checks GUID uniqueness and reference
+          # resolution. Uploaded FBX files are never modified.
+          python3 processing/unity/validate_character_animation.py
 
       - name: "Report validation results"
         if: always()

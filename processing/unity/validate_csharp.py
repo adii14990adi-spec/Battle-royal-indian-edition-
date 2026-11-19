@@ -262,6 +262,8 @@ def main() -> int:
         "Unity.InputSystem", "UnityEngine.TestRunner", "UnityEditor.TestRunner",
         "Unity.RenderPipelines.Universal.Runtime", "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Editor", "UnityEngine.UI",
+        # com.unity.cloud.gltfast 6.21.0 package assemblies (pinned in manifest.json).
+        "glTFast", "glTFast.Editor",
     }
     project_assemblies = set()
     asmdefs = {}

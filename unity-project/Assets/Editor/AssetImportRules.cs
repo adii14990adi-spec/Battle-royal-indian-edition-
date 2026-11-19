@@ -35,6 +35,32 @@ namespace BattleHorizons.EditorTools
                 return;
             }
 
+            if (IsProductionCharacterTexture(assetPath))
+            {
+                var isNormalMap = assetPath.IndexOf("Normal", StringComparison.OrdinalIgnoreCase) >= 0;
+                var settings = new TextureImporterSettings();
+                importer.ReadTextureSettings(settings);
+                settings.textureType = isNormalMap
+                    ? TextureImporterType.NormalMap
+                    : TextureImporterType.Default;
+                settings.sRGBTexture = !isNormalMap;
+                settings.convertToNormalMap = false;
+                settings.mipmapEnabled = true;
+                importer.SetTextureSettings(settings);
+
+                // Exact source character maps are 256²–2048². Preserve their
+                // authored resolution rather than applying the 512² prop budget.
+                importer.maxTextureSize = 2048;
+                importer.textureCompression = TextureImporterCompression.CompressedHQ;
+                importer.npotScale = TextureImporterNPOTScale.ToNearest;
+                var characterAndroid = importer.GetPlatformTextureSettings("Android");
+                characterAndroid.overridden = true;
+                characterAndroid.maxTextureSize = 2048;
+                characterAndroid.format = TextureImporterFormat.ASTC_6x6;
+                importer.SetPlatformTextureSettings(characterAndroid);
+                return;
+            }
+
             if (assetPath.Contains("/UI/Icons/"))
             {
                 importer.textureType = TextureImporterType.Default;
@@ -133,12 +159,36 @@ namespace BattleHorizons.EditorTools
                 return;
             }
 
+            if (IsProductionCharacterTexture(assetPath))
+            {
+                if (texture.width > 2048 || texture.height > 2048)
+                {
+                    Debug.LogError(string.Format(
+                        "[bh][import] {0} is {1}x{2}; exact production character maps are capped at 2048x2048",
+                        assetPath, texture.width, texture.height));
+                }
+                return;
+            }
+
             if (texture.width > MaxTextureSize || texture.height > MaxTextureSize)
             {
                 Debug.LogError(string.Format(
                     "[bh][import] {0} is {1}x{2}; docs/ASSET_PIPELINE.md caps textures at {3}x{3}",
                     assetPath, texture.width, texture.height, MaxTextureSize));
             }
+        }
+
+        /// <summary>
+        /// Exact production Male/Female character texture folders need their
+        /// committed NormalMap/Default settings and authored resolution. The
+        /// 512² budget still applies to environment/UI textures and to the
+        /// isolated GLTF fallback.
+        /// </summary>
+        internal static bool IsProductionCharacterTexture(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return false;
+            return path.StartsWith("Assets/Characters/Male/Textures/", StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith("Assets/Characters/Female/Textures/", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

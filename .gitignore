@@ -54,7 +54,20 @@ __pycache__/
 .pytest_cache/
 
 # Generated character/animation authoring assets (created by the Character &
-# Animation Manager and EditMode tests; code-generated because this repo
-# commits no .meta files — never commit the assets themselves).
+# Animation Manager, the headless integration builder and EditMode tests).
+# FBX and .fbx.meta source files ARE committed; these generated outputs are
+# reproducible from the committed sources, so they are never committed.
 unity-project/Assets/Generated/*
 !unity-project/Assets/Generated/.gitkeep
+unity-project/Assets/AnimationControllers/*
+!unity-project/Assets/AnimationControllers/.gitkeep
+unity-project/Assets/AvatarMasks/*
+!unity-project/Assets/AvatarMasks/.gitkeep
+
+# Local Python virtualenv used to run the static validators.
+.venv/
+
+# Isolated GLTF test: generated Editor-only avatars/reports are reproducible.
+unity-project/Assets/Characters/GLTF_Import_Test/Generated/*
+!unity-project/Assets/Characters/GLTF_Import_Test/Generated/.gitkeep
+build/gltf-import-test/

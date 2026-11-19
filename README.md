@@ -98,12 +98,19 @@ are project settings and targets, not proof of device performance. See
 python3 -m pip install tree-sitter tree-sitter-c-sharp
 python3 processing/unity/validate_structure.py
 python3 processing/unity/validate_csharp.py
+python3 processing/unity/validate_character_animation.py   # FBX / .meta / GUID / clips / rigs
 python3 processing/unity/validate_unity_map.py
+python3 -m unittest discover -s processing/unity/tests -v
 python3 -m unittest discover -s processing/blender/tests -v
 python3 -m unittest discover -s processing/animation-metadata/tests -v
 ```
 
-Unity editor tests and Android device measurements require Unity and a device.
+`validate_character_animation.py` reads the FBX bytes directly (no Unity, no
+third-party packages) and prints `PASS` / `FAIL` / `SKIP`. `SKIP` is an
+Editor-only check and is never counted as a pass. Unity editor tests and
+Android device measurements require Unity and a device. See
+[`docs/verification/UNITY_CHARACTER_ANIMATION_VERIFICATION.md`](docs/verification/UNITY_CHARACTER_ANIMATION_VERIFICATION.md)
+for the full verification status and the remaining manual tests.
 
 ## Animation metadata
 

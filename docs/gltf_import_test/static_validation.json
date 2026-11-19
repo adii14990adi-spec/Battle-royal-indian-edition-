@@ -1,0 +1,234 @@
+{
+  "summary": {
+    "pass": 33,
+    "fail": 0,
+    "not_verified": 4
+  },
+  "rows": [
+    {
+      "check": "verification boundary",
+      "status": "PASS",
+      "detail": "This Python validator is static-only and never claims Unity import, rendering, Avatar validity, APK build or device runtime."
+    },
+    {
+      "check": "source inventory manifest",
+      "status": "PASS",
+      "detail": "23 exact source files recorded from live main @ b3872f9276461dc3ecffed9e15731e98ed867d86"
+    },
+    {
+      "check": "original source files preserved byte-for-byte",
+      "status": "PASS",
+      "detail": "23/23 original files, names, sizes and SHA-256 values match the live source repository"
+    },
+    {
+      "check": "Male test-copy companions byte-identical",
+      "status": "PASS",
+      "detail": "all BIN/PNG/licence/.gitkeep companions copied with original names"
+    },
+    {
+      "check": "Male original URI mismatches (documented)",
+      "status": "INFO",
+      "detail": "2 known unresolved PNG URI(s): T_Eye_Normal_png.png, T_Hair_1_Normal_png.png. Original glTF is preserved unchanged."
+    },
+    {
+      "check": "Male corrected test-copy URIs resolve case-sensitively",
+      "status": "PASS",
+      "detail": "8 buffer/image URIs resolve in UnityTestCopy; known mismatches corrected only in the test copy"
+    },
+    {
+      "check": "Male URI fix manifest matches code",
+      "status": "PASS",
+      "detail": "2 documented URI corrections"
+    },
+    {
+      "check": "Male original glTF not modified",
+      "status": "PASS",
+      "detail": "original glTF SHA-256 matches live source"
+    },
+    {
+      "check": "Female test-copy companions byte-identical",
+      "status": "PASS",
+      "detail": "all BIN/PNG/licence/.gitkeep companions copied with original names"
+    },
+    {
+      "check": "Female original URI mismatches (documented)",
+      "status": "INFO",
+      "detail": "1 known unresolved PNG URI(s): T_Eye_Normal_png.png. Original glTF is preserved unchanged."
+    },
+    {
+      "check": "Female corrected test-copy URIs resolve case-sensitively",
+      "status": "PASS",
+      "detail": "8 buffer/image URIs resolve in UnityTestCopy; known mismatches corrected only in the test copy"
+    },
+    {
+      "check": "Female URI fix manifest matches code",
+      "status": "PASS",
+      "detail": "1 documented URI corrections"
+    },
+    {
+      "check": "Female original glTF not modified",
+      "status": "PASS",
+      "detail": "original glTF SHA-256 matches live source"
+    },
+    {
+      "check": "licence files",
+      "status": "PASS",
+      "detail": "both licence files are byte-identical CC0 1.0 Universal texts crediting @Quaternius"
+    },
+    {
+      "check": "licence findings",
+      "status": "INFO",
+      "detail": "CC0 permits commercial use, modification/conversion, redistribution inside a game and Android APK distribution. Attribution is suggested, not required. No warranty; patent/trademark rights are not waived. Source repo has no top-level LICENSE file."
+    },
+    {
+      "check": "Male glTF structure",
+      "status": "PASS",
+      "detail": "glTF 2.0, 69 nodes, 3 meshes, 3 materials, 1 skin, no embedded animations"
+    },
+    {
+      "check": "Male skeleton / required humanoid bones",
+      "status": "PASS",
+      "detail": "65 unique skin joints, all connected to the root, 22 canonical humanoid bones mapped"
+    },
+    {
+      "check": "Male UV / skin weights",
+      "status": "PASS",
+      "detail": "JOINTS_0/WEIGHTS_0 exist for every vertex; all weights sum to ~1 and joint indices are in range"
+    },
+    {
+      "check": "Male mesh counts",
+      "status": "PASS",
+      "detail": "8483 vertices, 14318 triangles (3 meshes)"
+    },
+    {
+      "check": "Male PNG dimensions / formats",
+      "status": "PASS",
+      "detail": "7 PNG image URIs resolve; eye textures 256\u00b2, hair/body textures 2048\u00b2; no texture downscaled"
+    },
+    {
+      "check": "Male Android texture memory (static estimate)",
+      "status": "INFO",
+      "detail": "7 source PNGs; uncompressed RGBA + mipmaps \u2248 107.3 MiB if all originals are imported at native 2048\u00b2. ASTC/512 recommendations are in the final report; no source optimization was applied."
+    },
+    {
+      "check": "Female glTF structure",
+      "status": "PASS",
+      "detail": "glTF 2.0, 69 nodes, 3 meshes, 3 materials, 1 skin, no embedded animations"
+    },
+    {
+      "check": "Female skeleton / required humanoid bones",
+      "status": "PASS",
+      "detail": "65 unique skin joints, all connected to the root, 22 canonical humanoid bones mapped"
+    },
+    {
+      "check": "Female UV / skin weights",
+      "status": "PASS",
+      "detail": "JOINTS_0/WEIGHTS_0 exist for every vertex; all weights sum to ~1 and joint indices are in range"
+    },
+    {
+      "check": "Female mesh counts",
+      "status": "PASS",
+      "detail": "8844 vertices, 15060 triangles (3 meshes)"
+    },
+    {
+      "check": "Female PNG dimensions / formats",
+      "status": "PASS",
+      "detail": "7 PNG image URIs resolve; eye textures 256\u00b2, hair/body textures 2048\u00b2; no texture downscaled"
+    },
+    {
+      "check": "Female Android texture memory (static estimate)",
+      "status": "INFO",
+      "detail": "7 source PNGs; uncompressed RGBA + mipmaps \u2248 107.3 MiB if all originals are imported at native 2048\u00b2. ASTC/512 recommendations are in the final report; no source optimization was applied."
+    },
+    {
+      "check": "production assets unchanged",
+      "status": "PASS",
+      "detail": "246 protected Unity Assets/ProjectSettings files are byte-identical; only the two allowlisted test asmdefs were updated to reference new test assemblies"
+    },
+    {
+      "check": "main-branch deletions inherited by PR",
+      "status": "INFO",
+      "detail": "main deleted 4 UserAssets placeholder/demo files after this branch was created. The PR merge inherits those deletions; they are not GLTF experiment changes."
+    },
+    {
+      "check": "no new or moved FBX files",
+      "status": "PASS",
+      "detail": "all 76 FBX files are the original protected set"
+    },
+    {
+      "check": "committed GUID integrity",
+      "status": "PASS",
+      "detail": "91 unique, well-formed GUIDs across 91 committed .meta files"
+    },
+    {
+      "check": "no production controllers/prefabs/scenes added",
+      "status": "PASS",
+      "detail": "no committed production controller, prefab or scene was added or replaced"
+    },
+    {
+      "check": "Unity 6-compatible glTF importer pinned",
+      "status": "PASS",
+      "detail": "com.unity.cloud.gltfast 6.21.0 was already pinned; package.json declares unity 6000.0"
+    },
+    {
+      "check": "PNG runtime modules enabled",
+      "status": "PASS",
+      "detail": "UnityWebRequest, UnityWebRequestTexture and ImageConversion built-in modules are enabled for glTFast PNG loading"
+    },
+    {
+      "check": "isolated scene exists",
+      "status": "PASS",
+      "detail": "GLTF_Player_Import_Test.unity and its stable .meta GUID are committed; licensed CI replaces the placeholder with Unity-generated YAML"
+    },
+    {
+      "check": "scene has no gameplay system references",
+      "status": "PASS",
+      "detail": "scene contains no production player/movement/network/shooting type names"
+    },
+    {
+      "check": "GLTF skeleton matches production character FBX bone names",
+      "status": "PASS",
+      "detail": "both GLTF characters and both production character FBXs use the same 65 Unreal-style bone names"
+    },
+    {
+      "check": "existing animation FBX skeleton conventions",
+      "status": "PASS",
+      "detail": "74/74 existing Mixamo animation FBXs have 65 bones and all required canonical humanoid aliases"
+    },
+    {
+      "check": "existing animation FBX compatibility",
+      "status": "INFO",
+      "detail": "Production animations use mixamorig:* names, while GLTF and character FBX use Unreal-style names. Unity Humanoid Avatar mapping must bridge the two namespaces; static name equality is NOT claimed. Avatar and retargeting are tested separately in licensed Unity Editor CI."
+    },
+    {
+      "check": "Unity Editor glTF import / Avatar validity",
+      "status": "NOT VERIFIED",
+      "detail": "requires licensed Unity Editor; run GLTFImportTestValidator.ValidateFromCommandLine in unity.yml"
+    },
+    {
+      "check": "visual appearance / material / UV screenshots",
+      "status": "NOT VERIFIED",
+      "detail": "requires genuine Unity Editor camera renders or human visual inspection"
+    },
+    {
+      "check": "animation retargeting playback",
+      "status": "NOT VERIFIED",
+      "detail": "requires a valid Humanoid Avatar and an Editor/PlayMode sample, not just matching bone names"
+    },
+    {
+      "check": "Android build / device runtime",
+      "status": "NOT VERIFIED",
+      "detail": "APK build and FPS/PSS/thermal/touch measurements require a licensed Editor build and a physical device"
+    },
+    {
+      "check": "licence caveat",
+      "status": "INFO",
+      "detail": "CC0 finding applies to the two Character/Male and Character/Female folders. The source repository has no top-level LICENSE file; do not assume unrelated files are CC0. This is a technical report, not legal advice."
+    },
+    {
+      "check": "final report present",
+      "status": "PASS",
+      "detail": "docs/GLTF_PLAYER_IMPORT_TEST_REPORT.md exists"
+    }
+  ]
+}

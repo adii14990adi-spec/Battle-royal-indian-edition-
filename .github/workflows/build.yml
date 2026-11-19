@@ -47,6 +47,25 @@ jobs:
           fetch-depth: 1
           lfs: true
 
+      - name: Verify Git LFS smudge
+        shell: bash
+        run: |
+          set -euo pipefail
+          git lfs version
+          git lfs ls-files
+          for f in \
+            "unity-project/Assets/Resources/Art/Textures/water_normal_256.png" \
+            "unity-project/Assets/Resources/UI/battle_horizons_loading_bar.png" \
+            "unity-project/Assets/Resources/UI/battle_horizons_loading_spinner.png" \
+            "unity-project/Assets/Resources/UI/battle_horizons_logo.png" \
+            "unity-project/Assets/UI/Icons/battle_horizons_icon.png"; do
+            if head -c 60 "$f" | grep -q 'version https://git-lfs.github.com/spec/v1'; then
+              echo "::error::$f is still an LFS pointer after checkout"
+              exit 1
+            fi
+            stat -c '%n %s bytes' "$f"
+          done
+
       - name: Verify Unity and signing secrets
         id: secrets
         shell: bash
@@ -161,6 +180,33 @@ jobs:
       # Native host build (replaces game-ci/unity-builder@v4 container execution for
       # projectPath: ${{ env.UNITY_PROJECT_PATH }}, buildMethod: BuildCommand.PerformBuild,
       # buildName: BattleHorizons so the host-bound Personal ULF license stays valid).
+      - name: Wire character & animation integration before the APK build
+        shell: bash
+        env:
+          UNITY_EDITOR_BIN: /home/runner/Unity/Hub/Editor/${{ env.UNITY_VERSION }}/Editor/Unity
+        run: |
+          set -euo pipefail
+          # The APK must contain the generated CharacterAnimationConfig and the
+          # two Animator Controllers. They are reproducible from the committed
+          # FBX library, so build them here instead of relying on a desktop GUI.
+          xvfb-run --auto-servernum "$UNITY_EDITOR_BIN" \
+            -batchmode \
+            -nographics \
+            -quit \
+            -projectPath "$UNITY_PROJECT_PATH" \
+            -buildTarget Android \
+            -executeMethod BattleHorizons.EditorTools.CharacterAnimationIntegration.BuildFromCommandLine \
+            -logFile /tmp/unity-integration.log || INTEGRATION_EXIT=$?
+
+          if [[ ${INTEGRATION_EXIT:-0} -ne 0 ]]; then
+            echo "::error::character & animation integration failed; refusing to build an APK without it"
+            if [[ -f /tmp/unity-integration.log ]]; then
+              grep -n -E "(\[bh\]\[integration\]|error CS|Exception|FAILED|Error)" /tmp/unity-integration.log | tail -n 20 || true
+              tail -n 120 /tmp/unity-integration.log
+            fi
+            exit 1
+          fi
+
       - name: Build Android APK on Host
         id: build
         shell: bash

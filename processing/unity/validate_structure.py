@@ -109,6 +109,29 @@ class Report:
         return 1 if self.failures else 0
 
 
+def main_deleted_asset_dirs() -> set[str]:
+    """Directories whose tracked files were deleted on main after branching.
+
+    The GLTF protected-asset manifest records the exact four UserAssets files
+    removed by main. A PR merge inherits those deletions; do not re-create the
+    demo/placeholder directories inside the isolated GLTF test PR.
+    """
+    manifest = REPO_ROOT / "processing" / "unity" / "gltf_import_test_protected_assets.json"
+    if not manifest.is_file():
+        return set()
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    directories: set[str] = set()
+    for raw in data.get("main_deleted_after_branch_creation", []):
+        relative = raw[len("unity-project/"):] if raw.startswith("unity-project/") else raw
+        parent = Path(relative).parent
+        while parent.as_posix().startswith("Assets/UserAssets"):
+            directories.add(parent.as_posix())
+            if parent == Path("Assets/UserAssets"):
+                break
+            parent = parent.parent
+    return directories
+
+
 def repository_files() -> list[str]:
     """Return files present in the worktree, including untracked additions.
 
@@ -190,8 +213,14 @@ def main() -> int:
                  "obsolete engine CI is removed and both Unity/GameCI workflows plus the Android build entry point are configured")
 
     missing_dirs = [path for path in UNITY_REQUIRED_DIRS if not (UNITY / path).is_dir()]
-    report.check(not missing_dirs,
-                 "required Unity project directories exist" + (": " + ", ".join(missing_dirs) if missing_dirs else ""))
+    allowed_missing_dirs = main_deleted_asset_dirs()
+    unexpected_missing_dirs = [path for path in missing_dirs if path not in allowed_missing_dirs]
+    for path in missing_dirs:
+        if path in allowed_missing_dirs:
+            print(f"  INFO  {path} was removed on main after this branch was created; deletion is inherited by the PR merge")
+    report.check(not unexpected_missing_dirs,
+                 "required Unity project directories exist" +
+                 (": " + ", ".join(unexpected_missing_dirs) if unexpected_missing_dirs else ""))
     missing_files = [path for path in UNITY_REQUIRED_FILES if not (UNITY / path).is_file()]
     report.check(not missing_files,
                  "required Unity project files and island resources exist" + (": " + ", ".join(missing_files) if missing_files else ""))
@@ -256,6 +285,22 @@ def main() -> int:
                  (": " + "; ".join(syntax_errors[:4]) if syntax_errors else ""))
 
     artifacts = [path for path in files if Path(path).suffix.lower() in FORBIDDEN_ARTIFACT_SUFFIXES]
+    gitattributes = REPO_ROOT / ".gitattributes"
+    lfs_paths = [
+        "unity-project/Assets/Resources/Art/Textures/water_normal_256.png",
+        "unity-project/Assets/Resources/UI/battle_horizons_loading_bar.png",
+        "unity-project/Assets/Resources/UI/battle_horizons_loading_spinner.png",
+        "unity-project/Assets/Resources/UI/battle_horizons_logo.png",
+        "unity-project/Assets/UI/Icons/battle_horizons_icon.png",
+    ]
+    lfs_text = gitattributes.read_text(encoding="utf-8") if gitattributes.is_file() else ""
+    missing_lfs_rules = [path for path in lfs_paths
+                         if f'"{path}" filter=lfs diff=lfs merge=lfs -text' not in lfs_text]
+    report.check(not missing_lfs_rules,
+                 "five committed Git LFS PNG pointers have explicit checkout smudge rules")
+    if missing_lfs_rules:
+        report.check(False, "missing LFS smudge rules: " + ", ".join(missing_lfs_rules))
+
     report.check(not artifacts,
                  "no APK, AAB, keystore or Unity license artifact is committed" +
                  (": " + ", ".join(artifacts) if artifacts else ""))
