@@ -14,9 +14,10 @@ namespace BattleHorizons.EditorTools
     /// Genuine Unity Editor Camera.Render captures of BOTH production FBX
     /// characters. This is a graphics-enabled software-GL batch-mode step. It
     /// uses each generated character definition/controller and instantiates
-    /// its production FBX directly under an isolated capture root, renders
-    /// each character at rest and after sampling a real Humanoid Walk clip,
-    /// checks non-grey textured pixels, and writes committed PNG evidence.
+    /// its production FBX directly under an isolated capture root, evaluates
+    /// the generated Walk Animator state (with direct Humanoid clip sampling
+    /// fallbacks), renders rest and mid-clip camera frames, checks non-grey
+    /// textured pixels, and writes committed PNG evidence.
     /// It writes no production asset or FBX/.fbx.meta file.
     /// </summary>
     public static class FBXProductionCapture
@@ -38,7 +39,7 @@ namespace BattleHorizons.EditorTools
             try
             {
                 report.Add("verification boundary", "PASS",
-                    "Real Unity Editor Camera.Render output for both production FBX characters under graphics-enabled batch mode; each generated definition is instantiated directly from its production FBX to avoid Resources.Load selection caching. Not an Android device render, APK test or human visual inspection.");
+                    "Real Unity Editor Camera.Render output for both production FBX characters under graphics-enabled batch mode; each generated definition is instantiated directly from its production FBX and its generated Walk Animator state and real Humanoid clip are evaluated. Not an Android device render, APK test or human visual inspection.");
                 if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
                 {
                     report.Check("graphics device available", false, "",
@@ -312,59 +313,87 @@ namespace BattleHorizons.EditorTools
                 report.Check(sex + " URP/Lit shader warm-up", true,
                     "two discarded genuine Editor Camera.Render frames primed the material variants before evidence frames", "");
 
-                animator.runtimeAnimatorController = null;
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
                 var animatorWasEnabled = animator.enabled;
-                // Humanoid clips are sampled through the Animator's Avatar.
-                // Keep the Animator enabled while AnimationMode writes the
-                // sampled bone/muscle pose; disabling it leaves the skinned
-                // renderers in their bind pose even when SampleAnimationClip
-                // succeeds. The generated controller is removed above so no
-                // state machine can overwrite the sampled frames.
                 animator.enabled = true;
+                animator.runtimeAnimatorController = definition.controller;
+                animator.Rebind();
+                animator.SetBool(CharacterAnimParameters.IsAiming, false);
+                animator.SetFloat(CharacterAnimParameters.Speed, 1.5f);
 
-                Color32[] restPixels;
-                Color32[] deformedPixels;
-                var started = false;
-                try
+                var walkStateHash = FindWalkStateHash(animator);
+                report.Check(sex + " generated Walk Animator state",
+                    definition.controller != null && walkStateHash != 0,
+                    "generated per-character controller is assigned and exposes a Walk state in Animator layer 0",
+                    "generated controller is missing or has no Walk state in Animator layer 0");
+                if (definition.controller == null || walkStateHash == 0)
                 {
-                    AnimationMode.StartAnimationMode();
-                    started = true;
-                    SampleClip(spawnedRoot.gameObject, walkClip, 0f);
-                    Physics.SyncTransforms();
-                    RenderCamera(camera, restPath, out restPixels);
-                    var midTime = Mathf.Max(0f, walkClip.length * 0.5f);
-                    SampleClip(spawnedRoot.gameObject, walkClip, midTime);
-                    Physics.SyncTransforms();
-                    RenderCamera(camera, deformedPath, out deformedPixels);
-                    wroteScreenshots = true;
-                    screenshotPaths.Add(restPath);
-                    screenshotPaths.Add(deformedPath);
-
-                    int changed;
-                    int magenta;
-                    ComparePixels(restPixels, deformedPixels, out changed, out magenta);
-                    report.Check(sex + " no magenta / error-material pixels",
-                        magenta == 0, "0 magenta pixels in rest and sampled frames",
-                        magenta + " magenta/error-material pixel(s) detected");
-                    report.Check(sex + " visual animation deformation",
-                        changed >= ChangedPixelThreshold,
-                        "AnimationMode sampled '" + walkClip.name + "' at 0.000 s and " + midTime.ToString("F3")
-                            + " s; " + changed + " pixels changed between genuine Unity camera renders",
-                        "only " + changed + " pixel(s) changed between Editor samples");
-
-                    var chromatic = Math.Max(CountChromaticPixels(restPixels), CountChromaticPixels(deformedPixels));
-                    report.Check(sex + " textured camera capture",
-                        chromatic >= TexturedPixelThreshold,
-                        chromatic + " chromatic pixels prove the production diffuse/normal material remap is visible, not a flat grey silhouette",
-                        "only " + chromatic + " chromatic pixel(s); production character still appears untextured");
+                    throw new InvalidOperationException(sex + " generated controller has no Walk Animator state");
                 }
-                finally
+
+                var results = new List<DeformationResult>();
+                var attemptDetails = new List<string>();
+                DeformationResult chosen = null;
+                for (var method = 0; method < DeformationMethods.Length; method++)
                 {
-                    if (started) AnimationMode.StopAnimationMode();
-                    animator.enabled = animatorWasEnabled;
+                    var result = RenderDeformationAttempt(method, camera, spawnedRoot.gameObject,
+                        animator, definition.controller, walkClip, walkStateHash,
+                        outputDirectory, lower);
+                    results.Add(result);
+                    attemptDetails.Add(result.Method + ": " + result.Changed + " changed pixels"
+                        + ", max bone rotation " + result.MaxAngle.ToString("F3") + " deg"
+                        + ", max local position delta " + result.MaxMove.ToString("F4") + " m");
+                    if (chosen == null || (result.Magenta == 0
+                        && (chosen.Magenta != 0 || result.Changed > chosen.Changed))) chosen = result;
+                    if (IsDeformationSuccess(result))
+                    {
+                        chosen = result;
+                        break;
+                    }
                 }
+                report.Info(sex + " deformation evaluation attempts",
+                    string.Join("; ", attemptDetails.ToArray()));
+
+                File.Copy(chosen.RestPath, restPath, true);
+                File.Copy(chosen.DeformedPath, deformedPath, true);
+                for (var i = 0; i < results.Count; i++)
+                {
+                    if (File.Exists(results[i].RestPath)) File.Delete(results[i].RestPath);
+                    if (File.Exists(results[i].DeformedPath)) File.Delete(results[i].DeformedPath);
+                }
+                wroteScreenshots = true;
+                screenshotPaths.Add(restPath);
+                screenshotPaths.Add(deformedPath);
+
+                report.Check(sex + " no magenta / error-material pixels",
+                    chosen.Magenta == 0,
+                    "0 magenta pixels in rest and sampled frames",
+                    chosen.Magenta + " magenta/error-material pixel(s) detected");
+                report.Check(sex + " visual animation deformation",
+                    IsDeformationSuccess(chosen),
+                    "evaluated '" + walkClip.name + "' via " + chosen.Method + " at 0.000 s and "
+                        + (walkClip.length * 0.5f).ToString("F3") + " s; " + chosen.Changed
+                        + " pixels changed between genuine Unity camera renders; max bone rotation "
+                        + chosen.MaxAngle.ToString("F3") + " deg, max local position delta "
+                        + chosen.MaxMove.ToString("F4") + " m",
+                    "only " + chosen.Changed + " pixel(s) changed; max bone rotation "
+                        + chosen.MaxAngle.ToString("F3") + " deg, max local position delta "
+                        + chosen.MaxMove.ToString("F4") + " m; evaluation methods: "
+                        + string.Join("; ", attemptDetails.ToArray()));
+
+                var chromatic = Math.Max(
+                    CountChromaticPixels(chosen.RestPixels),
+                    CountChromaticPixels(chosen.DeformedPixels));
+                report.Check(sex + " textured camera capture",
+                    chromatic >= TexturedPixelThreshold,
+                    chromatic + " chromatic pixels prove the production diffuse/normal material remap is visible, not a flat grey silhouette",
+                    "only " + chromatic + " chromatic pixel(s); production character still appears untextured");
+
+                // Restore the generated controller before the temporary player
+                // is destroyed; no production asset is changed by this capture.
+                animator.runtimeAnimatorController = definition.controller;
+                animator.enabled = animatorWasEnabled;
 
                 if (sex == "Male")
                 {
@@ -380,6 +409,187 @@ namespace BattleHorizons.EditorTools
             {
                 if (player != null) UnityEngine.Object.DestroyImmediate(player);
             }
+        }
+
+        private static readonly string[] DeformationMethods =
+        {
+            "generated Walk Animator state",
+            "AnimationMode sampled Humanoid clip",
+            "AnimationClip.SampleAnimation"
+        };
+
+        private sealed class DeformationResult
+        {
+            public string Method;
+            public string RestPath;
+            public string DeformedPath;
+            public Color32[] RestPixels;
+            public Color32[] DeformedPixels;
+            public int Changed;
+            public int Magenta;
+            public float MaxAngle;
+            public float MaxMove;
+        }
+
+        private static int FindWalkStateHash(Animator animator)
+        {
+            var candidates = new[] { "Walk", "Base Layer.Walk", "Locomotion.Walk" };
+            for (var i = 0; i < candidates.Length; i++)
+            {
+                var hash = Animator.StringToHash(candidates[i]);
+                if (animator.HasState(0, hash)) return hash;
+            }
+            return 0;
+        }
+
+        private static DeformationResult RenderDeformationAttempt(
+            int method,
+            Camera camera,
+            GameObject root,
+            Animator animator,
+            RuntimeAnimatorController controller,
+            AnimationClip clip,
+            int walkStateHash,
+            string outputDirectory,
+            string lower)
+        {
+            var restPath = Path.Combine(outputDirectory,
+                "fbx_" + lower + "_rest_attempt" + method + ".png");
+            var deformedPath = Path.Combine(outputDirectory,
+                "fbx_" + lower + "_deformed_attempt" + method + ".png");
+            var started = false;
+            if (method != 0)
+            {
+                AnimationMode.StartAnimationMode();
+                started = true;
+            }
+
+            try
+            {
+                animator.runtimeAnimatorController = method == 0 ? controller : null;
+                animator.Rebind();
+                animator.enabled = true;
+                if (method == 0)
+                {
+                    animator.SetBool(CharacterAnimParameters.IsAiming, false);
+                    animator.SetFloat(CharacterAnimParameters.Speed, 1.5f);
+                }
+
+                var transforms = root.GetComponentsInChildren<Transform>(true);
+                Quaternion[] restRotations;
+                Vector3[] restPositions;
+
+                EvaluatePose(method, root, animator, controller, clip, walkStateHash, 0f);
+                Physics.SyncTransforms();
+                RefreshSkinnedMeshes(root);
+                SnapshotPose(transforms, out restRotations, out restPositions);
+                Color32[] restPixels;
+                RenderCamera(camera, restPath, out restPixels);
+
+                EvaluatePose(method, root, animator, controller, clip, walkStateHash, 0.5f);
+                Physics.SyncTransforms();
+                RefreshSkinnedMeshes(root);
+                float maxAngle;
+                float maxMove;
+                ComparePose(transforms, restRotations, restPositions, out maxAngle, out maxMove);
+                Color32[] deformedPixels;
+                RenderCamera(camera, deformedPath, out deformedPixels);
+
+                int changed;
+                int magenta;
+                ComparePixels(restPixels, deformedPixels, out changed, out magenta);
+                return new DeformationResult
+                {
+                    Method = DeformationMethods[method],
+                    RestPath = restPath,
+                    DeformedPath = deformedPath,
+                    RestPixels = restPixels,
+                    DeformedPixels = deformedPixels,
+                    Changed = changed,
+                    Magenta = magenta,
+                    MaxAngle = maxAngle,
+                    MaxMove = maxMove,
+                };
+            }
+            finally
+            {
+                if (started) AnimationMode.StopAnimationMode();
+            }
+        }
+
+        private static void EvaluatePose(
+            int method,
+            GameObject root,
+            Animator animator,
+            RuntimeAnimatorController controller,
+            AnimationClip clip,
+            int walkStateHash,
+            float normalizedTime)
+        {
+            var time = normalizedTime * clip.length;
+            if (method == 0)
+            {
+                animator.runtimeAnimatorController = controller;
+                animator.SetFloat(CharacterAnimParameters.Speed, 1.5f);
+                animator.Play(walkStateHash, 0, normalizedTime);
+                animator.Update(0f);
+                animator.Update(1f / 60f);
+                return;
+            }
+            if (method == 1)
+            {
+                SampleClip(root, clip, time);
+                return;
+            }
+            clip.SampleAnimation(root, time);
+        }
+
+        private static void SnapshotPose(
+            Transform[] transforms,
+            out Quaternion[] rotations,
+            out Vector3[] positions)
+        {
+            rotations = new Quaternion[transforms.Length];
+            positions = new Vector3[transforms.Length];
+            for (var i = 0; i < transforms.Length; i++)
+            {
+                rotations[i] = transforms[i].localRotation;
+                positions[i] = transforms[i].localPosition;
+            }
+        }
+
+        private static void ComparePose(
+            Transform[] transforms,
+            Quaternion[] rotations,
+            Vector3[] positions,
+            out float maxAngle,
+            out float maxMove)
+        {
+            maxAngle = 0f;
+            maxMove = 0f;
+            for (var i = 0; i < transforms.Length; i++)
+            {
+                maxAngle = Mathf.Max(maxAngle, Quaternion.Angle(rotations[i], transforms[i].localRotation));
+                maxMove = Mathf.Max(maxMove, Vector3.Distance(positions[i], transforms[i].localPosition));
+            }
+        }
+
+        private static void RefreshSkinnedMeshes(GameObject root)
+        {
+            var renderers = root.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            for (var i = 0; i < renderers.Length; i++)
+            {
+                var enabled = renderers[i].enabled;
+                renderers[i].enabled = false;
+                renderers[i].enabled = enabled;
+            }
+        }
+
+        private static bool IsDeformationSuccess(DeformationResult result)
+        {
+            return result.Changed >= ChangedPixelThreshold
+                && result.Magenta == 0
+                && (result.MaxAngle > 0.05f || result.MaxMove > 0.001f);
         }
 
         private static string SexFromModelPath(string path)
