@@ -662,6 +662,24 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Commit licensed FBX verification evidence
+        if: github.event_name == 'workflow_dispatch' && inputs.capture_fbx_screenshots && steps.licence.outputs.available == 'true' && steps.fbx_capture.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH="${{ github.ref_name }}"
+          # Keep the generated reports and PNGs produced in this job; a hard
+          # checkout back to origin would discard the refreshed static report.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- docs/fbx_production_verification
+          if git diff --cached --quiet; then
+            echo "No generated FBX verification evidence changes to commit"
+            exit 0
+          fi
+          git commit -m "test(fbx): commit licensed Unity verification and software-GL screenshots"
+          git push origin HEAD:"refs/heads/$BRANCH"
+
       - name: Upload isolated GLTF screenshots
         if: always() && github.event_name == 'workflow_dispatch' && inputs.capture_screenshots && steps.gltf_capture.outcome == 'success'
         uses: actions/upload-artifact@v4

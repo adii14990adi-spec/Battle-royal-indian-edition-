@@ -10,11 +10,13 @@ Static only: this validator reads committed bytes and source. It does not claim 
 | GLTF fallback files and test scene preserved | PASS | isolated GLTF validator: 33 PASS / 0 FAIL / 4 NOT VERIFIED; original GLTF/BIN/PNG files and test scene are present |
 | Male FBX GUID unchanged | PASS | unity-project/Assets/Characters/Male/Male character.fbx.meta has stable GUID c1867a8de9f4b1f1b76e69e097d73103 |
 | Male Unity importer settings | PASS | 8 importer settings match the committed Humanoid policy in unity-project/Assets/Characters/Male/Male character.fbx.meta |
+| Male Unity material import mode | FAIL | materialImportMode=0 is Unity's ModelImporterMaterialImportMode.None: materials are not imported, so embedded FBX textures are not bound to the spawned character. The committed .fbx.meta is preserved unchanged. |
 | Male FBX binary structure | PASS | FBX 7400, Z-up, unit scale 100, 3 skinned meshes, 65 bones, 22 canonical humanoid bones mapped, 0 missing required bones, no embedded AnimationStack |
 | Male embedded source textures | PASS | 7/7 texture nodes carry embedded PNG bytes (3,939,246 bytes); no unresolved external texture path |
 | Male no dangling committed material/texture asset reference | PASS | unity-project/Assets/Characters/Male/Materials and unity-project/Assets/Characters/Male/Textures contain only .gitkeep; FBX is the self-contained production source |
 | Female FBX GUID unchanged | PASS | unity-project/Assets/Characters/Female/Female character.fbx.meta has stable GUID 103ec3786913589cd676c3534c5074e7 |
 | Female Unity importer settings | PASS | 8 importer settings match the committed Humanoid policy in unity-project/Assets/Characters/Female/Female character.fbx.meta |
+| Female Unity material import mode | FAIL | materialImportMode=0 is Unity's ModelImporterMaterialImportMode.None: materials are not imported, so embedded FBX textures are not bound to the spawned character. The committed .fbx.meta is preserved unchanged. |
 | Female FBX binary structure | PASS | FBX 7400, Z-up, unit scale 100, 3 skinned meshes, 65 bones, 22 canonical humanoid bones mapped, 0 missing required bones, no embedded AnimationStack |
 | Female embedded source textures | FAIL | 6/7 texture nodes carry embedded PNG bytes (2,717,177 bytes); unresolved external path(s): C:\Dropbox\Work\Blender\_FreeModels\_Unfinished\Universal Base Characters\Base Characters\textures\T_Superhero_Female_Normal.png |
 | Female no dangling committed material/texture asset reference | PASS | unity-project/Assets/Characters/Female/Materials and unity-project/Assets/Characters/Female/Textures contain only .gitkeep; FBX is the self-contained production source |
@@ -33,6 +35,7 @@ Static only: this validator reads committed bytes and source. It does not claim 
 | available clip: Reload | PASS | unity-project/Assets/Animations/Weapon/reloading.fbx: FBX 7700, one real AnimationStack, 315 curves, 99 frames, 22 canonical humanoid bones, 0 missing required bones |
 | Reload clip Humanoid import metadata | PASS | 7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Weapon/reloading.fbx.meta |
 | runtime FBX spawn path preserved | PASS | PlayerCharacterVisual loads the generated config, instantiates the FBX model, assigns the controller and disables the capsule MeshRenderer when configured |
+| runtime shared-assignment lookup handles Unity empty strings | FAIL | FindAssignment tests assignment.characterId == null only. Unity deserializes a null serialized string as empty, so shared category assignments can be skipped by CharacterAnimationConfig.FindClip/FindAssignment after a domain reload; licensed Editor verification reported FindClip null while direct assignment entries and generated controller motions existed. |
 | Aim Animator parameter is driven by runtime | FAIL | no SetBool(IsAiming) exists under Assets/Scripts; the generated Aim state uses IsAiming, while PlayerCharacterVisual.SetAiming only changes UpperBody layer weight |
 | Aim gameplay hook is called | FAIL | PlayerCharacterVisual.SetAiming(bool) has no runtime caller in Assets/Scripts; the Aim state cannot be entered from current gameplay input |
 | live shooting gameplay integration | NOT VERIFIED | no live weapon/fire system exists under Assets/Scripts; only PlayerCharacterVisual.TriggerShoot/TriggerReload animation hooks and UI copy were found |
@@ -49,7 +52,7 @@ Static only: this validator reads committed bytes and source. It does not claim 
 ## Summary
 
 - PASS: 29
-- FAIL: 3
+- FAIL: 6
 - NOT VERIFIED: 9
 
 Licensed Unity Editor evidence is written to `EDITOR_VALIDATION.md`; software-GL visual evidence, when captured, is written to `CAPTURE_RESULT.md` and the `screenshots/` directory.

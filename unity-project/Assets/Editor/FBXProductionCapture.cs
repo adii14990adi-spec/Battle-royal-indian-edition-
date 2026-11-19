@@ -183,11 +183,22 @@ namespace BattleHorizons.EditorTools
                 cameraObject.transform.position = new Vector3(0f, height * 0.58f, -Mathf.Max(3.8f, height * 2.4f));
                 cameraObject.transform.LookAt(new Vector3(0f, height * 0.52f, 0f));
 
-                var walkClip = config.FindClip(definition.id, CharacterAnimCategory.Walk);
+                var runtimeWalkClip = config.FindClip(definition.id, CharacterAnimCategory.Walk);
+                // FBXProductionVerifier.ResolveClipForCategory reads the generated
+                // assignment list directly, tolerating Unity's empty-string
+                // deserialization of a null shared characterId. Production
+                // runtime code is intentionally not modified by verification.
+                var walkClip = FBXProductionVerifier.ResolveClipForCategory(
+                    config, definition.id, CharacterAnimCategory.Walk);
+                report.Info("animation clip resolution",
+                    "config.FindClip(Walk)=" + (runtimeWalkClip == null ? "null" : runtimeWalkClip.name)
+                        + "; verification-only direct resolver="
+                        + (walkClip == null ? "null" : walkClip.name)
+                        + ". The generated Animator controller is built from the assignment list, not FindClip.");
                 if (walkClip == null || !walkClip.humanMotion)
                 {
                     report.NotVerified("visual animation deformation",
-                        "no Humanoid Walk clip was available in the generated config; only the rest-pose screenshot was rendered");
+                        "no Humanoid Walk clip was available in the generated assignments; only the rest-pose screenshot was rendered");
                     Color32[] restOnly;
                     RenderCamera(camera, restPath, out restOnly);
                     wroteScreenshots = true;

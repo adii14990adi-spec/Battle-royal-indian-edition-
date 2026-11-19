@@ -1,7 +1,7 @@
 {
   "summary": {
     "pass": 29,
-    "fail": 3,
+    "fail": 6,
     "not_verified": 9
   },
   "rows": [
@@ -36,6 +36,11 @@
       "detail": "8 importer settings match the committed Humanoid policy in unity-project/Assets/Characters/Male/Male character.fbx.meta"
     },
     {
+      "check": "Male Unity material import mode",
+      "status": "FAIL",
+      "detail": "materialImportMode=0 is Unity's ModelImporterMaterialImportMode.None: materials are not imported, so embedded FBX textures are not bound to the spawned character. The committed .fbx.meta is preserved unchanged."
+    },
+    {
       "check": "Male FBX binary structure",
       "status": "PASS",
       "detail": "FBX 7400, Z-up, unit scale 100, 3 skinned meshes, 65 bones, 22 canonical humanoid bones mapped, 0 missing required bones, no embedded AnimationStack"
@@ -59,6 +64,11 @@
       "check": "Female Unity importer settings",
       "status": "PASS",
       "detail": "8 importer settings match the committed Humanoid policy in unity-project/Assets/Characters/Female/Female character.fbx.meta"
+    },
+    {
+      "check": "Female Unity material import mode",
+      "status": "FAIL",
+      "detail": "materialImportMode=0 is Unity's ModelImporterMaterialImportMode.None: materials are not imported, so embedded FBX textures are not bound to the spawned character. The committed .fbx.meta is preserved unchanged."
     },
     {
       "check": "Female FBX binary structure",
@@ -149,6 +159,11 @@
       "check": "runtime FBX spawn path preserved",
       "status": "PASS",
       "detail": "PlayerCharacterVisual loads the generated config, instantiates the FBX model, assigns the controller and disables the capsule MeshRenderer when configured"
+    },
+    {
+      "check": "runtime shared-assignment lookup handles Unity empty strings",
+      "status": "FAIL",
+      "detail": "FindAssignment tests assignment.characterId == null only. Unity deserializes a null serialized string as empty, so shared category assignments can be skipped by CharacterAnimationConfig.FindClip/FindAssignment after a domain reload; licensed Editor verification reported FindClip null while direct assignment entries and generated controller motions existed."
     },
     {
       "check": "Aim Animator parameter is driven by runtime",

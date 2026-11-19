@@ -46,6 +46,9 @@ class ProductionFbxValidatorTests(unittest.TestCase):
         report = validator.run_validation()
         statuses = {row["check"]: row["status"] for row in report.rows}
         self.assertEqual(statuses["Female embedded source textures"], "FAIL")
+        self.assertEqual(statuses["Male Unity material import mode"], "FAIL")
+        self.assertEqual(statuses["Female Unity material import mode"], "FAIL")
+        self.assertEqual(statuses["runtime shared-assignment lookup handles Unity empty strings"], "FAIL")
         self.assertEqual(statuses["Aim Animator parameter is driven by runtime"], "FAIL")
         self.assertEqual(statuses["live shooting gameplay integration"], "NOT VERIFIED")
         self.assertEqual(statuses["all 76 production FBX files immutable"], "PASS")

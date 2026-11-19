@@ -305,16 +305,70 @@ namespace BattleHorizons.EditorTools
                 "0 GLTF references, 0 non-production character model references",
                 gltfReferences + " GLTF reference(s), " + nonFbxModels + " non-production model reference(s)");
 
+            var nullShared = 0;
+            var emptyShared = 0;
+            var perCharacter = 0;
+            for (var i = 0; i < config.assignments.Count; i++)
+            {
+                var assignment = config.assignments[i];
+                if (assignment == null) continue;
+                if (assignment.characterId == null) nullShared++;
+                else if (assignment.characterId.Length == 0) emptyShared++;
+                else perCharacter++;
+            }
+            report.Info("generated assignment characterId representation",
+                nullShared + " null, " + emptyShared + " empty-string, " + perCharacter + " per-character entries; Unity serializes a null string as an empty string after domain reload");
+
+            var lookupFailures = new List<string>();
             for (var c = 0; c < RequiredCategories.Length; c++)
             {
                 var categoryName = RequiredCategories[c];
                 var category = CategoryFromName(categoryName);
-                var clip = config.FindClip(config.selectedCharacterId, category);
+                var clip = ResolveClipForCategory(config, config.selectedCharacterId, category);
+                var runtimeLookup = config.FindClip(config.selectedCharacterId, category);
                 report.Check("selected character clip assignment: " + categoryName,
                     clip != null && clip.humanMotion && clip.length > 0f,
                     clip == null ? "" : clip.name + ", length " + clip.length.ToString("F3") + " s, humanMotion=" + clip.humanMotion + ", frameRate=" + clip.frameRate.ToString("F1"),
                     clip == null ? "no clip assigned for " + categoryName : clip.name + " is not Humanoid or has zero length");
+                if (clip != null && runtimeLookup == null) lookupFailures.Add(categoryName);
             }
+            report.Check("runtime CharacterAnimationConfig.FindClip lookup", lookupFailures.Count == 0,
+                "FindClip returns the direct assignment for all 7 required categories",
+                "FindClip returned null for " + string.Join(", ", lookupFailures.ToArray())
+                    + " although the assignment list contains those clips; FindAssignment only treats assignment.characterId == null as shared, but " + emptyShared
+                    + " shared entries deserialize as empty string. This is a runtime config-lookup defect, not a missing clip.");
+        }
+
+        /// <summary>
+        /// Resolve a generated assignment directly, tolerating Unity's empty-string
+        /// deserialization of a null shared characterId. This is verification-only;
+        /// production runtime code is intentionally not modified.
+        /// </summary>
+        public static AnimationClip ResolveClipForCategory(
+            CharacterAnimationConfig config,
+            string characterId,
+            CharacterAnimCategory category)
+        {
+            if (config == null || config.assignments == null) return null;
+            var runtimeLookup = config.FindClip(characterId, category);
+            if (runtimeLookup != null) return runtimeLookup;
+
+            AnimationClip shared = null;
+            for (var i = 0; i < config.assignments.Count; i++)
+            {
+                var assignment = config.assignments[i];
+                if (assignment == null || assignment.category != category || assignment.clip == null) continue;
+                if (!string.IsNullOrEmpty(characterId)
+                    && string.Equals(assignment.characterId, characterId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return assignment.clip;
+                }
+                if (string.IsNullOrEmpty(assignment.characterId) && shared == null)
+                {
+                    shared = assignment.clip;
+                }
+            }
+            return shared;
         }
 
         private static void CheckModel(
@@ -343,6 +397,13 @@ namespace BattleHorizons.EditorTools
                       + ", isReadable=" + importer.isReadable + ", maxBonesPerVertex=" + importer.maxBonesPerVertex
                       + ", skinWeights=" + importer.skinWeights);
 
+            var materialMode = importer == null ? "no importer" : importer.materialImportMode.ToString();
+            report.Check(sex + " Unity material import mode",
+                importer != null && importer.materialImportMode != ModelImporterMaterialImportMode.None,
+                importer == null ? "" : "materialImportMode=" + materialMode + "; Unity can import the FBX's embedded materials/textures",
+                "materialImportMode=" + materialMode
+                    + ". Unity's None mode (serialized as 0) does not import materials, so the embedded FBX textures are not bound to the spawned character. No .fbx.meta was changed by this verifier.");
+
             var avatarOk = rig.success && rig.kind == RigKind.Humanoid
                 && avatar != null && avatar.isValid && avatar.isHuman;
             var humanEntries = avatar != null && avatar.humanDescription.human != null
@@ -363,7 +424,7 @@ namespace BattleHorizons.EditorTools
             for (var i = 0; i < RequiredCategories.Length; i++)
             {
                 var categoryName = RequiredCategories[i];
-                var clip = config.FindClip(config.selectedCharacterId, CategoryFromName(categoryName));
+                var clip = ResolveClipForCategory(config, config.selectedCharacterId, CategoryFromName(categoryName));
                 string reason;
                 var compatible = RigDetectionUtility.IsRetargetCompatible(clip, avatar, out reason);
                 report.Check(sex + " Avatar compatibility: " + categoryName, compatible,
@@ -568,7 +629,7 @@ namespace BattleHorizons.EditorTools
                 for (var i = 0; i < RequiredCategories.Length; i++)
                 {
                     var categoryName = RequiredCategories[i];
-                    var clip = config.FindClip(config.selectedCharacterId, CategoryFromName(categoryName));
+                    var clip = ResolveClipForCategory(config, config.selectedCharacterId, CategoryFromName(categoryName));
                     if (clip == null)
                     {
                         report.NotVerified("deformation: " + entry.sex + "/" + categoryName, "no generated clip assignment");

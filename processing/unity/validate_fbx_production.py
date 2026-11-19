@@ -248,6 +248,13 @@ def check_character_fbx(report: Report, sex: str, info: dict[str, Any]) -> None:
         f"GUID is {guid!r}, expected {info['guid']!r}",
     )
     check_meta_settings(report, f"{sex} Unity importer settings", meta, CHARACTER_META_EXPECTED)
+    material_mode = meta_value(meta.read_text(encoding="utf-8"), "materialImportMode")
+    report.check(
+        f"{sex} Unity material import mode",
+        material_mode not in (None, "0"),
+        f"materialImportMode={material_mode}; Unity can import the FBX's embedded materials/textures",
+        "materialImportMode=0 is Unity's ModelImporterMaterialImportMode.None: materials are not imported, so embedded FBX textures are not bound to the spawned character. The committed .fbx.meta is preserved unchanged.",
+    )
 
     doc = read_fbx(fbx)
     binary_ok = (
@@ -334,6 +341,22 @@ def check_gameplay_sources(report: Report) -> None:
         spawn_ok,
         "PlayerCharacterVisual loads the generated config, instantiates the FBX model, assigns the controller and disables the capsule MeshRenderer when configured",
         "one or more production spawn/fallback statements are missing from PlayerCharacterVisual.cs",
+    )
+
+    config_source = ASSETS_ROOT / "Scripts" / "Characters" / "CharacterAnimationConfig.cs"
+    config_text = config_source.read_text(encoding="utf-8") if config_source.is_file() else ""
+    find_start = config_text.find("public CharacterAnimAssignment FindAssignment")
+    find_end = config_text.find("public AnimationClip FindClip", find_start + 1)
+    find_assignment_source = config_text[find_start:find_end] if find_start >= 0 and find_end > find_start else ""
+    shared_lookup_ok = (
+        bool(find_assignment_source)
+        and "string.IsNullOrEmpty(assignment.characterId)" in find_assignment_source
+    )
+    report.check(
+        "runtime shared-assignment lookup handles Unity empty strings",
+        shared_lookup_ok,
+        "FindAssignment treats null or empty characterId as a shared default",
+        "FindAssignment tests assignment.characterId == null only. Unity deserializes a null serialized string as empty, so shared category assignments can be skipped by CharacterAnimationConfig.FindClip/FindAssignment after a domain reload; licensed Editor verification reported FindClip null while direct assignment entries and generated controller motions existed.",
     )
 
     runtime_sources = sorted((ASSETS_ROOT / "Scripts").rglob("*.cs"))
