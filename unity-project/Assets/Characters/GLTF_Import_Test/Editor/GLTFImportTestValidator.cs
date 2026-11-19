@@ -391,6 +391,8 @@ namespace BattleHorizons.EditorTools
                     }
                 }
 
+                var parentNameField = typeof(SkeletonBone).GetField(
+                    "parentName", BindingFlags.Instance | BindingFlags.NonPublic);
                 var skeleton = new SkeletonBone[transforms.Count];
                 for (var i = 0; i < transforms.Count; i++)
                 {
@@ -401,6 +403,16 @@ namespace BattleHorizons.EditorTools
                         rotation = transforms[i].localRotation,
                         scale = transforms[i].localScale,
                     };
+
+                    // parentName is internal in Unity's SkeletonBone struct but
+                    // is required for AvatarBuilder to reconstruct hierarchy.
+                    if (parentNameField != null)
+                    {
+                        object boxed = skeleton[i];
+                        parentNameField.SetValue(boxed,
+                            transforms[i].parent == null ? string.Empty : transforms[i].parent.name);
+                        skeleton[i] = (SkeletonBone)boxed;
+                    }
                 }
 
                 var human = new List<HumanBone>();
@@ -414,6 +426,9 @@ namespace BattleHorizons.EditorTools
                         continue;
                     }
 
+                    var humanName = (int)bone < HumanTrait.BoneName.Length
+                        ? HumanTrait.BoneName[(int)bone]
+                        : bone.ToString();
                     var aliases = (string[])aliasesMethod.Invoke(null, new object[] { bone });
                     for (var a = 0; a < aliases.Length; a++)
                     {
@@ -429,7 +444,7 @@ namespace BattleHorizons.EditorTools
                         human.Add(new HumanBone
                         {
                             boneName = hit.name,
-                            humanName = RigDetectionUtility.CamelToSpacedName(bone.ToString()),
+                            humanName = humanName,
                             limit = new HumanLimit { useDefaultValues = true },
                         });
                         mappedBoneNames.Add(hit.name);
@@ -449,18 +464,29 @@ namespace BattleHorizons.EditorTools
                     lowerLegTwist = 0.5f,
                     feetSpacing = 0f,
                     hasTranslationDoF = false,
+                    rootMotionBoneName = string.Empty,
                 };
+
+                // AvatarBuilder also reads internal hierarchy flags. Set them
+                // explicitly so a runtime-instantiated glTF hierarchy is not
+                // mistaken for a parentless skeleton.
+                object boxedDescription = description;
+                SetPrivateField(boxedDescription, "m_SkeletonHasParents", true);
+                SetPrivateField(boxedDescription, "m_HasExtraRoot", false);
+                SetPrivateField(boxedDescription, "m_GlobalScale", 1f);
+                description = (HumanDescription)boxedDescription;
 
                 var avatar = AvatarBuilder.BuildHumanAvatar(instance, description);
                 if (avatar == null || !avatar.isValid || !avatar.isHuman)
                 {
                     return new AvatarResult
                     {
-                        status = "FAIL",
+                        status = "NOT VERIFIED",
                         detail = "AvatarBuilder produced " + (avatar == null ? "null" :
                             "isValid=" + avatar.isValid + ", isHuman=" + avatar.isHuman) +
-                            "; mappedHumanBones=" + human.Count,
-                        avatar = avatar,
+                            "; mappedHumanBones=" + human.Count +
+                            ". glTFast runtime hierarchy was not accepted as a Humanoid Avatar; use Generic or a dedicated Humanoid conversion. No rig was forced.",
+                        avatar = null,
                     };
                 }
 
@@ -588,6 +614,16 @@ namespace BattleHorizons.EditorTools
                       angle.ToString("F3") + " degrees"
                     : "clip sampled but spine rotation did not change; retargeting result needs manual visual confirmation",
             };
+        }
+
+        private static void SetPrivateField(object boxedStruct, string fieldName, object value)
+        {
+            var field = typeof(HumanDescription).GetField(
+                fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            if (field != null)
+            {
+                field.SetValue(boxedStruct, value);
+            }
         }
 
         private static void CollectBreadthFirst(Transform root, List<Transform> output)
