@@ -99,9 +99,9 @@
       "path": "unity-project/Assets/Tests/EditMode/CharacterPipelineTests.cs",
       "previous_sha256": "72d200cd793b4ce41fb91f26f10636eee9c2be0f52e48d5b875ff2e50dcb85ae",
       "previous_size": 33626,
-      "reason": "Update the stale negative controller-build test to use an empty scratch config: shared assignments now resolve for every character, so the generated project config must not be mutated to assert the missing-Idle gate.",
-      "sha256": "523cbce468c3ffbc9df168ea6ecd0eccef53df4d0934855cf9bf473a61e3d18e",
-      "size": 33699
+      "reason": "Update the missing-Idle negative test to use an empty scratch config and isolate the full-controller test in a scratch config/controller path, so shared clip fallback works and EditMode fixtures cannot leak arbitrary per-character clip overrides into the generated config, captures or APK.",
+      "sha256": "3078f61c840a730f6583b91cec70d808240e1f036a131f2e18003f6770dfe648",
+      "size": 34782
     }
   ],
   "new_repair_files": [

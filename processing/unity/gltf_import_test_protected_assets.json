@@ -1171,8 +1171,8 @@
     },
     {
       "path": "unity-project/Assets/Tests/EditMode/CharacterPipelineTests.cs",
-      "sha256": "523cbce468c3ffbc9df168ea6ecd0eccef53df4d0934855cf9bf473a61e3d18e",
-      "size": 33699
+      "sha256": "3078f61c840a730f6583b91cec70d808240e1f036a131f2e18003f6770dfe648",
+      "size": 34782
     },
     {
       "path": "unity-project/Assets/Tests/EditMode/QualityAndShapeTests.cs",

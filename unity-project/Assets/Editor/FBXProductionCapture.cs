@@ -48,34 +48,16 @@ namespace BattleHorizons.EditorTools
                 report.Check("graphics device available", true,
                     SystemInfo.graphicsDeviceType + " / " + SystemInfo.graphicsDeviceName, "");
 
-                // EditMode tests intentionally exercise the real generated
-                // config asset. Delete that generated-only asset before the
-                // capture rebuild so a test fixture cannot leak a per-character
-                // clip override into the captures or the subsequent APK build.
-                // No committed production asset is touched by this refresh.
-                var configRemoved = true;
-                if (AssetDatabase.LoadAssetAtPath<CharacterAnimationConfig>(
-                        CharacterAnimationConfigLibrary.ConfigAssetPath) != null)
-                {
-                    configRemoved = AssetDatabase.DeleteAsset(
-                        CharacterAnimationConfigLibrary.ConfigAssetPath);
-                    AssetDatabase.Refresh();
-                }
-                report.Check("generated config isolated from EditMode fixtures", configRemoved,
-                    "the generated-only config asset was deleted and rebuilt before capture; no committed production asset was modified",
-                    "AssetDatabase.DeleteAsset could not remove the generated config fixture");
-                if (!configRemoved)
-                {
-                    throw new InvalidOperationException("generated config fixture could not be removed");
-                }
-
-                // Regenerate from immutable production FBX sources so captures
-                // reflect the repaired import, not stale generated fixtures.
+                // EditMode controller fixtures now use scratch configs, so the
+                // generated config and its already-imported Humanoid clips stay
+                // canonical. Rebuild the generated controllers from the exact
+                // production FBX/clip sources without deleting or reimporting
+                // the committed asset database. No production asset is touched.
                 string integrationReport;
                 var integrationFailures = CharacterAnimationIntegration.Build(out integrationReport);
                 report.Check("character integration regenerated before capture",
                     integrationFailures == 0,
-                    "removed the generated config fixture and rebuilt it/controllers from the production FBX and 74 clip sources; " + integrationFailures + " failure(s)",
+                    "rebuilt generated controllers from the production FBX and 74 clip sources; " + integrationFailures + " failure(s)",
                     integrationFailures + " failure(s) while regenerating generated config/controllers: " + integrationReport);
                 AssetDatabase.Refresh();
 
@@ -88,6 +70,23 @@ namespace BattleHorizons.EditorTools
                     throw new InvalidOperationException("generated character config is missing");
                 }
                 report.Check("generated character config", true, AssetDatabase.GetAssetPath(config), "");
+
+                var fixtureOverrides = 0;
+                if (config.assignments != null)
+                {
+                    for (var i = 0; i < config.assignments.Count; i++)
+                    {
+                        var assignment = config.assignments[i];
+                        if (assignment != null
+                            && !CharacterAnimationConfig.IsSharedCharacterId(assignment.characterId))
+                        {
+                            fixtureOverrides++;
+                        }
+                    }
+                }
+                report.Check("generated config isolated from EditMode fixtures", fixtureOverrides == 0,
+                    "0 per-character overrides in the generated config; EditMode controller fixtures use scratch configs",
+                    fixtureOverrides + " per-character override(s) leaked into the generated config");
 
                 var outputDirectory = Path.Combine(FBXProductionVerifier.OutputDirectory(), "screenshots");
                 Directory.CreateDirectory(outputDirectory);
@@ -287,10 +286,13 @@ namespace BattleHorizons.EditorTools
                     walkClip != null && walkClip.humanMotion && walkClip.length > 0f,
                     walkClip == null ? "" : "config.FindClip(Walk)="
                         + (runtimeWalkClip == null ? "null" : runtimeWalkClip.name)
-                        + "; selected canonical '" + walkClip.name + "' from "
+                        + "; selected '" + walkClip.name + "', humanMotion=" + walkClip.humanMotion
+                        + ", length=" + walkClip.length.ToString("F3") + " s from "
                         + (config.clips == null ? 0 : config.clips.Count) + " registered production clips",
                     "FindClip(Walk)=" + (runtimeWalkClip == null ? "null" : runtimeWalkClip.name)
-                        + "; canonical walking clip is unavailable");
+                        + (walkClip == null ? "; canonical walking clip is unavailable"
+                            : "; selected '" + walkClip.name + "', humanMotion=" + walkClip.humanMotion
+                                + ", length=" + walkClip.length.ToString("F3") + " s"));
                 if (walkClip == null || !walkClip.humanMotion)
                 {
                     throw new InvalidOperationException(sex + " has no Humanoid walking clip after config rebuild");
