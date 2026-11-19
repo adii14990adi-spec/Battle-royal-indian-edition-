@@ -464,13 +464,13 @@ namespace BattleHorizons.EditorTools
                     lowerLegTwist = 0.5f,
                     feetSpacing = 0f,
                     hasTranslationDoF = false,
-                    rootMotionBoneName = string.Empty,
                 };
 
                 // AvatarBuilder also reads internal hierarchy flags. Set them
                 // explicitly so a runtime-instantiated glTF hierarchy is not
                 // mistaken for a parentless skeleton.
                 object boxedDescription = description;
+                SetPrivateField(boxedDescription, "m_RootMotionBoneName", string.Empty);
                 SetPrivateField(boxedDescription, "m_SkeletonHasParents", true);
                 SetPrivateField(boxedDescription, "m_HasExtraRoot", false);
                 SetPrivateField(boxedDescription, "m_GlobalScale", 1f);

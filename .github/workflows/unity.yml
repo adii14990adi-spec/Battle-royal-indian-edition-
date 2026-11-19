@@ -560,7 +560,7 @@ jobs:
           fi
 
       - name: Upload isolated GLTF screenshots
-        if: always() && github.event_name == 'workflow_dispatch' && inputs.capture_screenshots
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.capture_screenshots && steps.gltf_capture.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: gltf-import-test-screenshots-${{ github.sha }}
@@ -569,7 +569,7 @@ jobs:
           retention-days: 14
 
       - name: Commit generated GLTF scene and screenshots
-        if: github.event_name == 'workflow_dispatch' && inputs.capture_screenshots && steps.licence.outputs.available == 'true'
+        if: github.event_name == 'workflow_dispatch' && inputs.capture_screenshots && steps.licence.outputs.available == 'true' && steps.gltf_capture.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
