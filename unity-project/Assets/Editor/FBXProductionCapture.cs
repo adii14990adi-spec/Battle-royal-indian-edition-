@@ -201,11 +201,16 @@ namespace BattleHorizons.EditorTools
                 // assignment list directly, tolerating Unity's empty-string
                 // deserialization of a null shared characterId. Production
                 // runtime code is intentionally not modified by verification.
-                var walkClip = FBXProductionVerifier.ResolveClipForCategory(
-                    config, definition.id, CharacterAnimCategory.Walk);
+                // Prefer the runtime lookup when it works; use the verifier's
+                // direct assignment resolver only when FindClip is affected by
+                // Unity's empty-string deserialization of a shared characterId.
+                var walkClip = runtimeWalkClip != null
+                    ? runtimeWalkClip
+                    : FBXProductionVerifier.ResolveClipForCategory(
+                        config, definition.id, CharacterAnimCategory.Walk);
                 report.Info("animation clip resolution",
                     "config.FindClip(Walk)=" + (runtimeWalkClip == null ? "null" : runtimeWalkClip.name)
-                        + "; verification-only direct resolver="
+                        + "; selected verification clip="
                         + (walkClip == null ? "null" : walkClip.name)
                         + ". The generated Animator controller is built from the assignment list, not FindClip.");
                 if (walkClip == null || !walkClip.humanMotion)
