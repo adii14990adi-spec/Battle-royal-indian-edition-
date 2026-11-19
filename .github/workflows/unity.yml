@@ -172,6 +172,10 @@ jobs:
     name: Unity project (licence required)
     runs-on: ubuntu-24.04
     needs: [structure, data]
+    # The map-data job can fail on an unavailable Git LFS object. That is an
+    # independent data-integrity result and must not skip licensed Unity C#,
+    # import, scene, Avatar or test validation.
+    if: always() && needs.structure.result == 'success' && needs.data.result != 'cancelled'
     timeout-minutes: 90
     steps:
       - name: Free runner disk space
