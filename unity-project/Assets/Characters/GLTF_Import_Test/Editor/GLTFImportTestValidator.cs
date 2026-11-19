@@ -259,14 +259,14 @@ namespace BattleHorizons.EditorTools
 
                     var textureSlots = 0;
                     var missingTextures = 0;
-                    for (var p = 0; p < ShaderUtil.GetPropertyCount(shader); p++)
+                    for (var p = 0; p < shader.GetPropertyCount(); p++)
                     {
-                        if (ShaderUtil.GetPropertyType(shader, p) != ShaderUtil.ShaderPropertyType.Texture)
+                        if (shader.GetPropertyType(p) != UnityEngine.Rendering.ShaderPropertyType.Texture)
                         {
                             continue;
                         }
 
-                        var property = ShaderUtil.GetPropertyName(shader, p);
+                        var property = shader.GetPropertyName(p);
                         var texture = material.GetTexture(property);
                         if (texture != null)
                         {
