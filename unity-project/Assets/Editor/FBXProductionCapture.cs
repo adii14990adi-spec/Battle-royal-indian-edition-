@@ -280,22 +280,21 @@ namespace BattleHorizons.EditorTools
                 cameraObject.transform.position = new Vector3(0f, height * 0.58f, -Mathf.Max(3.8f, height * 2.4f));
                 cameraObject.transform.LookAt(new Vector3(0f, height * 0.52f, 0f));
 
-                var runtimeWalkClip = config.FindClip(definition.id, CharacterAnimCategory.Walk);
-                var walkClip = ResolveCaptureWalkClip(config, definition.id);
-                report.Check(sex + " canonical Walk deformation clip",
+                // The generated config is canonical after the isolated
+                // EditMode fixtures; use its runtime Walk lookup directly.
+                var walkClip = config.FindClip(definition.id, CharacterAnimCategory.Walk);
+                report.Check(sex + " runtime Walk deformation clip",
                     walkClip != null && walkClip.humanMotion && walkClip.length > 0f,
-                    walkClip == null ? "" : "config.FindClip(Walk)="
-                        + (runtimeWalkClip == null ? "null" : runtimeWalkClip.name)
-                        + "; selected '" + walkClip.name + "', humanMotion=" + walkClip.humanMotion
-                        + ", length=" + walkClip.length.ToString("F3") + " s from "
+                    walkClip == null ? "" : "config.FindClip(Walk)='" + walkClip.name
+                        + "', humanMotion=" + walkClip.humanMotion
+                        + ", length=" + walkClip.length.ToString("F3") + " s; "
                         + (config.clips == null ? 0 : config.clips.Count) + " registered production clips",
-                    "FindClip(Walk)=" + (runtimeWalkClip == null ? "null" : runtimeWalkClip.name)
-                        + (walkClip == null ? "; canonical walking clip is unavailable"
-                            : "; selected '" + walkClip.name + "', humanMotion=" + walkClip.humanMotion
-                                + ", length=" + walkClip.length.ToString("F3") + " s"));
-                if (walkClip == null || !walkClip.humanMotion)
+                    "FindClip(Walk)=" + (walkClip == null ? "null"
+                        : "'" + walkClip.name + "', humanMotion=" + walkClip.humanMotion
+                            + ", length=" + walkClip.length.ToString("F3") + " s"));
+                if (walkClip == null || !walkClip.humanMotion || walkClip.length <= 0f)
                 {
-                    throw new InvalidOperationException(sex + " has no Humanoid walking clip after config rebuild");
+                    throw new InvalidOperationException(sex + " has no Humanoid walking clip in the generated config");
                 }
 
                 var lower = sex.ToLowerInvariant();
@@ -375,27 +374,6 @@ namespace BattleHorizons.EditorTools
             {
                 if (player != null) UnityEngine.Object.DestroyImmediate(player);
             }
-        }
-
-        private static AnimationClip ResolveCaptureWalkClip(CharacterAnimationConfig config, string characterId)
-        {
-            if (config != null && config.clips != null)
-            {
-                for (var i = 0; i < config.clips.Count; i++)
-                {
-                    var clip = config.clips[i];
-                    if (clip != null && clip.humanMotion && clip.length > 0f
-                        && string.Equals(clip.name, "walking", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return clip;
-                    }
-                }
-            }
-
-            if (config == null) return null;
-            return config.FindClip(characterId, CharacterAnimCategory.Walk)
-                ?? FBXProductionVerifier.ResolveClipForCategory(
-                    config, characterId, CharacterAnimCategory.Walk);
         }
 
         private static string SexFromModelPath(string path)
