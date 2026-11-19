@@ -31,7 +31,8 @@ Static only: no Unity Editor, no glTF import, no rendering, no APK and no device
 | Female mesh counts | PASS | 8844 vertices, 15060 triangles (3 meshes) |
 | Female PNG dimensions / formats | PASS | 7 PNG image URIs resolve; eye textures 256², hair/body textures 2048²; no texture downscaled |
 | Female Android texture memory (static estimate) | INFO | 7 source PNGs; uncompressed RGBA + mipmaps ≈ 107.3 MiB if all originals are imported at native 2048². ASTC/512 recommendations are in the final report; no source optimization was applied. |
-| production assets unchanged | PASS | 250 protected Unity Assets/ProjectSettings files are byte-identical; only the two allowlisted test asmdefs were updated to reference new test assemblies |
+| production assets unchanged | PASS | 246 protected Unity Assets/ProjectSettings files are byte-identical; only the two allowlisted test asmdefs were updated to reference new test assemblies |
+| main-branch deletions inherited by PR | INFO | main deleted 4 UserAssets placeholder/demo files after this branch was created. The PR merge inherits those deletions; they are not GLTF experiment changes. |
 | no new or moved FBX files | PASS | all 76 FBX files are the original protected set |
 | committed GUID integrity | PASS | 91 unique, well-formed GUIDs across 91 committed .meta files |
 | no production controllers/prefabs/scenes added | PASS | no committed production controller, prefab or scene was added or replaced |

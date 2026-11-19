@@ -536,6 +536,9 @@ def check_protected_assets(report: Report) -> None:
                  not problems,
                  f"{len(manifest['files']) - len(allowlisted)} protected Unity Assets/ProjectSettings files are byte-identical; only the two allowlisted test asmdefs were updated to reference new test assemblies",
                  "; ".join(problems[:8]))
+    report.info("main-branch deletions inherited by PR",
+                "main deleted " + str(len(manifest.get("main_deleted_after_branch_creation", []))) +
+                " UserAssets placeholder/demo files after this branch was created. The PR merge inherits those deletions; they are not GLTF experiment changes.")
 
     fbx_files = sorted(ASSETS_ROOT.rglob("*.fbx"))
     known_fbx = {e["path"] for e in manifest["files"] if e["path"].endswith(".fbx")}

@@ -143,7 +143,12 @@
     {
       "check": "production assets unchanged",
       "status": "PASS",
-      "detail": "250 protected Unity Assets/ProjectSettings files are byte-identical; only the two allowlisted test asmdefs were updated to reference new test assemblies"
+      "detail": "246 protected Unity Assets/ProjectSettings files are byte-identical; only the two allowlisted test asmdefs were updated to reference new test assemblies"
+    },
+    {
+      "check": "main-branch deletions inherited by PR",
+      "status": "INFO",
+      "detail": "main deleted 4 UserAssets placeholder/demo files after this branch was created. The PR merge inherits those deletions; they are not GLTF experiment changes."
     },
     {
       "check": "no new or moved FBX files",

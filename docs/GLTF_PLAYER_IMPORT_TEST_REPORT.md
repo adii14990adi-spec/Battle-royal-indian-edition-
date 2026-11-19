@@ -134,6 +134,8 @@ Both licence files are byte-identical and state **CC0 1.0 Universal / Public Dom
 
 **Local static sweep before push (2026-11-18):** `validate_gltf_import_test.py` 33 PASS / 0 FAIL / 4 NOT VERIFIED; `processing/unity/tests` 23/23; `validate_structure.py` 17/0; `validate_csharp.py` 36/0 (tree-sitter, not a Unity compile); existing character/animation validator 20/0 with 7 Editor-only SKIP / 6 INFO; Blender 13/13; metadata sync 26/26. `validate_unity_map.py` remains a separate pre-existing LFS-pointer issue and is not part of this isolated test.
 
+**Main-branch note:** `main` deleted four `Assets/UserAssets` placeholder/demo files after this branch was created. The PR merge inherits those deletions; they are not caused by the GLTF experiment and are excluded from the protected-asset hash comparison.
+
 **Licensed Unity 6 GitHub Actions:** pending. Editor import, scene validation, missing-reference checks, Avatar validity, EditMode/PlayMode tests, visual capture and optional Android APK build are reported after the workflow completes. No unlicensed Unity runner is used. Static-only and Editor-only workflows are separate.
 
 ## 12. Visual screenshots / explicit NOT VERIFIED status

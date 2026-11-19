@@ -1,7 +1,7 @@
 {
-  "description": "Hashes of production Unity assets/ProjectSettings captured before the isolated GLTF import experiment. The static validator permits only new files and the two explicitly allowlisted test asmdefs.",
+  "description": "Hashes of production Unity assets/ProjectSettings captured before the isolated GLTF import experiment, adjusted for four UserAssets placeholder/demo files deleted on main after this branch was created. The static validator permits only new files and the two explicitly allowlisted test asmdefs.",
   "captured_from_head": "b6c7d14dd5ba393ac9f32902b1b3180223326133",
-  "file_count": 252,
+  "file_count": 248,
   "allowlisted_modified_paths": [
     "unity-project/Assets/Tests/EditMode/BattleHorizons.EditModeTests.asmdef",
     "unity-project/Assets/Tests/PlayMode/BattleHorizons.PlayModeTests.asmdef"
@@ -1193,26 +1193,6 @@
       "sha256": "ac020d4b62269b635742207a591d15c8b7f071347c4e793faa0c72f14b21235d"
     },
     {
-      "path": "unity-project/Assets/UserAssets/Materials/.gitkeep",
-      "size": 0,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    },
-    {
-      "path": "unity-project/Assets/UserAssets/Models/.gitkeep",
-      "size": 0,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    },
-    {
-      "path": "unity-project/Assets/UserAssets/Models/Animation/.gitkeep",
-      "size": 1,
-      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
-    },
-    {
-      "path": "unity-project/Assets/UserAssets/Models/Animation/showcase_all.glb",
-      "size": 74056,
-      "sha256": "2c1f789572704e8ec7a24b50d6fb8e6d6619efaa46de78ecd52ef3a695c78c98"
-    },
-    {
       "path": "unity-project/Assets/UserAssets/README.md",
       "size": 2190,
       "sha256": "b62d0c435e17c42f5e31971294eac0fdb7b934da68485c58b1da9731e2091fb2"
@@ -1267,5 +1247,11 @@
       "size": 209,
       "sha256": "a8b69654a380733b1a31f95e1a7031351a02fef29c12f00056746bd616eed3b9"
     }
+  ],
+  "main_deleted_after_branch_creation": [
+    "unity-project/Assets/UserAssets/Materials/.gitkeep",
+    "unity-project/Assets/UserAssets/Models/.gitkeep",
+    "unity-project/Assets/UserAssets/Models/Animation/.gitkeep",
+    "unity-project/Assets/UserAssets/Models/Animation/showcase_all.glb"
   ]
 }
