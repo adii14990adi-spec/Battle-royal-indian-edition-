@@ -12,10 +12,11 @@
     "unity-project/Assets/Scripts/UI/MobileControlsBuilder.cs",
     "unity-project/Assets/Tests/EditMode/AssetImportRulesTests.cs",
     "unity-project/Assets/Tests/EditMode/BattleHorizons.EditModeTests.asmdef",
+    "unity-project/Assets/Tests/EditMode/CharacterPipelineTests.cs",
     "unity-project/Assets/Tests/PlayMode/BattleHorizons.PlayModeTests.asmdef"
   ],
   "captured_from_head": "b6c7d14dd5ba393ac9f32902b1b3180223326133",
-  "description": "Hashes of production Unity assets/ProjectSettings captured before the isolated GLTF import experiment, adjusted for four UserAssets placeholder/demo files deleted on main after this branch was created. The static validator permits only new files and the two explicitly allowlisted test asmdefs.",
+  "description": "Hashes of production Unity assets/ProjectSettings captured before the isolated GLTF import experiment, adjusted for four UserAssets placeholder/demo files deleted on main after this branch was created. The static validator permits only new files, the two explicitly allowlisted test asmdefs, and the exact hashed targeted FBX repair files listed in processing/unity/fbx_production_repair_manifest.json.",
   "file_count": 248,
   "files": [
     {
@@ -1170,8 +1171,8 @@
     },
     {
       "path": "unity-project/Assets/Tests/EditMode/CharacterPipelineTests.cs",
-      "sha256": "72d200cd793b4ce41fb91f26f10636eee9c2be0f52e48d5b875ff2e50dcb85ae",
-      "size": 33626
+      "sha256": "523cbce468c3ffbc9df168ea6ecd0eccef53df4d0934855cf9bf473a61e3d18e",
+      "size": 33699
     },
     {
       "path": "unity-project/Assets/Tests/EditMode/QualityAndShapeTests.cs",

@@ -24,60 +24,12 @@
       "size": 3291
     },
     {
-      "path": "unity-project/Assets/Scripts/Characters/CharacterAnimationConfig.cs",
-      "previous_sha256": "771104fd509d46cdeb471602f8bd617233f47d9bc7b15f1cf2ccd1739dbf2a26",
-      "previous_size": 19594,
-      "reason": "Treat null, empty and whitespace shared assignment IDs identically and resolve per-character IDs case-insensitively.",
-      "sha256": "5a9094924716d9b699be6f3d13161824f175caeb3c6e4e04521e4384cf0c9651",
-      "size": 20872
-    },
-    {
       "path": "unity-project/Assets/Editor/AnimatorControllerBuilder.cs",
       "previous_sha256": "7f06cfbf8c0581b5b507282711d697caadc9c30bf6f7b2bd933f3e08948dcac1",
       "previous_size": 27343,
       "reason": "Apply the same shared-assignment normalization and case-insensitive per-character precedence when generating controllers.",
       "sha256": "92726f84a228df08df1227f82020e3ebf593f2a1355d4fe6acd599a4965fc31d",
       "size": 27760
-    },
-    {
-      "path": "unity-project/Assets/Editor/CharacterAnimationManagerWindow.cs",
-      "previous_sha256": "cc9d3c5753b0fce9e31657b3003fe27abdc1cdf2d7aeb335fe892a9ed49457a0",
-      "previous_size": 38276,
-      "reason": "Use the shared shared-ID helper so empty-string shared defaults are not skipped by the Editor draft UI.",
-      "sha256": "ebdafaac899d1df9137b834278af285ef22548061c765dc5210bdf165d08b3ff",
-      "size": 38479
-    },
-    {
-      "path": "unity-project/Assets/Scripts/Characters/PlayerCharacterVisual.cs",
-      "previous_sha256": "7736b11161fa1ad250f564c1bd8bb49fe94a7a161fd57ed530a106ad99bb7b99",
-      "previous_size": 7301,
-      "reason": "Drive the IsAiming Animator bool from runtime aim state while preserving UpperBody animation hooks.",
-      "sha256": "97d4bb66c2aec26439d8c287bdae5b15d6387812e9d9e375dcf5ed79ff242c1d",
-      "size": 7863
-    },
-    {
-      "path": "unity-project/Assets/Scripts/Player/ThirdPersonMotor.cs",
-      "previous_sha256": "fc2e839a584691edf8cd1d36ae24d5ce99f32f79a8b89c3fae3f6acf9501f216",
-      "previous_size": 9027,
-      "reason": "Expose aim input and IsAiming state for deterministic Animator and movement integration.",
-      "sha256": "7cce1d82b9f922783dee1c1207c79b42eabaecba44ababea08202d5a6ac6da62",
-      "size": 9188
-    },
-    {
-      "path": "unity-project/Assets/Scripts/Player/PlayerInputRouter.cs",
-      "previous_sha256": "6f63b3c2223cd07905c24940f5857439d65a4a6fbfdc320f4134aa9fc8a54bb5",
-      "previous_size": 7264,
-      "reason": "Read Q, gamepad left trigger and mobile AIM hold-button state into the motor.",
-      "sha256": "671445df381b5d4cd796615ff946138a664584f0e7abb995e2eb608194254f8c",
-      "size": 7925
-    },
-    {
-      "path": "unity-project/Assets/Scripts/UI/MobileControlsBuilder.cs",
-      "previous_sha256": "d91cd4c13fa10c81608571976fe4f5761fda1da5c7f8c8778fd27864bd01c9cb",
-      "previous_size": 14929,
-      "reason": "Add and wire a deterministic AIM hold button for mobile input.",
-      "sha256": "2db3764489381d2cd847a24725b99b7ef4a204ab76a4e80da17902c271a0ea32",
-      "size": 15441
     },
     {
       "path": "unity-project/Assets/Editor/AssetImportRules.cs",
@@ -88,12 +40,68 @@
       "size": 13170
     },
     {
+      "path": "unity-project/Assets/Editor/CharacterAnimationManagerWindow.cs",
+      "previous_sha256": "cc9d3c5753b0fce9e31657b3003fe27abdc1cdf2d7aeb335fe892a9ed49457a0",
+      "previous_size": 38276,
+      "reason": "Use the shared shared-ID helper so empty-string shared defaults are not skipped by the Editor draft UI.",
+      "sha256": "ebdafaac899d1df9137b834278af285ef22548061c765dc5210bdf165d08b3ff",
+      "size": 38479
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Characters/CharacterAnimationConfig.cs",
+      "previous_sha256": "771104fd509d46cdeb471602f8bd617233f47d9bc7b15f1cf2ccd1739dbf2a26",
+      "previous_size": 19594,
+      "reason": "Treat null, empty and whitespace shared assignment IDs identically and resolve per-character IDs case-insensitively.",
+      "sha256": "5a9094924716d9b699be6f3d13161824f175caeb3c6e4e04521e4384cf0c9651",
+      "size": 20872
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Characters/PlayerCharacterVisual.cs",
+      "previous_sha256": "7736b11161fa1ad250f564c1bd8bb49fe94a7a161fd57ed530a106ad99bb7b99",
+      "previous_size": 7301,
+      "reason": "Drive the IsAiming Animator bool from runtime aim state while preserving UpperBody animation hooks.",
+      "sha256": "97d4bb66c2aec26439d8c287bdae5b15d6387812e9d9e375dcf5ed79ff242c1d",
+      "size": 7863
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Player/PlayerInputRouter.cs",
+      "previous_sha256": "6f63b3c2223cd07905c24940f5857439d65a4a6fbfdc320f4134aa9fc8a54bb5",
+      "previous_size": 7264,
+      "reason": "Read Q, gamepad left trigger and mobile AIM hold-button state into the motor.",
+      "sha256": "671445df381b5d4cd796615ff946138a664584f0e7abb995e2eb608194254f8c",
+      "size": 7925
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Player/ThirdPersonMotor.cs",
+      "previous_sha256": "fc2e839a584691edf8cd1d36ae24d5ce99f32f79a8b89c3fae3f6acf9501f216",
+      "previous_size": 9027,
+      "reason": "Expose aim input and IsAiming state for deterministic Animator and movement integration.",
+      "sha256": "7cce1d82b9f922783dee1c1207c79b42eabaecba44ababea08202d5a6ac6da62",
+      "size": 9188
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/MobileControlsBuilder.cs",
+      "previous_sha256": "d91cd4c13fa10c81608571976fe4f5761fda1da5c7f8c8778fd27864bd01c9cb",
+      "previous_size": 14929,
+      "reason": "Add and wire a deterministic AIM hold button for mobile input.",
+      "sha256": "2db3764489381d2cd847a24725b99b7ef4a204ab76a4e80da17902c271a0ea32",
+      "size": 15441
+    },
+    {
       "path": "unity-project/Assets/Tests/EditMode/AssetImportRulesTests.cs",
       "previous_sha256": "e20dbb155a009c7d52c9e8016c30a36b55b62d5df8ad8d2361890e788ee5160b",
       "previous_size": 1928,
       "reason": "Cover the scoped production character texture import exception.",
       "sha256": "1e6b12f3ab80e5faa2e6f2e8605c53c199a4a6bdc81bc757773095fc08fabcae",
       "size": 2851
+    },
+    {
+      "path": "unity-project/Assets/Tests/EditMode/CharacterPipelineTests.cs",
+      "previous_sha256": "72d200cd793b4ce41fb91f26f10636eee9c2be0f52e48d5b875ff2e50dcb85ae",
+      "previous_size": 33626,
+      "reason": "Update the stale negative controller-build test to use an empty scratch config: shared assignments now resolve for every character, so the generated project config must not be mutated to assert the missing-Idle gate.",
+      "sha256": "523cbce468c3ffbc9df168ea6ecd0eccef53df4d0934855cf9bf473a61e3d18e",
+      "size": 33699
     }
   ],
   "new_repair_files": [
@@ -337,7 +345,7 @@
   "pre_repair_protected_manifest_path": "processing/unity/fbx_production_repair_baseline.json",
   "pre_repair_protected_manifest_sha256": "8e511b81ac7f1c3f23903af0989bbe611c843f537289c7d5674754d76494f2ef",
   "schema": "fbx-production-repair-manifest/v1",
-  "scope": "Targeted FBX material/texture import, shared-animation lookup, runtime Aim wiring, scoped texture import rules, and LFS/icon validation repairs only.",
+  "scope": "Targeted FBX material/texture import, shared-animation lookup, runtime Aim wiring, scoped texture import rules, LFS/icon validation, and scoped regression-test repairs only.",
   "unchanged_fbx_files": [
     {
       "path": "unity-project/Assets/Animations/Combat/Dive Roll.fbx",

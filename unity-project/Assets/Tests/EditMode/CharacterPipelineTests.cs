@@ -458,26 +458,29 @@ namespace BattleHorizons.Tests
         [Test]
         public void BuildController_WithoutIdle_FailsWithClearMessage()
         {
-            var config = CharacterAnimationConfigLibrary.LoadOrCreate();
-            var character = CharacterAnimationConfigLibrary.GetOrCreateCharacter(
-                config, "male", "Male");
-            character.model = AssetDatabase.LoadAssetAtPath<GameObject>(MalePath);
-
-            // Wipe this character's assignments (including Idle).
-            for (var i = config.assignments.Count - 1; i >= 0; i--)
+            // Shared assignments (null/empty/whitespace characterId) now resolve
+            // for every character. Use an empty scratch config rather than
+            // mutating the generated project config: both shared and per-
+            // character Idle clips are genuinely absent here.
+            var config = ScriptableObject.CreateInstance<CharacterAnimationConfig>();
+            try
             {
-                var assignment = config.assignments[i];
-                if (assignment != null && assignment.characterId == character.id)
+                var character = new CharacterDefinition
                 {
-                    config.assignments.RemoveAt(i);
-                }
-            }
+                    id = "male",
+                    displayName = "Male",
+                    model = AssetDatabase.LoadAssetAtPath<GameObject>(MalePath),
+                };
 
-            CharacterAnimationConfigLibrary.Save(config);
-            var build = AnimatorControllerBuilder.BuildController(config, character);
-            Assert.IsFalse(build.success, "build must fail without an Idle clip");
-            StringAssert.Contains("Idle", build.summary,
-                "failure must name the missing category: " + build.summary);
+                var build = AnimatorControllerBuilder.BuildController(config, character);
+                Assert.IsFalse(build.success, "build must fail without an Idle clip");
+                StringAssert.Contains("Idle", build.summary,
+                    "failure must name the missing category: " + build.summary);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(config);
+            }
         }
 
         [Test]
