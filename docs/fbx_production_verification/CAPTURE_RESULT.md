@@ -4,9 +4,9 @@
 | --- | --- | --- |
 | verification boundary | PASS | Real Unity Editor Camera.Render output for both production FBX characters under graphics-enabled batch mode; each generated definition is instantiated directly from its production FBX to avoid Resources.Load selection caching. Not an Android device render, APK test or human visual inspection. |
 | graphics device available | PASS | OpenGLCore / llvmpipe (LLVM 20.1.2, 256 bits) |
-| generated config isolated from EditMode fixtures | PASS | the generated-only config asset was deleted and rebuilt before capture; no committed production asset was modified |
-| character integration regenerated before capture | PASS | removed the generated config fixture and rebuilt it/controllers from the production FBX and 74 clip sources; 0 failure(s) |
+| character integration regenerated before capture | PASS | rebuilt generated controllers from the production FBX and 74 clip sources; 0 failure(s) |
 | generated character config | PASS | Assets/Generated/Resources/CharacterAnimationConfig.asset |
+| generated config isolated from EditMode fixtures | PASS | 0 per-character overrides in the generated config; EditMode controller fixtures use scratch configs |
 | Female requested production FBX selected | PASS | generated definition points at Assets/Characters/Female/Female character.fbx |
 | Female visible player mesh is FBX, not capsule | PASS | capture instantiated Assets/Characters/Female/Female character.fbx from the generated definition; 3 SkinnedMeshRenderer(s), valid Humanoid Avatar, PlayerCapsuleVisual MeshRenderer disabled |
 | Female generated Animator controller assigned | PASS | generated per-character controller assigned to the spawned Animator |
