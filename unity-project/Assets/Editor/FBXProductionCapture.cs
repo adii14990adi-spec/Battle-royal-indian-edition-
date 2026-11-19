@@ -44,11 +44,24 @@ namespace BattleHorizons.EditorTools
                 report.Check("graphics device available", true,
                     SystemInfo.graphicsDeviceType + " / " + SystemInfo.graphicsDeviceName, "");
 
-                var config = CharacterAnimationConfig.Load();
+                // EditMode tests in the same CI job can mutate the uncommitted
+                // generated config. Rebuild it from the real FBX sources before
+                // capturing so the screenshot reflects production integration,
+                // not test fixtures. Committed FBX/.fbx.meta files are untouched.
+                string integrationReport;
+                var integrationFailures = CharacterAnimationIntegration.Build(out integrationReport);
+                report.Check("character integration regenerated before capture",
+                    integrationFailures == 0,
+                    "regenerated generated config/controllers from the production FBX and 74 clip sources; " + integrationFailures + " failure(s)",
+                    integrationFailures + " failure(s) while regenerating generated config/controllers: " + integrationReport);
+                AssetDatabase.Refresh();
+
+                var config = CharacterAnimationConfigLibrary.LoadIfExists();
+                if (config == null) config = CharacterAnimationConfig.Load();
                 if (config == null)
                 {
                     report.Check("generated character config", false, "",
-                        "CharacterAnimationConfig.Load() returned null; run CharacterAnimationIntegration.BuildFromCommandLine first");
+                        "CharacterAnimationConfigLibrary.LoadIfExists() and CharacterAnimationConfig.Load() returned null; run CharacterAnimationIntegration.BuildFromCommandLine first");
                     throw new InvalidOperationException("generated character config is missing");
                 }
                 report.Check("generated character config", true,
