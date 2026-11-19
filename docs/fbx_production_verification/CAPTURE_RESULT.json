@@ -1,9 +1,9 @@
 ﻿{
   "title": "Production FBX visual capture — Unity Editor software GL",
   "summary": {
-    "pass": 7,
+    "pass": 9,
     "fail": 0,
-    "not_verified": 1
+    "not_verified": 2
   },
   "rows": [
     { "check": "verification boundary", "status": "PASS", "detail": "Real Unity Editor Camera.Render output under graphics-enabled batch mode; not an Android device render, APK test or human visual inspection." },
@@ -13,9 +13,12 @@
     { "check": "visible player mesh is FBX, not capsule", "status": "PASS", "detail": "PlayerCharacterVisual.TrySpawn instantiated Assets/Characters/Male/Male character.fbx; 3 SkinnedMeshRenderer(s), valid Humanoid Avatar, PlayerCapsuleVisual MeshRenderer disabled" },
     { "check": "spawned visual root found", "status": "PASS", "detail": "Male character (CharacterVisual)" },
     { "check": "FBX feet aligned to temporary floor", "status": "PASS", "detail": "bounds before alignment minY=-0.102; aligned minY=0.000, size=(1.860, 1.916, 0.441)" },
-    { "check": "animation clip resolution", "status": "INFO", "detail": "config.FindClip(Walk)=walking; verification-only direct resolver=null. The generated Animator controller is built from the assignment list, not FindClip." },
-    { "check": "visual animation deformation", "status": "NOT VERIFIED", "detail": "no Humanoid Walk clip was available in the generated assignments; only the rest-pose screenshot was rendered" },
-    { "check": "screenshot paths", "status": "INFO", "detail": "rest=docs/fbx_production_verification/screenshots/fbx_player_rest.png; deformed pose not captured" },
+    { "check": "animation clip resolution", "status": "INFO", "detail": "config.FindClip(Walk)=walking; selected verification clip=walking. The generated Animator controller is built from the assignment list, not FindClip." },
+    { "check": "no magenta / error-material pixels", "status": "PASS", "detail": "0 magenta pixels in rest and sampled frames" },
+    { "check": "visual animation deformation", "status": "PASS", "detail": "AnimationMode sampled 'walking' at 0.000 s and 0.683 s; 30367 pixels changed between genuine Unity camera renders" },
+    { "check": "front / facial / UV-seam quality", "status": "NOT VERIFIED", "detail": "committed camera is a rear three-quarter view; no human close-up or front-face inspection was performed" },
+    { "check": "Android device rendering / shader variants / FPS / memory / thermal", "status": "NOT VERIFIED", "detail": "these are Editor software-GL renders, not an APK installed on a physical Android device" },
+    { "check": "screenshot paths", "status": "INFO", "detail": "rest=docs/fbx_production_verification/screenshots/fbx_player_rest.png; deformed=docs/fbx_production_verification/screenshots/fbx_player_deformed.png" },
     { "check": "graphics device", "status": "INFO", "detail": "OpenGLCore / llvmpipe (LLVM 20.1.2, 256 bits)" }
   ]
 }
