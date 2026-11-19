@@ -82,6 +82,34 @@ step is required. Validate the committed blobs and hashes with:
 python3 processing/unity/validate_unity_map.py
 ```
 
+## Gameplay systems: loot, spawns and the safe zone
+
+The match foundations live in `unity-project/Assets/Scripts/Gameplay/`:
+
+* **Loot** (`Gameplay/Loot`) — ScriptableObject items, weighted loot tables and
+  a per-POI `LootSpawnConfig`. Tier contract: Tier 3 (snipers/assault rifles)
+  spawns only in the Military Base (`central_state`); the Abandoned Village and
+  Docks cap at Tier 2; the Forest & Quarry is resources only. `LootSpawner`
+  rolls every `LootContainer` (building bounds) from the match seed; greybox
+  tier-coloured cubes stand in until art prefabs exist. A starter set of 15
+  items and 4 tables is authored in code (`DefaultLootContent`) and can be
+  persisted as editable assets via **Battle Horizons > Gameplay > Create Default
+  Loot Assets**.
+* **Spawns** (`Gameplay/Match/PlayerSpawnService`) — 50 deterministic drop
+  points on a coastal ring (~1520 m radius), water-rejected against the sea,
+  lake and river, placed by `PlayerSpawnController`.
+* **Safe zone** (`Gameplay/Match/SafeZoneController`) — seeded shrinking-circle
+  state machine (wait → shrink × 6 phases ≈ 16.8 min to a ~37 m final circle),
+  ramping 0.4 → 12 HP/s damage outside the rim through `IDamageable`, with a
+  greybox cylinder wall and Scene-view gizmos.
+
+All randomness goes through the seeded `Core/RandomStream` (never
+`UnityEngine.Random`), so one match seed reproduces loot, drops and zone
+shifts exactly — enforced by `validate_csharp.py` and by
+`Assets/Tests/EditMode/GameplaySystemsTests.cs`. See
+[`docs/gameplay/`](docs/gameplay/MAP_POI_LAYOUT.md) for the POI layout, loot,
+safe-zone and mobile-optimization guides.
+
 ## Offline and mobile settings
 
 The Android target is ARM64, landscape, ASTC-compressed and does not request a
