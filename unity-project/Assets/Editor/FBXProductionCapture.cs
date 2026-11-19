@@ -13,10 +13,11 @@ namespace BattleHorizons.EditorTools
     /// <summary>
     /// Genuine Unity Editor Camera.Render captures of BOTH production FBX
     /// characters. This is a graphics-enabled software-GL batch-mode step. It
-    /// uses the real PlayerCharacterVisual.TrySpawn path, renders each character
-    /// at rest and after sampling a real Humanoid Walk clip, checks non-grey
-    /// textured pixels, and writes committed PNG evidence. It writes no
-    /// production asset or FBX/.fbx.meta file.
+    /// uses each generated character definition/controller and instantiates
+    /// its production FBX directly under an isolated capture root, renders
+    /// each character at rest and after sampling a real Humanoid Walk clip,
+    /// checks non-grey textured pixels, and writes committed PNG evidence.
+    /// It writes no production asset or FBX/.fbx.meta file.
     /// </summary>
     public static class FBXProductionCapture
     {
@@ -31,14 +32,13 @@ namespace BattleHorizons.EditorTools
                 "Production FBX visual capture — Male and Female, Unity Editor software GL");
             GameObject environment = null;
             CharacterAnimationConfig config = null;
-            var originalSelected = string.Empty;
             var wroteScreenshots = false;
             var screenshotPaths = new List<string>();
 
             try
             {
                 report.Add("verification boundary", "PASS",
-                    "Real Unity Editor Camera.Render output for both production FBX characters under graphics-enabled batch mode; not an Android device render, APK test or human visual inspection.");
+                    "Real Unity Editor Camera.Render output for both production FBX characters under graphics-enabled batch mode; each generated definition is instantiated directly from its production FBX to avoid Resources.Load selection caching. Not an Android device render, APK test or human visual inspection.");
                 if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
                 {
                     report.Check("graphics device available", false, "",
@@ -48,13 +48,34 @@ namespace BattleHorizons.EditorTools
                 report.Check("graphics device available", true,
                     SystemInfo.graphicsDeviceType + " / " + SystemInfo.graphicsDeviceName, "");
 
+                // EditMode tests intentionally exercise the real generated
+                // config asset. Delete that generated-only asset before the
+                // capture rebuild so a test fixture cannot leak a per-character
+                // clip override into the captures or the subsequent APK build.
+                // No committed production asset is touched by this refresh.
+                var configRemoved = true;
+                if (AssetDatabase.LoadAssetAtPath<CharacterAnimationConfig>(
+                        CharacterAnimationConfigLibrary.ConfigAssetPath) != null)
+                {
+                    configRemoved = AssetDatabase.DeleteAsset(
+                        CharacterAnimationConfigLibrary.ConfigAssetPath);
+                    AssetDatabase.Refresh();
+                }
+                report.Check("generated config isolated from EditMode fixtures", configRemoved,
+                    "the generated-only config asset was deleted and rebuilt before capture; no committed production asset was modified",
+                    "AssetDatabase.DeleteAsset could not remove the generated config fixture");
+                if (!configRemoved)
+                {
+                    throw new InvalidOperationException("generated config fixture could not be removed");
+                }
+
                 // Regenerate from immutable production FBX sources so captures
                 // reflect the repaired import, not stale generated fixtures.
                 string integrationReport;
                 var integrationFailures = CharacterAnimationIntegration.Build(out integrationReport);
                 report.Check("character integration regenerated before capture",
                     integrationFailures == 0,
-                    "regenerated generated config/controllers from the production FBX and 74 clip sources; " + integrationFailures + " failure(s)",
+                    "removed the generated config fixture and rebuilt it/controllers from the production FBX and 74 clip sources; " + integrationFailures + " failure(s)",
                     integrationFailures + " failure(s) while regenerating generated config/controllers: " + integrationReport);
                 AssetDatabase.Refresh();
 
@@ -67,7 +88,6 @@ namespace BattleHorizons.EditorTools
                     throw new InvalidOperationException("generated character config is missing");
                 }
                 report.Check("generated character config", true, AssetDatabase.GetAssetPath(config), "");
-                originalSelected = config.selectedCharacterId;
 
                 var outputDirectory = Path.Combine(FBXProductionVerifier.OutputDirectory(), "screenshots");
                 Directory.CreateDirectory(outputDirectory);
@@ -129,7 +149,6 @@ namespace BattleHorizons.EditorTools
                         var sex = SexFromModelPath(sourceModelPath);
                         if (string.IsNullOrEmpty(sex)) continue;
 
-                        config.selectedCharacterId = definition.id;
                         CaptureCharacter(report, config, definition, sex, camera, cameraObject,
                             outputDirectory, screenshotPaths, ref wroteScreenshots, captured);
                     }
@@ -159,7 +178,6 @@ namespace BattleHorizons.EditorTools
             }
             finally
             {
-                if (config != null) config.selectedCharacterId = originalSelected;
                 if (environment != null) UnityEngine.Object.DestroyImmediate(environment);
                 EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             }
@@ -180,38 +198,64 @@ namespace BattleHorizons.EditorTools
             GameObject player = null;
             try
             {
+                var sourceModelPath = definition.model != null
+                    ? AssetDatabase.GetAssetPath(definition.model)
+                    : string.Empty;
+                var expectedPath = string.Equals(sex, "Male", StringComparison.Ordinal)
+                    ? FBXProductionVerifier.MaleModelPath
+                    : FBXProductionVerifier.FemaleModelPath;
+                var selectedCorrectFbx = string.Equals(sourceModelPath, expectedPath,
+                    StringComparison.OrdinalIgnoreCase);
+                report.Check(sex + " requested production FBX selected",
+                    selectedCorrectFbx,
+                    "generated definition points at " + sourceModelPath,
+                    "expected " + expectedPath + " but generated definition points at " + sourceModelPath);
+                if (!selectedCorrectFbx || definition.model == null)
+                {
+                    throw new InvalidOperationException(sex + " definition does not point at its production FBX");
+                }
+
                 MeshRenderer capsuleRenderer;
                 ThirdPersonMotor motor;
                 var visual = CreatePlayer(out player, out capsuleRenderer, out motor);
-                var spawned = visual.TrySpawn();
-                var active = visual.ActiveDefinition;
-                var modelPath = active != null && active.model != null
-                    ? AssetDatabase.GetAssetPath(active.model) : string.Empty;
-                var animator = visual.CharacterAnimator;
-                var skinned = player.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+                visual.enabled = false;
+                if (motor != null) motor.enabled = false;
+                if (capsuleRenderer != null) capsuleRenderer.enabled = false;
+
+                // Direct Editor instantiation isolates Male and Female from
+                // Resources.Load's cached selectedCharacterId. The model,
+                // Avatar and generated controller still come from the exact
+                // production FBX definition used by the runtime spawn path.
+                var spawnedVisual = UnityEngine.Object.Instantiate(definition.model, player.transform);
+                spawnedVisual.name = definition.displayName + " (CharacterVisual)";
+                var spawnedRoot = spawnedVisual.transform;
+                spawnedRoot.localPosition = Vector3.zero;
+                spawnedRoot.localRotation = Quaternion.identity;
+
+                var animator = spawnedVisual.GetComponentInChildren<Animator>(true);
+                var skinned = spawnedVisual.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+                var avatarOk = animator != null && animator.avatar != null
+                    && animator.avatar.isValid && animator.avatar.isHuman;
                 var capsuleHidden = capsuleRenderer != null && !capsuleRenderer.enabled;
-                var productionFbx = string.Equals(modelPath, FBXProductionVerifier.MaleModelPath, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(modelPath, FBXProductionVerifier.FemaleModelPath, StringComparison.OrdinalIgnoreCase);
-                var avatarOk = animator != null && animator.avatar != null && animator.avatar.isValid && animator.avatar.isHuman;
-
                 report.Check(sex + " visible player mesh is FBX, not capsule",
-                    spawned && productionFbx && skinned.Length > 0 && avatarOk && capsuleHidden,
-                    "PlayerCharacterVisual.TrySpawn instantiated " + modelPath + "; " + skinned.Length
-                        + " SkinnedMeshRenderer(s), valid Humanoid Avatar, PlayerCapsuleVisual MeshRenderer disabled",
-                    "spawned=" + spawned + ", modelPath=" + modelPath + ", skinned=" + skinned.Length
-                        + ", avatarOk=" + avatarOk + ", capsuleHidden=" + capsuleHidden);
-                if (!spawned || active == null || animator == null)
+                    skinned.Length > 0 && avatarOk && capsuleHidden,
+                    "capture instantiated " + sourceModelPath + " from the generated definition; "
+                        + skinned.Length + " SkinnedMeshRenderer(s), valid Humanoid Avatar, PlayerCapsuleVisual MeshRenderer disabled",
+                    "skinned=" + skinned.Length + ", avatarOk=" + avatarOk
+                        + ", capsuleHidden=" + capsuleHidden + ", modelPath=" + sourceModelPath);
+                if (animator == null || !avatarOk)
                 {
-                    throw new InvalidOperationException(sex + " production FBX visual could not be spawned");
+                    throw new InvalidOperationException(sex + " production FBX visual has no valid Humanoid Animator");
                 }
 
-                var spawnedName = active.displayName + " (CharacterVisual)";
-                var spawnedRoot = FindChildByName(player.transform, spawnedName);
-                if (spawnedRoot == null)
+                if (definition.controller != null)
                 {
-                    report.Check(sex + " spawned visual root found", false, "", "could not find " + spawnedName);
-                    throw new InvalidOperationException("spawned visual root was not found");
+                    animator.runtimeAnimatorController = definition.controller;
                 }
+                report.Check(sex + " generated Animator controller assigned",
+                    definition.controller != null && animator.runtimeAnimatorController == definition.controller,
+                    "generated per-character controller assigned to the spawned Animator",
+                    "generated controller is missing or was not assigned");
                 report.Check(sex + " spawned visual root found", true, spawnedRoot.name, "");
 
                 var renderers = spawnedRoot.GetComponentsInChildren<Renderer>(true);
@@ -237,29 +281,41 @@ namespace BattleHorizons.EditorTools
                 cameraObject.transform.position = new Vector3(0f, height * 0.58f, -Mathf.Max(3.8f, height * 2.4f));
                 cameraObject.transform.LookAt(new Vector3(0f, height * 0.52f, 0f));
 
-                var runtimeWalkClip = config.FindClip(active.id, CharacterAnimCategory.Walk);
-                var walkClip = runtimeWalkClip != null
-                    ? runtimeWalkClip
-                    : FBXProductionVerifier.ResolveClipForCategory(config, active.id, CharacterAnimCategory.Walk);
-                report.Check(sex + " runtime Walk clip lookup",
+                var runtimeWalkClip = config.FindClip(definition.id, CharacterAnimCategory.Walk);
+                var walkClip = ResolveCaptureWalkClip(config, definition.id);
+                report.Check(sex + " canonical Walk deformation clip",
                     walkClip != null && walkClip.humanMotion && walkClip.length > 0f,
-                    walkClip == null ? "" : "config.FindClip(Walk)=" + (runtimeWalkClip == null ? "null" : runtimeWalkClip.name)
-                        + "; selected '" + walkClip.name + "', humanMotion=" + walkClip.humanMotion,
+                    walkClip == null ? "" : "config.FindClip(Walk)="
+                        + (runtimeWalkClip == null ? "null" : runtimeWalkClip.name)
+                        + "; selected canonical '" + walkClip.name + "' from "
+                        + (config.clips == null ? 0 : config.clips.Count) + " registered production clips",
                     "FindClip(Walk)=" + (runtimeWalkClip == null ? "null" : runtimeWalkClip.name)
-                        + "; verifier fallback=" + (walkClip == null ? "null" : walkClip.name));
+                        + "; canonical walking clip is unavailable");
                 if (walkClip == null || !walkClip.humanMotion)
                 {
-                    throw new InvalidOperationException(sex + " has no Humanoid Walk clip after config rebuild");
+                    throw new InvalidOperationException(sex + " has no Humanoid walking clip after config rebuild");
                 }
 
                 var lower = sex.ToLowerInvariant();
                 var restPath = Path.Combine(outputDirectory, "fbx_" + lower + "_rest.png");
                 var deformedPath = Path.Combine(outputDirectory, "fbx_" + lower + "_deformed.png");
+                var warmupPath = Path.Combine(outputDirectory, "fbx_" + lower + "_warmup.png");
+
+                // URP/Lit variants are compiled lazily on the first software-GL
+                // render. Two discarded Camera.Render frames prevent a dark
+                // shader-compilation frame from being mistaken for the rest pose.
+                Color32[] warmupPixels;
+                RenderCamera(camera, warmupPath, out warmupPixels);
+                RenderCamera(camera, warmupPath, out warmupPixels);
+                if (File.Exists(warmupPath)) File.Delete(warmupPath);
+                report.Check(sex + " URP/Lit shader warm-up", true,
+                    "two discarded genuine Editor Camera.Render frames primed the material variants before evidence frames", "");
 
                 animator.runtimeAnimatorController = null;
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-                animator.enabled = true;
+                var animatorWasEnabled = animator.enabled;
+                animator.enabled = false;
 
                 Color32[] restPixels;
                 Color32[] deformedPixels;
@@ -269,9 +325,11 @@ namespace BattleHorizons.EditorTools
                     AnimationMode.StartAnimationMode();
                     started = true;
                     SampleClip(spawnedRoot.gameObject, walkClip, 0f);
+                    Physics.SyncTransforms();
                     RenderCamera(camera, restPath, out restPixels);
                     var midTime = Mathf.Max(0f, walkClip.length * 0.5f);
                     SampleClip(spawnedRoot.gameObject, walkClip, midTime);
+                    Physics.SyncTransforms();
                     RenderCamera(camera, deformedPath, out deformedPixels);
                     wroteScreenshots = true;
                     screenshotPaths.Add(restPath);
@@ -298,6 +356,7 @@ namespace BattleHorizons.EditorTools
                 finally
                 {
                     if (started) AnimationMode.StopAnimationMode();
+                    animator.enabled = animatorWasEnabled;
                 }
 
                 if (sex == "Male")
@@ -314,6 +373,27 @@ namespace BattleHorizons.EditorTools
             {
                 if (player != null) UnityEngine.Object.DestroyImmediate(player);
             }
+        }
+
+        private static AnimationClip ResolveCaptureWalkClip(CharacterAnimationConfig config, string characterId)
+        {
+            if (config != null && config.clips != null)
+            {
+                for (var i = 0; i < config.clips.Count; i++)
+                {
+                    var clip = config.clips[i];
+                    if (clip != null && clip.humanMotion && clip.length > 0f
+                        && string.Equals(clip.name, "walking", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return clip;
+                    }
+                }
+            }
+
+            if (config == null) return null;
+            return config.FindClip(characterId, CharacterAnimCategory.Walk)
+                ?? FBXProductionVerifier.ResolveClipForCategory(
+                    config, characterId, CharacterAnimCategory.Walk);
         }
 
         private static string SexFromModelPath(string path)
