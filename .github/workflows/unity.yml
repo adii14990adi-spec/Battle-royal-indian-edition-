@@ -864,6 +864,48 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+      - name: Publish CI diagnostics on failure
+        # Step logs and artifacts are not reachable from every review surface,
+        # so on failure the interesting slices of the Unity logs and the failed
+        # test cases are committed back to the branch for the next iteration.
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p docs/ci
+          {
+            echo "# CI diagnostics for ${{ github.sha }}"
+            echo
+            echo "## unity-configure.log errors"
+            if [[ -f /tmp/unity-configure.log ]]; then
+              grep -n -E "(error CS|Shader error|Exception|FAILED|Aborting batchmode|Error)" /tmp/unity-configure.log | tail -n 40 || true
+              echo
+              echo "## unity-configure.log tail"
+              tail -n 60 /tmp/unity-configure.log || true
+            else
+              echo "(no configure log)"
+            fi
+            for log in /tmp/unity-integration.log \
+                       unity-test-results/editmode/unity.log \
+                       unity-test-results/playmode/unity.log; do
+              if [[ -f "$log" ]]; then
+                echo
+                echo "## $log errors"
+                grep -n -E "(error CS|Exception|FAILED|Aborting batchmode)" "$log" | tail -n 25 || true
+              fi
+            done
+            echo
+            echo "## failed test cases"
+            while IFS= read -r xml; do
+              echo "--- $xml"
+              grep -A4 'result="Failed"' "$xml" | grep -E "test-case|message" | head -30 || true
+            done < <(find unity-test-results -name "*.xml" 2>/dev/null | head -6)
+          } > docs/ci/last-failure.md
+          git config user.name "arena-ci-diagnostics"
+          git config user.email "arena-ci-diagnostics@users.noreply.github.com"
+          git add docs/ci/last-failure.md
+          git commit -m "ci: publish failure diagnostics for ${{ github.sha }}" || exit 0
+          git push origin HEAD:"${GITHUB_REF_NAME}" || true
+
       - name: Surface production FBX verification FAIL result
         # The verifier, project validation and capture steps can continue so
         # all evidence is collected. This gate prevents explicit failures from
