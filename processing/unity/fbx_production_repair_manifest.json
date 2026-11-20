@@ -131,24 +131,24 @@
       "path": "unity-project/Assets/Resources/Config/siran_island_heights.bytes",
       "previous_sha256": "dbab12b66e90cb14b6ba1755e38366665abe6a30dfbe057be7911c08744cb35a",
       "previous_size": 643204,
-      "reason": "Siran Island 2.0 rebake: 2 km footprint at 5 m spacing (same 401x401 grid), -12 m shelf instead of a -38 m abyss, tuned zone plateaus; baked deterministically by processing/unity/generate_siran_island.py.",
-      "sha256": "9aa4ebe62fd3604b5e8c05d640130449657480ca14009a01dafb7a09810d6e94",
+      "reason": "Siran Island 2.0 rebake: 2 km footprint at 5 m spacing (same 401x401 grid), -12 m shelf instead of a -38 m abyss, tuned zone plateaus; baked deterministically by processing/unity/generate_siran_island.py. Later: airfield plateau re-applied after the sea-shelf pass (runway corner was eroded 0.57 m); heights/colors/roads rebaked, min/max/spawn unchanged.",
+      "sha256": "9bf4208f6d454156b233fe49189242bc98653e06a1637521747179f65fd09eb3",
       "size": 643204
     },
     {
       "path": "unity-project/Assets/Resources/Config/siran_island_colors.bytes",
       "previous_sha256": "a78d09cafe6267c9c1d5654d796c50b2d1247f3fa336b9e87bd74508c1bf4fa3",
       "previous_size": 643204,
-      "reason": "Siran Island 2.0 rebake: biome palette + slope rock + zone tint + runway markings repainted for the denser 5 m grid. Later: Alpha channel now carries the ground-photo blend weight (sparse grass vs dense leaf litter); 255 keeps flat palette on runway/lake bed.",
-      "sha256": "7889155fd106d855918a081e2505d0e2667a55fdbd9c04bff3ef429f4e70bd87",
+      "reason": "Siran Island 2.0 rebake: biome palette + slope rock + zone tint + runway markings repainted for the denser 5 m grid. Later: Alpha channel now carries the ground-photo blend weight (sparse grass vs dense leaf litter); 255 keeps flat palette on runway/lake bed. Later: airfield plateau re-applied after the sea-shelf pass (runway corner was eroded 0.57 m); heights/colors/roads rebaked, min/max/spawn unchanged.",
+      "sha256": "de4ecb7c6302290ce299dab17a7d2d8bbe1211eea0d96e869233e88b2b2d4a20",
       "size": 643204
     },
     {
       "path": "unity-project/Assets/Resources/Config/siran_island_roads.bytes",
       "previous_sha256": "7b453fd91cf9d814a258841449f15c873d46a3bfbfbe9e70dd5abc6cfc5e48fd",
       "previous_size": 115932,
-      "reason": "Siran Island 2.0 rebake: 36 road/runway ribbons (asphalt + shoulder pairs) re-laid on the 2 km island, baked CCW for the Unity winding flip. Roads rebaked at 0.12 m hover so the new solid road collider sits inside the CharacterController step offset. Later: Road ribbons rebaked with counter-clockwise-from-above winding so the loader swap yields front faces and the winding test passes.",
-      "sha256": "9559293572c394c756d14f55d651a9f053ad92b4aa3a8f054485555ac85cbda6",
+      "reason": "Siran Island 2.0 rebake: 36 road/runway ribbons (asphalt + shoulder pairs) re-laid on the 2 km island, baked CCW for the Unity winding flip. Roads rebaked at 0.12 m hover so the new solid road collider sits inside the CharacterController step offset. Later: Road ribbons rebaked with counter-clockwise-from-above winding so the loader swap yields front faces and the winding test passes. Later: airfield plateau re-applied after the sea-shelf pass (runway corner was eroded 0.57 m); heights/colors/roads rebaked, min/max/spawn unchanged.",
+      "sha256": "c85574cb0b4f21aeab6ad482ee25d883e024869f048b1be2ad3855afe7a52fb3",
       "size": 48420
     },
     {
@@ -179,8 +179,8 @@
       "path": "unity-project/Assets/Resources/Config/siran_island_manifest.json",
       "previous_sha256": "b35a03a470d05f21ad01bccd561050b345829ef6c462fd58419216a6b8ee08df",
       "previous_size": 1454,
-      "reason": "Siran Island 2.0 manifest: byte counts and SHA-256 of the rebaked payloads. Roads rebaked at 0.12 m hover so the new solid road collider sits inside the CharacterController step offset. Later: Manifest mirrored to the rebaked colour blob with ground-photo blend weights. Later: Manifest mirrored to the rewound road blob.",
-      "sha256": "45a1b7cd9dedf76f3f02ed0ecf7bb992a26d6c6ad76dbc173fb13fee0134c4a7",
+      "reason": "Siran Island 2.0 manifest: byte counts and SHA-256 of the rebaked payloads. Roads rebaked at 0.12 m hover so the new solid road collider sits inside the CharacterController step offset. Later: Manifest mirrored to the rebaked colour blob with ground-photo blend weights. Later: Manifest mirrored to the rewound road blob. Later: airfield plateau re-applied after the sea-shelf pass (runway corner was eroded 0.57 m); heights/colors/roads rebaked, min/max/spawn unchanged.",
+      "sha256": "d55c497b5a5223d872232c2932862e7795b4ee7490d1bca9ae53b4895a7ec280",
       "size": 1333
     },
     {

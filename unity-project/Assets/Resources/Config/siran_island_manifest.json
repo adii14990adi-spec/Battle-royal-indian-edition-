@@ -5,15 +5,15 @@
   "files": {
     "siran_island_heights.bytes": {
       "bytes": 643204,
-      "sha256": "9aa4ebe62fd3604b5e8c05d640130449657480ca14009a01dafb7a09810d6e94"
+      "sha256": "9bf4208f6d454156b233fe49189242bc98653e06a1637521747179f65fd09eb3"
     },
     "siran_island_colors.bytes": {
       "bytes": 643204,
-      "sha256": "7889155fd106d855918a081e2505d0e2667a55fdbd9c04bff3ef429f4e70bd87"
+      "sha256": "de4ecb7c6302290ce299dab17a7d2d8bbe1211eea0d96e869233e88b2b2d4a20"
     },
     "siran_island_roads.bytes": {
       "bytes": 48420,
-      "sha256": "9559293572c394c756d14f55d651a9f053ad92b4aa3a8f054485555ac85cbda6"
+      "sha256": "c85574cb0b4f21aeab6ad482ee25d883e024869f048b1be2ad3855afe7a52fb3"
     },
     "siran_island_river.bytes": {
       "bytes": 4648,

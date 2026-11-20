@@ -247,6 +247,17 @@ def bake_heights():
                 s = _smooth((rn - 0.985) / 0.20)
                 h = h + (SEA_SHELF - h) * s
 
+            # The shelf erodes zone plateaus near the coast: the runway's
+            # north-east corner sits where the coast noise pulls the shoreline
+            # inward (rn > 0.985), which dragged the 9 m pad down by 0.57 m.
+            # Re-apply the airfield plateau after the shelf so the runway stays
+            # perfectly flat (ProjectValidator locks the worst deviation < 0.2 m).
+            az = ZONES[4]
+            ad = zone_sdf(az, x, z)
+            if ad < az[12]:
+                aw = az[11] * _smooth(1.0 - max(ad, 0.0) / az[12])
+                h = h + (az[10] - h) * aw
+
             heights[iz * SIZE + ix] = max(SEA_SHELF, h)
     return heights
 
