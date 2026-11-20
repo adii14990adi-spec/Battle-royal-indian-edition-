@@ -95,16 +95,25 @@ unity-project/Assets/Scripts/
     │   ├── LootContainer.cs     #   building-bounds marker + static registry
     │   ├── LootPickup.cs        #   world item instance, trigger pickup, Collected event
     │   └── LootSpawner.cs       #   rolls every container from the match seed
-    └── Match/                   # Task 2b/2c: spawns + safe zone
-        ├── IDamageable.cs       #   health contract ("safe_zone" damage source)
-        ├── PlayerSpawnService.cs#   50 deterministic edge spawn points (pure math)
-        ├── PlayerSpawnController.cs # scene wrapper: seed → ring → local player
-        ├── SafeZoneMath.cs      #   circle placement/lerp/containment (pure math)
-        ├── SafeZoneSettings.cs  #   ScriptableObject phase schedule
-        └── SafeZoneController.cs#   wait/shrink state machine, damage, greybox wall
+    ├── Match/                   # Task 2b/2c: spawns + safe zone
+    │   ├── IDamageable.cs       #   health contract ("safe_zone" damage source)
+    │   ├── PlayerSpawnService.cs#   50 deterministic edge spawn points (pure math)
+    │   ├── PlayerSpawnController.cs # scene wrapper: seed → ring → local player
+    │   ├── SafeZoneMath.cs      #   circle placement/lerp/containment (pure math)
+    │   ├── SafeZoneSettings.cs  #   ScriptableObject phase schedule
+    │   └── SafeZoneController.cs#   wait/shrink state machine, damage, greybox wall
+    └── Combat/                  # shooting milestone
+        ├── WeaponData.cs        #   ScriptableObject gun stats (damage/RPM/mag/ADS/recoil)
+        ├── DefaultWeaponContent.cs # code stats for the 4 loot guns
+        ├── WeaponRuntime.cs     #   pure fire-rate/mag/reload machine (clock injected)
+        ├── RecoilModel.cs       #   seeded procedural recoil + recovery
+        ├── CombatPlaceholderFx.cs # procedural muzzle/gunshot/tracer (zero assets)
+        ├── HealthComponent.cs   #   reference IDamageable for players & dummies
+        └── WeaponController.cs  #   equip-from-loot, ADS FOV, hitscan, camera kick
 ```
 
 Related docs: [LOOT_SPAWNING.md](LOOT_SPAWNING.md),
+[SHOOTING_MECHANICS.md](SHOOTING_MECHANICS.md),
 [SAFE_ZONE_AND_SPAWNS.md](SAFE_ZONE_AND_SPAWNS.md),
 [MOBILE_OPTIMIZATION.md](MOBILE_OPTIMIZATION.md),
 [../architecture/UNITY_ARCHITECTURE.md](../architecture/UNITY_ARCHITECTURE.md).

@@ -67,9 +67,9 @@
       "path": "unity-project/Assets/Scripts/Player/PlayerInputRouter.cs",
       "previous_sha256": "6f63b3c2223cd07905c24940f5857439d65a4a6fbfdc320f4134aa9fc8a54bb5",
       "previous_size": 7264,
-      "reason": "Read Q, gamepad left trigger and mobile AIM hold-button state into the motor.",
-      "sha256": "671445df381b5d4cd796615ff946138a664584f0e7abb995e2eb608194254f8c",
-      "size": 7925
+      "reason": "Read Q, gamepad left trigger and mobile AIM hold-button state into the motor, and expose AimHeld/FireHeld (touch FIRE button, mouse LMB, gamepad right trigger) for the WeaponController shooting system.",
+      "sha256": "ce2bb8839134e0504cabb55f9cd9add6e710f79bd0316fec0aac748302ce3272",
+      "size": 8965
     },
     {
       "path": "unity-project/Assets/Scripts/Player/ThirdPersonMotor.cs",
@@ -83,9 +83,9 @@
       "path": "unity-project/Assets/Scripts/UI/MobileControlsBuilder.cs",
       "previous_sha256": "d91cd4c13fa10c81608571976fe4f5761fda1da5c7f8c8778fd27864bd01c9cb",
       "previous_size": 14929,
-      "reason": "Add and wire a deterministic AIM hold button for mobile input.",
-      "sha256": "2db3764489381d2cd847a24725b99b7ef4a204ab76a4e80da17902c271a0ea32",
-      "size": 15441
+      "reason": "Add and wire a deterministic AIM hold button for mobile input, plus a FIRE hold button routed to PlayerInputRouter.SetFireHeld for the shooting system.",
+      "sha256": "8535708f7996a0d425319899241a1eb3926bb7a0a42da4854e6785d742635af1",
+      "size": 15964
     },
     {
       "path": "unity-project/Assets/Tests/EditMode/AssetImportRulesTests.cs",

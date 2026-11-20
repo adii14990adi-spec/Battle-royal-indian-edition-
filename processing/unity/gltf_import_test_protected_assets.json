@@ -1056,8 +1056,8 @@
     },
     {
       "path": "unity-project/Assets/Scripts/Player/PlayerInputRouter.cs",
-      "sha256": "671445df381b5d4cd796615ff946138a664584f0e7abb995e2eb608194254f8c",
-      "size": 7925
+      "sha256": "ce2bb8839134e0504cabb55f9cd9add6e710f79bd0316fec0aac748302ce3272",
+      "size": 8965
     },
     {
       "path": "unity-project/Assets/Scripts/Player/ThirdPersonMotor.cs",
@@ -1091,8 +1091,8 @@
     },
     {
       "path": "unity-project/Assets/Scripts/UI/MobileControlsBuilder.cs",
-      "sha256": "2db3764489381d2cd847a24725b99b7ef4a204ab76a4e80da17902c271a0ea32",
-      "size": 15441
+      "sha256": "8535708f7996a0d425319899241a1eb3926bb7a0a42da4854e6785d742635af1",
+      "size": 15964
     },
     {
       "path": "unity-project/Assets/Scripts/UI/TouchControlsHost.cs",

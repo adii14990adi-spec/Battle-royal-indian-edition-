@@ -102,6 +102,15 @@ The match foundations live in `unity-project/Assets/Scripts/Gameplay/`:
   state machine (wait → shrink × 6 phases ≈ 16.8 min to a ~37 m final circle),
   ramping 0.4 → 12 HP/s damage outside the rim through `IDamageable`, with a
   greybox cylinder wall and Scene-view gizmos.
+* **Combat** (`Gameplay/Combat`) — hitscan shooting: `WeaponData` stats per
+  loot gun (itemId-keyed), a pure fire-rate/magazine/reload state machine
+  (`WeaponRuntime`), ADS with a seeded 60° → 45° FOV pull-in, deterministic
+  procedural recoil with recovery bleed (`RecoilModel` → camera `AddLook`),
+  `HealthComponent` (the shared `IDamageable` for bullets and the blue zone)
+  and zero-asset placeholder FX (procedural muzzle flash, synthesised gunshot
+  PCM, tracer). Weapons equip straight off the `LootPickup.Collected` event,
+  and a touch FIRE button joined the generated mobile rig. See
+  [`docs/gameplay/SHOOTING_MECHANICS.md`](docs/gameplay/SHOOTING_MECHANICS.md).
 
 All randomness goes through the seeded `Core/RandomStream` (never
 `UnityEngine.Random`), so one match seed reproduces loot, drops and zone

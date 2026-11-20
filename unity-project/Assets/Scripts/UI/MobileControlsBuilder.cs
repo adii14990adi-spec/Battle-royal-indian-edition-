@@ -32,6 +32,8 @@ namespace BattleHorizons.UI
             public HoldButton SprintButton;
             public HoldButton AimButton;
             public Button AimUiButton;
+            public HoldButton FireButton;
+            public Button FireUiButton;
             public Button CrouchUiButton;
             public Button SprintUiButton;
             public GameObject Root;
@@ -120,6 +122,13 @@ namespace BattleHorizons.UI
                 null,
                 out var aimUiButton);
 
+            var fire = CreateHoldButton(canvasObject.transform, "FireButton", "FIRE",
+                new Vector2(1f, 0f), new Vector2(180f, 130f), new Vector2(-220f, 190f),
+                new Color(1f, 0.35f, 0.3f, 0.55f),
+                router != null ? (Action<bool>)router.SetFireHeld : null,
+                null,
+                out var fireUiButton);
+
             var rig = new Rig
             {
                 Canvas = canvas,
@@ -130,6 +139,8 @@ namespace BattleHorizons.UI
                 SprintButton = sprint,
                 AimButton = aim,
                 AimUiButton = aimUiButton,
+                FireButton = fire,
+                FireUiButton = fireUiButton,
                 CrouchUiButton = crouchUiButton,
                 SprintUiButton = sprintUiButton,
                 Root = canvasObject,

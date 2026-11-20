@@ -1,4 +1,5 @@
 using System.IO;
+using BattleHorizons.Gameplay.Combat;
 using BattleHorizons.Gameplay.Loot;
 using BattleHorizons.Gameplay.Match;
 using UnityEditor;
@@ -17,6 +18,7 @@ namespace BattleHorizons.EditorTools
     {
         private const string LootFolder = "Assets/Resources/Config/Loot";
         private const string MatchFolder = "Assets/Resources/Config/Match";
+        private const string CombatFolder = "Assets/Resources/Config/Combat";
 
         [MenuItem("Battle Horizons/Gameplay/Create Default Loot Assets")]
         public static void CreateDefaultLootAssets()
@@ -43,6 +45,21 @@ namespace BattleHorizons.EditorTools
             AssetDatabase.Refresh();
             Debug.Log($"[bh][editor] default loot assets written under {LootFolder} " +
                       $"({items.Count} items, {tables.Count} tables, 1 config)");
+        }
+
+        [MenuItem("Battle Horizons/Gameplay/Create Default Weapon Assets")]
+        public static void CreateDefaultWeaponAssets()
+        {
+            EnsureFolder(CombatFolder);
+            var weapons = DefaultWeaponContent.CreateAll();
+            foreach (var pair in weapons)
+            {
+                CreateOrReplace(pair.Value, $"{CombatFolder}/{pair.Value.name}.asset");
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[bh][editor] default weapon stats written under {CombatFolder} ({weapons.Count} weapons)");
         }
 
         [MenuItem("Battle Horizons/Gameplay/Create Default Safe Zone Settings")]
