@@ -109,11 +109,11 @@ namespace BattleHorizons.Tests.EditMode
             var sunBox = Mean((int)(w * 0.66f), (int)(w * 0.74f), (int)(h * 0.48f), (int)(h * 0.56f));
             var skyBox = Mean((int)(w * 0.35f), (int)(w * 0.45f), (int)(h * 0.58f), (int)(h * 0.66f));
 
-            Assert.Greater(zenith.b, zenith.r, "zenith band must be blue-dominant");
-            Assert.Greater(horizon.r, horizon.b, "horizon band must be warm");
-            Assert.Less(foreground.r + foreground.g + foreground.b, 300f,
+            Assert.Greater(zenith.z, zenith.x, "zenith band must be blue-dominant");
+            Assert.Greater(horizon.x, horizon.z, "horizon band must be warm");
+            Assert.Less(foreground.x + foreground.y + foreground.z, 300f,
                 "foreground must stay dark for UI contrast");
-            Assert.Greater(sunBox.r + sunBox.g + sunBox.b, skyBox.r + skyBox.g + skyBox.b,
+            Assert.Greater(sunBox.x + sunBox.y + sunBox.z, skyBox.x + skyBox.y + skyBox.z,
                 "sun glow must brighten its neighbourhood");
         }
 
