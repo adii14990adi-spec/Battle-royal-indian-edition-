@@ -52,16 +52,16 @@ workflow artifact is named `BattleHorizons-Android-APK-N`.
 ## Siran Island, terrain LODs and 50 m streaming
 
 The committed Unity data lives under
-`unity-project/Assets/Resources/Config/`. It describes a 4 km island on a 401 ×
-401 height/color grid, partitioned into 500 m source tiles.
+`unity-project/Assets/Resources/Config/`. It describes a 2 km island on a 401 ×
+401 height/color grid at 5 m spacing, partitioned into 250 m source tiles.
 
 The ground is drawn as two complementary levels of detail, both matte
 (`metallic 0`, `smoothness 0`) and both cut by the same world-space circle:
 
-* **inside 50 m** — the streamed 500 m tiles at the full 10 m sample spacing
+* **inside 50 m** — the streamed 250 m tiles at the full 5 m sample spacing
   (only tile rectangles intersecting the circle are resident). This is also the
   surface the `TerrainCollider` matches, so the player never floats or sinks;
-* **outside 50 m** — one static 20 m full-island shell (201 × 201 vertices,
+* **outside 50 m** — one static 10 m full-island shell (201 × 201 vertices,
   80,000 triangles, a single draw call) that shows the hills, flat zone pads,
   coastline and inland lake out to the view distance.
 
@@ -96,7 +96,7 @@ The match foundations live in `unity-project/Assets/Scripts/Gameplay/`:
   persisted as editable assets via **Battle Horizons > Gameplay > Create Default
   Loot Assets**.
 * **Spawns** (`Gameplay/Match/PlayerSpawnService`) — 50 deterministic drop
-  points on a coastal ring (~1520 m radius), water-rejected against the sea,
+  points on a coastal ring (~760 m radius), water-rejected against the sea,
   lake and river, placed by `PlayerSpawnController`.
 * **Safe zone** (`Gameplay/Match/SafeZoneController`) — seeded shrinking-circle
   state machine (wait → shrink × 6 phases ≈ 16.8 min to a ~37 m final circle),
@@ -152,6 +152,14 @@ radius. These
 are project settings and targets, not proof of device performance. See
 [`docs/performance/ANDROID_PROFILES.md`](docs/performance/ANDROID_PROFILES.md) and
 [`docs/UNISOC_BUDGET.md`](docs/UNISOC_BUDGET.md).
+
+## Home screen (code-built lobby)
+
+The lobby is 100% procedural: `LobbyArtFactory` paints the sunset vista,
+panels, chips and every glyph at runtime and `MainMenuController` lays them
+out as real widgets (logo, profile/coin/gem chips, Store…Events nav, loadout
+bar, Solo/Duo/Squad selector, golden START). No baked UI artwork — see
+[`docs/gameplay/HOME_SCREEN.md`](docs/gameplay/HOME_SCREEN.md).
 
 ## Validation commands
 

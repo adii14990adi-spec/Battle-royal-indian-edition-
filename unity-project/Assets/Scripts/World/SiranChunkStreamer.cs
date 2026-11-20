@@ -81,6 +81,7 @@ namespace BattleHorizons.World
                     chunkMaterial.SetFloat("_Metallic", 0f);
                     chunkMaterial.SetFloat("_Smoothness", 0f);
                     chunkMaterial.SetFloat("_StreamClipMode", 1f);
+                    SiranWorldBuilder.ApplyGroundPhotos(chunkMaterial);
                 }
                 else
                 {

@@ -172,11 +172,8 @@ namespace BattleHorizons.Player
                 return true;
             }
 
-            if (move.magnitude > 0.92f)
-            {
-                return true; // full stick deflection = run, standard mobile BR control
-            }
-
+            // The stick alone is WALK: running only happens through the sprint
+            // button (or shift / stick-button on keyboard & gamepad).
             var keyboard = Keyboard.current;
             if (keyboard != null && (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed))
             {

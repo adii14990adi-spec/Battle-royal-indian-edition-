@@ -5,38 +5,35 @@
   "files": {
     "siran_island_heights.bytes": {
       "bytes": 643204,
-      "sha256": "dbab12b66e90cb14b6ba1755e38366665abe6a30dfbe057be7911c08744cb35a"
+      "sha256": "9bf4208f6d454156b233fe49189242bc98653e06a1637521747179f65fd09eb3"
     },
     "siran_island_colors.bytes": {
       "bytes": 643204,
-      "sha256": "a78d09cafe6267c9c1d5654d796c50b2d1247f3fa336b9e87bd74508c1bf4fa3"
+      "sha256": "de4ecb7c6302290ce299dab17a7d2d8bbe1211eea0d96e869233e88b2b2d4a20"
     },
     "siran_island_roads.bytes": {
-      "bytes": 115932,
-      "sha256": "7b453fd91cf9d814a258841449f15c873d46a3bfbfbe9e70dd5abc6cfc5e48fd"
+      "bytes": 48420,
+      "sha256": "c85574cb0b4f21aeab6ad482ee25d883e024869f048b1be2ad3855afe7a52fb3"
     },
     "siran_island_river.bytes": {
-      "bytes": 8392,
-      "sha256": "538c4f73a1a3e20c9b2057cd7aec6f6dcd0d8783ce195ee7557ed979fdd4de17"
+      "bytes": 4648,
+      "sha256": "08977b4664a1850da9aabd28dcbe6e7e782cc884b209b6b77d8f7704f083dbaa"
     },
     "siran_island_terrain.json": {
-      "bytes": 4825,
-      "sha256": "b3543c3ee3c1aee664b38ae0922ac755ca3f7f4014a7b2f46cc1d28e37eb6921"
+      "bytes": 4335,
+      "sha256": "57e9879f842688476d0944d393b6e2e63ab127e6812774c6c0f1a2c4fc23085b"
     },
     "siran_island_layout.json": {
-      "bytes": 8153,
-      "sha256": "49c74c357e19102f346a055ab6aa14ccd338e0ec02c1807fd64304b4e1e75c94"
-    },
-    "water_normal_256.png": {
-      "bytes": 137293,
-      "sha256": "e1067e8199f050f9d4e912c1af189a72a6f2dc0d7d89372ec0d074ef4b4ca4a7"
+      "bytes": 8911,
+      "sha256": "d7b33513e41f4a992305e092246832ac471e041fa0549d142844e54b3ee005ca"
     }
   },
   "textures": {
     "water_normal_256.png": {
       "path": "unity-project/Assets/Resources/Art/Textures/water_normal_256.png",
       "sha256": "e1067e8199f050f9d4e912c1af189a72a6f2dc0d7d89372ec0d074ef4b4ca4a7",
-      "note": "Committed Unity water texture asset."
+      "note": "Committed Unity water texture asset.",
+      "bytes": 137293
     }
   }
 }

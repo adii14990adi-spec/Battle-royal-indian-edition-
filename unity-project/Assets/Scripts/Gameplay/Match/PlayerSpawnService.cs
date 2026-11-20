@@ -50,34 +50,61 @@ namespace BattleHorizons.Gameplay.Match
                 var x = 0f;
                 var z = 0f;
                 var ground = 0f;
-                var dry = false;
-                for (var attempt = 0; attempt < MaxWaterRetries && !dry; attempt++)
-                {
-                    // Each retry jitters the angle off the flooded bearing and
-                    // pulls the candidate inland, so lake/river crossings on the
-                    // ring (Siran Lake south, Siran River east) resolve fast.
-                    var jittered = angle + rng.Range(-1f, 1f) * 7f * attempt;
-                    var radians = jittered * Mathf.Deg2Rad;
-                    var radius = baseRadius * rng.Range(0.94f, 1.06f) * (1f - attempt * 0.04f);
-                    x = Mathf.Cos(radians) * radius;
-                    z = Mathf.Sin(radians) * radius;
 
-                    ground = GroundHeight(x, z, island);
-                    dry = ground > IslandShapeMath.WaterSurfaceAt(x, z);
-                }
-
-                if (!dry)
+                // The water retries and the radial last-resort can still converge
+                // two neighbouring flooded bearings onto the same shoreline spot,
+                // so the FINISHED candidate is separation-checked as well and the
+                // whole bearing walks 3 degrees around the ring while crowded.
+                for (var place = 0; place < 10; place++)
                 {
-                    // Deterministic last resort: walk the final bearing inland in
-                    // 5 % steps until the ground clears the water line.
-                    var radians = angle * Mathf.Deg2Rad;
-                    for (var factor = 0.9f; factor >= 0.2f && !dry; factor -= 0.05f)
+                    var dry = false;
+                    for (var attempt = 0; attempt < MaxWaterRetries && !dry; attempt++)
                     {
-                        x = Mathf.Cos(radians) * baseRadius * factor;
-                        z = Mathf.Sin(radians) * baseRadius * factor;
+                        // Each retry jitters the angle off the flooded bearing and
+                        // pulls the candidate inland, so lake/river crossings on
+                        // the ring (Siran Lake south, Siran River east) resolve fast.
+                        var jittered = angle + rng.Range(-1f, 1f) * 7f * attempt;
+                        var radians = jittered * Mathf.Deg2Rad;
+                        var radius = baseRadius * rng.Range(0.94f, 1.06f) * (1f - attempt * 0.04f);
+                        x = Mathf.Cos(radians) * radius;
+                        z = Mathf.Sin(radians) * radius;
+
                         ground = GroundHeight(x, z, island);
                         dry = ground > IslandShapeMath.WaterSurfaceAt(x, z);
                     }
+
+                    if (!dry)
+                    {
+                        // Deterministic last resort: walk the final bearing inland
+                        // in 5 % steps until the ground clears the water line.
+                        var fallRadians = angle * Mathf.Deg2Rad;
+                        for (var factor = 0.9f; factor >= 0.2f && !dry; factor -= 0.05f)
+                        {
+                            x = Mathf.Cos(fallRadians) * baseRadius * factor;
+                            z = Mathf.Sin(fallRadians) * baseRadius * factor;
+                            ground = GroundHeight(x, z, island);
+                            dry = ground > IslandShapeMath.WaterSurfaceAt(x, z);
+                        }
+                    }
+
+                    var crowded = false;
+                    for (var k = 0; k < i; k++)
+                    {
+                        var dx = points[k].x - x;
+                        var dz = points[k].z - z;
+                        if (dx * dx + dz * dz < 25f * 25f)
+                        {
+                            crowded = true;
+                            break;
+                        }
+                    }
+
+                    if (!crowded)
+                    {
+                        break;
+                    }
+
+                    angle += 3f;
                 }
 
                 points[i] = new Vector3(x, ground + GroundClearanceM, z);

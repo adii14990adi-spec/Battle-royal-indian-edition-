@@ -864,6 +864,95 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+      - name: Publish CI diagnostics on failure
+        # Step logs and artifacts are not reachable from every review surface,
+        # so on failure the interesting slices of the Unity logs and the failed
+        # test cases are committed back to the branch for the next iteration.
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p docs/ci
+          {
+            echo "# CI diagnostics for ${{ github.sha }}"
+            echo
+            echo "## unity-configure.log errors"
+            if [[ -f /tmp/unity-configure.log ]]; then
+              grep -n -E "(error CS|Shader error|Exception|FAILED|Aborting batchmode|Error)" /tmp/unity-configure.log | tail -n 40 || true
+              echo
+              echo "## unity-configure.log tail"
+              tail -n 60 /tmp/unity-configure.log || true
+            else
+              echo "(no configure log)"
+            fi
+            for log in /tmp/unity-integration.log \
+                       /tmp/unity-validate.log \
+                       unity-test-results/editmode/unity.log \
+                       unity-test-results/playmode/unity.log; do
+              if [[ -f "$log" ]]; then
+                echo
+                echo "## $log errors"
+                grep -n -E "(error CS|Exception|FAILED|Aborting batchmode|\[bh\]|FAIL)" "$log" | tail -n 40 || true
+                echo
+                echo "## $log tail"
+                tail -n 40 "$log" || true
+              fi
+            done
+            echo
+            echo "## failed test cases"
+          python3 - <<'PYEOF' || true
+          import glob, xml.etree.ElementTree as ET
+          files = sorted(glob.glob('unity-test-results/**/*.xml', recursive=True))
+          print('xml files found:', len(files))
+          for path in files:
+              print('---', path)
+              try:
+                  root = ET.parse(path).getroot()
+              except Exception as exc:
+                  print('  PARSE ERROR', exc)
+                  continue
+              for node in root.iter():
+                  if node.tag not in ('test-case', 'test-suite'):
+                      continue
+                  if node.get('result') not in ('Failed', 'Error', 'NotRunnable'):
+                      continue
+                  m = node.find('failure/message')
+                  st = node.find('failure/stack-trace')
+                  msg = (m.text or '').strip().splitlines() if m is not None and m.text else []
+                  tr = (st.text or '').strip().splitlines() if st is not None and st.text else []
+                  print(node.tag.upper(), node.get('result'), node.get('fullname'))
+                  for line in msg[:6]:
+                      print('  msg:', line[:300])
+                  for line in tr[:4]:
+                      print('  at:', line[:240])
+          PYEOF
+            echo
+            echo "## editmode unity.log tail"
+            tail -n 40 unity-test-results/editmode/unity.log 2>/dev/null || echo "(no editmode log)"
+          } > docs/ci/last-failure.md
+          git config user.name "arena-ci-diagnostics"
+          git config user.email "arena-ci-diagnostics@users.noreply.github.com"
+          git add docs/ci/last-failure.md
+          if git commit -m "ci: publish failure diagnostics for ${{ github.sha }}"; then
+            git push origin HEAD:"${GITHUB_REF_NAME}" || true
+          fi
+          # Fallback: the git push can die silently on token/remote quirks, so
+          # also write the file straight through the contents API.
+          ENCODED=$(base64 -w0 docs/ci/last-failure.md)
+          EXISTING_SHA=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            "https://api.github.com/repos/${{ github.repository }}/contents/docs/ci/last-failure.md" \
+            | python3 -c "import sys, json; print(json.load(sys.stdin).get('sha', ''))" || true)
+          if [ -n "$EXISTING_SHA" ]; then
+            curl -s -X PUT -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/repos/${{ github.repository }}/contents/docs/ci/last-failure.md" \
+              -d "{\"message\": \"ci: failure diagnostics ${{ github.sha }}\", \"content\": \"$ENCODED\", \"sha\": \"$EXISTING_SHA\"}" > /dev/null || true
+          else
+            curl -s -X PUT -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/repos/${{ github.repository }}/contents/docs/ci/last-failure.md" \
+              -d "{\"message\": \"ci: failure diagnostics ${{ github.sha }}\", \"content\": \"$ENCODED\"}" > /dev/null || true
+          fi
+
       - name: Surface production FBX verification FAIL result
         # The verifier, project validation and capture steps can continue so
         # all evidence is collected. This gate prevents explicit failures from

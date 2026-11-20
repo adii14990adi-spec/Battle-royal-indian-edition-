@@ -182,6 +182,7 @@ namespace BattleHorizons.World
             }
 
             stride = Mathf.Clamp(stride, 1, 8);
+            // Stride counts grid samples (2 samples x 5 m = 10 m over 2 km -> 201).
             var vertsPerSide = (data.Size - 1) / stride + 1;
             var vertexCount = vertsPerSide * vertsPerSide;
             var mapSize = SiranMapConfig.MapSizeM;

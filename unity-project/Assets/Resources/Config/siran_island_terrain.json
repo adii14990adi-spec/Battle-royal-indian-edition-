@@ -1,200 +1,229 @@
 {
-  "schema_version": 1,
-  "generated_by": "Committed Unity Siran Island data",
-  "provenance": {
-    "historical_source": "Siran Island greybox data, originally converted from the project predecessor before the repository became Unity-only",
-    "note": "These Unity Resources are the source of truth. No external engine project or conversion step is required."
-  },
-  "grid": {
-    "size": 401,
-    "spacing_m": 10.0,
-    "half_extent_m": 2000.0,
-    "chunk_size_m": 500.0,
-    "chunks_per_side": 8,
-    "index_order": "iz * size + ix, ix grows east (+X), iz grows south (+Z)",
-    "sample_centre_offset_m": 0.0
-  },
-  "heights": {
-    "file": "siran_island_heights.bytes",
-    "dtype": "float32-le",
-    "count": 160801,
-    "min_m": -38.0,
-    "max_m": 64.8359,
-    "sea_level_m": 0.0
-  },
-  "colors": {
-    "file": "siran_island_colors.bytes",
-    "dtype": "rgba8",
-    "count": 160801,
-    "note": "Greybox vertex colours baked by IslandHeightmap.color_at: biome palette + zone tint + runway markings. Zero textures."
-  },
-  "roads": {
-    "file": "siran_island_roads.bytes",
-    "ribbons": [
-      {
-        "name": "road_chunk_1_1",
-        "vertex_count": 232,
-        "index_count": 522,
-        "triangles": 174,
-        "offset": 0,
-        "bytes": 4756
-      },
-      {
-        "name": "road_chunk_1_2",
-        "vertex_count": 104,
-        "index_count": 234,
-        "triangles": 78,
-        "offset": 4756,
-        "bytes": 2132
-      },
-      {
-        "name": "road_chunk_1_4",
-        "vertex_count": 584,
-        "index_count": 1314,
-        "triangles": 438,
-        "offset": 6888,
-        "bytes": 11972
-      },
-      {
-        "name": "road_chunk_1_5",
-        "vertex_count": 312,
-        "index_count": 702,
-        "triangles": 234,
-        "offset": 18860,
-        "bytes": 6396
-      },
-      {
-        "name": "road_chunk_2_2",
-        "vertex_count": 344,
-        "index_count": 774,
-        "triangles": 258,
-        "offset": 25256,
-        "bytes": 7052
-      },
-      {
-        "name": "road_chunk_2_3",
-        "vertex_count": 128,
-        "index_count": 288,
-        "triangles": 96,
-        "offset": 32308,
-        "bytes": 2624
-      },
-      {
-        "name": "road_chunk_2_4",
-        "vertex_count": 336,
-        "index_count": 756,
-        "triangles": 252,
-        "offset": 34932,
-        "bytes": 6888
-      },
-      {
-        "name": "road_chunk_2_5",
-        "vertex_count": 160,
-        "index_count": 360,
-        "triangles": 120,
-        "offset": 41820,
-        "bytes": 3280
-      },
-      {
-        "name": "road_chunk_2_6",
-        "vertex_count": 264,
-        "index_count": 594,
-        "triangles": 198,
-        "offset": 45100,
-        "bytes": 5412
-      },
-      {
-        "name": "road_chunk_3_3",
-        "vertex_count": 560,
-        "index_count": 1260,
-        "triangles": 420,
-        "offset": 50512,
-        "bytes": 11480
-      },
-      {
-        "name": "road_chunk_3_4",
-        "vertex_count": 176,
-        "index_count": 396,
-        "triangles": 132,
-        "offset": 61992,
-        "bytes": 3608
-      },
-      {
-        "name": "road_chunk_3_6",
-        "vertex_count": 368,
-        "index_count": 828,
-        "triangles": 276,
-        "offset": 65600,
-        "bytes": 7544
-      },
-      {
-        "name": "road_chunk_4_3",
-        "vertex_count": 400,
-        "index_count": 900,
-        "triangles": 300,
-        "offset": 73144,
-        "bytes": 8200
-      },
-      {
-        "name": "road_chunk_4_4",
-        "vertex_count": 336,
-        "index_count": 756,
-        "triangles": 252,
-        "offset": 81344,
-        "bytes": 6888
-      },
-      {
-        "name": "road_chunk_4_5",
-        "vertex_count": 336,
-        "index_count": 756,
-        "triangles": 252,
-        "offset": 88232,
-        "bytes": 6888
-      },
-      {
-        "name": "road_chunk_4_6",
-        "vertex_count": 408,
-        "index_count": 918,
-        "triangles": 306,
-        "offset": 95120,
-        "bytes": 8364
-      },
-      {
-        "name": "road_chunk_5_3",
-        "vertex_count": 336,
-        "index_count": 756,
-        "triangles": 252,
-        "offset": 103484,
-        "bytes": 6888
-      },
-      {
-        "name": "road_chunk_6_3",
-        "vertex_count": 232,
-        "index_count": 522,
-        "triangles": 174,
-        "offset": 110372,
-        "bytes": 4756
-      }
-    ]
-  },
-  "stats": {
-    "grid": {
-      "filled_samples": 160801,
-      "missing_samples": 0,
-      "height_conflicts": 0,
-      "colour_conflicts": 0
-    },
-    "terrain_vertices": 166464,
-    "terrain_triangles": 320000,
-    "spawn_ground_height_m": 17.5249,
-    "source_tile_count": 64
-  },
-  "warnings": [],
-  "river": {
-    "file": "siran_island_river.bytes",
-    "vertex_count": 350,
-    "index_count": 1044,
-    "triangles": 348,
-    "length_m": 3124.97
-  }
+ "schema_version": 1,
+ "generated_by": "processing/unity/generate_siran_island.py (Siran Island 2.0 bake)",
+ "provenance": {
+  "historical_source": "Siran Island greybox data, originally converted from the project predecessor before the repository became Unity-only; rebaked smaller and denser by the in-repo generator (2 km map, 5 m spacing).",
+  "note": "These Unity Resources are the source of truth. No external engine project or conversion step is required."
+ },
+ "grid": {
+  "size": 401,
+  "spacing_m": 5.0,
+  "half_extent_m": 1000.0,
+  "chunk_size_m": 250.0,
+  "chunks_per_side": 8,
+  "index_order": "iz * size + ix, ix grows east (+X), iz grows south (+Z)",
+  "sample_centre_offset_m": 0.0
+ },
+ "heights": {
+  "file": "siran_island_heights.bytes",
+  "dtype": "float32-le",
+  "count": 160801,
+  "min_m": -12.0,
+  "max_m": 23.3231,
+  "sea_level_m": 0.0
+ },
+ "colors": {
+  "file": "siran_island_colors.bytes",
+  "dtype": "rgba8",
+  "count": 160801,
+  "note": "Vertex colours baked by generate_siran_island.py: biome palette + slope rock + zone tint + runway markings. Zero textures."
+ },
+ "roads": {
+  "file": "siran_island_roads.bytes",
+  "magic": "BHROAD01",
+  "ribbons": [
+   {
+    "id": "docks_central",
+    "vertices": 98,
+    "indices": 288
+   },
+   {
+    "id": "docks_central_shoulder",
+    "vertices": 98,
+    "indices": 288
+   },
+   {
+    "id": "factory_central",
+    "vertices": 122,
+    "indices": 360
+   },
+   {
+    "id": "factory_central_shoulder",
+    "vertices": 122,
+    "indices": 360
+   },
+   {
+    "id": "central_airbase",
+    "vertices": 98,
+    "indices": 288
+   },
+   {
+    "id": "central_airbase_shoulder",
+    "vertices": 98,
+    "indices": 288
+   },
+   {
+    "id": "central_graveyard",
+    "vertices": 98,
+    "indices": 288
+   },
+   {
+    "id": "central_graveyard_shoulder",
+    "vertices": 98,
+    "indices": 288
+   },
+   {
+    "id": "coast_highway",
+    "vertices": 98,
+    "indices": 288
+   },
+   {
+    "id": "coast_highway_shoulder",
+    "vertices": 98,
+    "indices": 288
+   },
+   {
+    "id": "runway_main",
+    "vertices": 4,
+    "indices": 6
+   },
+   {
+    "id": "runway_main_shoulder",
+    "vertices": 4,
+    "indices": 6
+   },
+   {
+    "id": "runway_cross",
+    "vertices": 4,
+    "indices": 6
+   },
+   {
+    "id": "runway_cross_shoulder",
+    "vertices": 4,
+    "indices": 6
+   },
+   {
+    "id": "taxiway_alpha",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "taxiway_alpha_shoulder",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "apron_pad",
+    "vertices": 4,
+    "indices": 6
+   },
+   {
+    "id": "apron_pad_shoulder",
+    "vertices": 4,
+    "indices": 6
+   },
+   {
+    "id": "dock_lane",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "dock_lane_shoulder",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "factory_lane",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "factory_lane_shoulder",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "lake_loop_n",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "lake_loop_n_shoulder",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "lake_loop_s",
+    "vertices": 98,
+    "indices": 288
+   },
+   {
+    "id": "lake_loop_s_shoulder",
+    "vertices": 98,
+    "indices": 288
+   },
+   {
+    "id": "graveyard_path",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "graveyard_path_shoulder",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "central_ring_w",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "central_ring_w_shoulder",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "central_ring_e",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "central_ring_e_shoulder",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "central_ring_n",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "central_ring_n_shoulder",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "central_ring_s",
+    "vertices": 50,
+    "indices": 144
+   },
+   {
+    "id": "central_ring_s_shoulder",
+    "vertices": 50,
+    "indices": 144
+   }
+  ]
+ },
+ "river": {
+  "file": "siran_island_river.bytes",
+  "magic": "BHRIVER1",
+  "vertices": 194,
+  "indices": 576,
+  "surface_start_m": 6.5,
+  "surface_end_m": -0.4
+ },
+ "stats": {
+  "spawn_ground_height_m": 15.3592
+ },
+ "warnings": []
 }

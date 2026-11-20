@@ -25,6 +25,8 @@ Shader "BattleHorizons/Radius Clipped Lit"
         _Metallic ("Metallic", Range(0, 1)) = 0
         _Smoothness ("Smoothness", Range(0, 1)) = 0
         _StreamClipMode ("Streaming Clip (0 off, 1 inside disk, 2 outside disk)", Float) = 1
+        _GroundMapB ("Dense Ground Photo (leaf litter)", 2D) = "white" {}
+        _GroundTile ("World Metres Per Ground Tile", Range(1, 24)) = 6
     }
 
     SubShader
@@ -56,18 +58,22 @@ Shader "BattleHorizons/Radius Clipped Lit"
 
             TEXTURE2D(_BaseMap);
             SAMPLER(sampler_BaseMap);
+            TEXTURE2D(_GroundMapB);
+            SAMPLER(sampler_GroundMapB);
             TEXTURE2D(_BumpMap);
             SAMPLER(sampler_BumpMap);
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST;
                 float4 _BumpMap_ST;
+                float4 _GroundMapB_ST;
                 half4 _BaseColor;
                 half _BumpScale;
                 half _UseVertexColor;
                 half _Metallic;
                 half _Smoothness;
                 half _StreamClipMode;
+                half _GroundTile;
             CBUFFER_END
 
             // Set globally once per frame by SiranChunkStreamer. Keeping the
@@ -93,6 +99,7 @@ Shader "BattleHorizons/Radius Clipped Lit"
                 half4 color : COLOR;
                 float2 baseUv : TEXCOORD2;
                 float2 bumpUv : TEXCOORD3;
+                float2 groundUv : TEXCOORD4;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -121,6 +128,7 @@ Shader "BattleHorizons/Radius Clipped Lit"
                 float2 rawUv = (abs(input.uv.x) + abs(input.uv.y)) > 0.0001 ? input.uv : fallbackUv;
                 output.baseUv = TRANSFORM_TEX(rawUv, _BaseMap);
                 output.bumpUv = TRANSFORM_TEX(rawUv, _BumpMap);
+                output.groundUv = positionInputs.positionWS.xz;
                 return output;
             }
 
@@ -148,7 +156,26 @@ Shader "BattleHorizons/Radius Clipped Lit"
                 half3 albedo = texel.rgb * _BaseColor.rgb;
                 if (_UseVertexColor > 0.5h)
                 {
-                    albedo *= SrgbToLinear(input.color.rgb);
+                    // The colour blob's alpha channel carries the ground-photo
+                    // blend weight: 1 keeps the flat baked palette (runway
+                    // asphalt, lake bed); below that the two authored ground
+                    // photos (sparse grass/dirt -> dense leaf litter) replace
+                    // the flat palette, tinted by the baked zone colour so the
+                    // village / hill / beach hues still read.
+                    half groundMask = input.color.a;
+                    if (groundMask < 0.995h)
+                    {
+                        float2 guv = input.groundUv / max(_GroundTile, 1.0h);
+                        half3 sparse = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, guv).rgb;
+                        half3 dense = SAMPLE_TEXTURE2D(_GroundMapB, sampler_GroundMapB, guv * 1.27h).rgb;
+                        half3 photo = lerp(sparse, dense, saturate(groundMask * 1.35h));
+                        half3 tint = lerp(half3(1.0h, 1.0h, 1.0h), SrgbToLinear(input.color.rgb) * 1.75h, 0.55h);
+                        albedo = photo * tint;
+                    }
+                    else
+                    {
+                        albedo *= SrgbToLinear(input.color.rgb);
+                    }
                 }
 
                 half3 normalWS = SafeNormalize(input.normalWS);
