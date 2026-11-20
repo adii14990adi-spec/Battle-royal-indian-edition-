@@ -123,9 +123,9 @@
       "path": "unity-project/Assets/Tests/PlayMode/WorldAndPlayerPlayModeTests.cs",
       "previous_sha256": "c3c97c10acb11fb3dcd5a6c78ed3f09b4cbec7d0042c52a0d0960718abe6f529",
       "previous_size": 19068,
-      "reason": "Update one assertion message: the Home Screen vista sprite is now painted procedurally by LobbyArtFactory instead of loaded from Resources; the assertion itself (sprite != null) and every other expectation are unchanged.",
-      "sha256": "a1bc9e926372cbe70abb4031c511ea73b9e803087593ebc94f3e0af2d5cb2401",
-      "size": 19086
+      "reason": "Update one assertion message: the Home Screen vista sprite is now painted procedurally by LobbyArtFactory instead of loaded from Resources; the assertion itself (sprite != null) and every other expectation are unchanged. Later: streamer focus positions rebased onto the Island 2.0 grid (250 m tiles, +-1000 m map).",
+      "sha256": "f0fcdd640e6b8fdef9ec614f0c77e6acf4d1f24517ac974d6c650532fccdcda0",
+      "size": 19297
     },
     {
       "path": "unity-project/Assets/Resources/Config/siran_island_heights.bytes",

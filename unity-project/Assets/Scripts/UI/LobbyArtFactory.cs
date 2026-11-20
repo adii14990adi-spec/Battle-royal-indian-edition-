@@ -420,7 +420,11 @@ namespace BattleHorizons.UI
             public Sprite ToSprite(string name, float pixelsPerUnit)
             {
                 var tex = ToTexture(name);
-                return Sprite.Create(tex, new Rect(0f, 0f, Width, Height), new Vector2(0.5f, 0.5f), pixelsPerUnit);
+                var sprite = Sprite.Create(tex, new Rect(0f, 0f, Width, Height), new Vector2(0.5f, 0.5f), pixelsPerUnit);
+                // Sprite.Create leaves sprite.name empty; the HUD/lobby tests
+                // (and debugging) rely on the BH_* naming.
+                sprite.name = name;
+                return sprite;
             }
 
             public void Row(int y, Color color, bool blend = false)

@@ -124,7 +124,9 @@ namespace BattleHorizons.Tests.PlayMode
                 "the diagonal tile is included at the exact 50 m tangent corner");
 
             // Moving well inside another tile leaves only that tile resident.
-            focus.position = new Vector3(1900f, 20f, 1900f);
+            // (625, 625) is the centre of the 250 m tile (6, 6): 125 m from
+            // every tile edge, so the 50 m disk keeps exactly one tile loaded.
+            focus.position = new Vector3(625f, 20f, 625f);
             builder.Streamer.ForceTickAt(focus.position);
             yield return null;
             Assert.AreEqual(1, builder.Streamer.ResidentChunkCount,
@@ -138,18 +140,19 @@ namespace BattleHorizons.Tests.PlayMode
         {
             var builder = BuildWorld();
             var focus = new GameObject("Focus").transform;
-            focus.position = new Vector3(250f, 20f, 250f);
+            focus.position = new Vector3(125f, 20f, 125f);
             builder.Streamer.SetFocus(focus);
             builder.Streamer.ForceTickAt(focus.position);
             Assert.AreEqual(1, builder.Streamer.ResidentChunkCount);
 
-            // Both positions remain in the same 500 m grid cell. Membership still
-            // changes because the circle starts/stops intersecting the next tile.
-            focus.position = new Vector3(460f, 20f, 250f);
+            // Both positions remain in the same 250 m grid cell (tile (4, 4),
+            // world [0..250)). Membership still changes because the circle
+            // starts/stops intersecting the next tile at x = 250.
+            focus.position = new Vector3(210f, 20f, 125f);
             builder.Streamer.ForceTickAt(focus.position);
             Assert.AreEqual(2, builder.Streamer.ResidentChunkCount);
 
-            focus.position = new Vector3(430f, 20f, 250f);
+            focus.position = new Vector3(190f, 20f, 125f);
             builder.Streamer.ForceTickAt(focus.position);
             Assert.AreEqual(1, builder.Streamer.ResidentChunkCount);
             yield return null;
