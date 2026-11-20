@@ -119,6 +119,19 @@ shifts exactly — enforced by `validate_csharp.py` and by
 [`docs/gameplay/`](docs/gameplay/MAP_POI_LAYOUT.md) for the POI layout, loot,
 safe-zone and mobile-optimization guides.
 
+## Environment textures & material pipeline
+
+`unity-project/Assets/UserAssets/Textures/` carries the AI-generated POI
+texture set (red/white brick, dark concrete, grass/dirt, wood, terracotta
+roof tiles, asphalt, hazard-striped loot crate, equirectangular morning
+skybox, decals). **Battle Horizons > Assets > Build Materials From User
+Textures** derives Sobel normal maps (`*_n.png`, imported as linear
+NormalMaps), keys black-background decals to alpha, and writes URP
+Lit/Decal/Panoramic materials with the matte house style and the brief's
+4×4 brick tiling. The import gate keeps every environment texture at
+512² ASTC 6×6 on Android per the UNISOC budget. Guide:
+[`docs/asset-pipeline/USER_TEXTURE_PIPELINE.md`](docs/asset-pipeline/USER_TEXTURE_PIPELINE.md).
+
 ## Offline and mobile settings
 
 The Android target is ARM64, landscape, ASTC-compressed and does not request a

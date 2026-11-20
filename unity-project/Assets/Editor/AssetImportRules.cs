@@ -101,7 +101,24 @@ namespace BattleHorizons.EditorTools
                 return;
             }
 
-            importer.textureType = TextureImporterType.Default;
+            // Derived maps written by UserTextureMaterialBuilder: `*_n.png` are
+            // tangent-space normal maps (linear, NormalMap type) and `*_d.png`
+            // are decal RGBA maps whose alpha came from a black-background key.
+            var derivedNormal = IsDerivedNormalMap(assetPath);
+            var derivedAlpha = IsDerivedAlphaMap(assetPath);
+
+            importer.textureType = derivedNormal ? TextureImporterType.NormalMap : TextureImporterType.Default;
+            importer.sRGBTexture = !derivedNormal;
+            if (derivedAlpha || assetPath.Contains("/Decals/"))
+            {
+                importer.alphaIsTransparency = derivedAlpha;
+                importer.wrapMode = TextureWrapMode.Clamp;
+            }
+            else
+            {
+                importer.wrapMode = TextureWrapMode.Repeat;
+            }
+
             importer.mipmapEnabled = true;
             importer.anisoLevel = 0;
             importer.maxTextureSize = MaxTextureSize;
@@ -184,6 +201,14 @@ namespace BattleHorizons.EditorTools
         /// 512² budget still applies to environment/UI textures and to the
         /// isolated GLTF fallback.
         /// </summary>
+        /// <summary>True for the builder-derived tangent-space normal maps (`*_n.png`).</summary>
+        internal static bool IsDerivedNormalMap(string path) =>
+            path != null && path.EndsWith("_n.png", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>True for the builder-derived decal alpha maps (`*_d.png`).</summary>
+        internal static bool IsDerivedAlphaMap(string path) =>
+            path != null && path.EndsWith("_d.png", StringComparison.OrdinalIgnoreCase);
+
         internal static bool IsProductionCharacterTexture(string path)
         {
             if (string.IsNullOrEmpty(path)) return false;

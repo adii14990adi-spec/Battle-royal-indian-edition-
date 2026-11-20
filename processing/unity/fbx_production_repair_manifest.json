@@ -35,9 +35,9 @@
       "path": "unity-project/Assets/Editor/AssetImportRules.cs",
       "previous_sha256": "203a1242ec85f8dcb70a0765ab1baa15b127859c91844e65192c9782004b3850",
       "previous_size": 10638,
-      "reason": "Allow scoped production character texture importer settings without overriding unrelated project texture rules.",
-      "sha256": "ff44a3f7ef28f98a994f57a0a6a60d5fe559999952f2a8c218f4e44be5b201c6",
-      "size": 13170
+      "reason": "Teach the texture import gate the builder-derived maps: *_n.png import as linear NormalMap, *_d.png and /Decals/ as clamped decal alpha, everything else stays Repeat-wrapped inside the 512 ASTC 6x6 prop budget.",
+      "sha256": "ebf148d8dcb7607279852f0456970f284dae867da0f97c4b3a10e21f88644963",
+      "size": 14450
     },
     {
       "path": "unity-project/Assets/Editor/CharacterAnimationManagerWindow.cs",
@@ -46,6 +46,14 @@
       "reason": "Use the shared shared-ID helper so empty-string shared defaults are not skipped by the Editor draft UI.",
       "sha256": "ebdafaac899d1df9137b834278af285ef22548061c765dc5210bdf165d08b3ff",
       "size": 38479
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Camera/ThirdPersonCameraController.cs",
+      "previous_sha256": "729a7ab83c97dbc6b39a313f0e31949e016bd48149d13b0b6718e5ad68edcdee",
+      "previous_size": 6110,
+      "reason": "Use CameraClearFlags.Skybox when the scene has a skybox assigned (Battle Horizons > Assets > Apply Morning Skybox) and keep the greybox solid colour otherwise.",
+      "sha256": "1f941c75ddc568b61e7dc93d6b1c62f8c7d641a5cd77c5342df9069a3d71f49a",
+      "size": 6376
     },
     {
       "path": "unity-project/Assets/Scripts/Characters/CharacterAnimationConfig.cs",
