@@ -29,7 +29,8 @@
     "unity-project/Assets/Editor/ProjectBootstrap.cs",
     "unity-project/Assets/Tests/EditMode/SiranIslandDataTests.cs",
     "unity-project/Assets/Scripts/Characters/CharacterPreviewController.cs",
-    "unity-project/Assets/Tests/PlayMode/CharacterPreviewRuntimeTests.cs"
+    "unity-project/Assets/Tests/PlayMode/CharacterPreviewRuntimeTests.cs",
+    "unity-project/Assets/Scripts/World/SiranWorldBuilder.cs"
   ],
   "captured_from_head": "b6c7d14dd5ba393ac9f32902b1b3180223326133",
   "description": "Hashes of production Unity assets/ProjectSettings captured before the isolated GLTF import experiment, adjusted for four UserAssets placeholder/demo files deleted on main after this branch was created. The static validator permits only new files, the two explicitly allowlisted test asmdefs, and the exact hashed targeted FBX repair files listed in processing/unity/fbx_production_repair_manifest.json.",
@@ -957,7 +958,7 @@
     },
     {
       "path": "unity-project/Assets/Resources/Config/siran_island_manifest.json",
-      "sha256": "5a05965f09f26be4754f8da080f61f3a7f0f9e28becc94304807390abaae0d4b",
+      "sha256": "21a830e5202ced3c185b3f17c8c5eeb94b8577465143a56202b727496618a8f9",
       "size": 1333
     },
     {
@@ -972,7 +973,7 @@
     },
     {
       "path": "unity-project/Assets/Resources/Config/siran_island_roads.bytes",
-      "sha256": "1e92ef0a9ca986a69dadc931405c7119e057414f36504a41fde671eb7e89337c",
+      "sha256": "d80f15a7166d3e0f0f26ee221ace622369306acfbc341843f843c5e737e1c80f",
       "size": 48420
     },
     {
@@ -1157,8 +1158,8 @@
     },
     {
       "path": "unity-project/Assets/Scripts/World/SiranWorldBuilder.cs",
-      "sha256": "4aa5a108760749b31a78dd2c4967f6326c048f2aacd5335a4d5459d8204e852a",
-      "size": 14052
+      "sha256": "f2d790f530ee4f250587d0d0e85c9ee9df5fe18cb62953d0153b78ed5c52b87e",
+      "size": 16879
     },
     {
       "path": "unity-project/Assets/Shaders/SiranRadiusClip.shader",

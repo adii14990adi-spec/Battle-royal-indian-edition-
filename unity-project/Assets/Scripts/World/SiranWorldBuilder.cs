@@ -103,6 +103,18 @@ namespace BattleHorizons.World
                 if (collider == null || collider.terrainData == null)
                 {
                     GameLog.Error("world", "terrain collider is missing; the player would fall through the island");
+                    // Safety net: the full-island overview mesh becomes the
+                    // collision surface so the ground is never "gas".
+                    if (Overview == null)
+                    {
+                        BuildOverview();
+                    }
+
+                    if (Overview != null && Overview.GetComponent<Collider>() == null)
+                    {
+                        Overview.AddComponent<MeshCollider>();
+                        GameLog.Warn("world", "fell back to a MeshCollider on the island overview mesh");
+                    }
                 }
 
                 GameLog.Info("world", string.Format(
@@ -110,7 +122,10 @@ namespace BattleHorizons.World
                     SiranIslandTerrainBuilder.HeightmapResolution, data.MinHeightM, data.MaxHeightM));
             }
 
-            BuildOverview();
+            if (Overview == null)
+            {
+                BuildOverview();
+            }
 
             BuildRoads();
             BuildWater();
@@ -248,6 +263,8 @@ namespace BattleHorizons.World
                 : CreateVertexColorMaterial("GeneratedRoadMaterial", 0f, streamClipMode: 1);
 
             var triangles = 0;
+            var collisionVertices = new System.Collections.Generic.List<Vector3>();
+            var collisionTriangles = new System.Collections.Generic.List<int>();
             for (var i = 0; i < Data.RoadRibbons.Count; i++)
             {
                 var ribbon = Data.RoadRibbons[i];
@@ -274,10 +291,49 @@ namespace BattleHorizons.World
                 renderer.shadowCastingMode = ShadowCastingMode.Off;
                 renderer.lightProbeUsage = LightProbeUsage.Off;
                 renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+
+                AppendRoadCollision(ribbon, collisionVertices, collisionTriangles);
+            }
+
+            // One static MeshCollider for the whole network: the asphalt is a
+            // SOLID walking surface at exactly its rendered height. Without it
+            // the ribbons float above the terrain collider and the player's
+            // feet sink into the road ("das jata hai") wherever they cross it.
+            if (collisionTriangles.Count > 0)
+            {
+                var collisionMesh = new Mesh { name = "SiranRoadsCollision" };
+                collisionMesh.SetVertices(collisionVertices);
+                collisionMesh.SetTriangles(collisionTriangles, 0, true);
+                collisionMesh.RecalculateBounds();
+                var collisionObject = new GameObject("RoadsCollision");
+                collisionObject.transform.SetParent(root.transform, false);
+                collisionObject.isStatic = true;
+                var meshCollider = collisionObject.AddComponent<MeshCollider>();
+                meshCollider.sharedMesh = collisionMesh;
+                GameLog.Info("world", string.Format(
+                    "road collision built: {0} triangles in one static MeshCollider",
+                    collisionTriangles.Count / 3));
             }
 
             GameLog.Info("world", string.Format("road ribbons built: {0} meshes, {1} triangles",
                 Data.RoadRibbons.Count, triangles));
+        }
+
+        private static void AppendRoadCollision(
+            SiranIslandData.RoadRibbon ribbon,
+            System.Collections.Generic.List<Vector3> vertices,
+            System.Collections.Generic.List<int> triangles)
+        {
+            var offset = vertices.Count;
+            vertices.AddRange(ribbon.Vertices);
+            for (var i = 0; i < ribbon.Indices.Length; i += 3)
+            {
+                // Collision winding is irrelevant to PhysX, but keep the
+                // rendered (clockwise-from-above) order for consistency.
+                triangles.Add(offset + ribbon.Indices[i]);
+                triangles.Add(offset + ribbon.Indices[i + 1]);
+                triangles.Add(offset + ribbon.Indices[i + 2]);
+            }
         }
 
         private void BuildWater()

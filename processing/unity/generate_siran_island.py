@@ -368,7 +368,7 @@ def bake_roads(heights):
                               (rid + "_shoulder", width + shoulder * 2, (96, 88, 72, 255))):
             verts, cols, indices = ribbon_mesh(line, w, col)
             for i, (vx, _, vz) in enumerate(verts):
-                verts[i] = (vx, sample_height(heights, vx, vz) + 0.35, vz)
+                verts[i] = (vx, sample_height(heights, vx, vz) + 0.12, vz)
             ribbons.append((label, verts, cols, indices))
     return ribbons
 

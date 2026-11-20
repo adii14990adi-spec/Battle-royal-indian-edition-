@@ -147,8 +147,8 @@
       "path": "unity-project/Assets/Resources/Config/siran_island_roads.bytes",
       "previous_sha256": "7b453fd91cf9d814a258841449f15c873d46a3bfbfbe9e70dd5abc6cfc5e48fd",
       "previous_size": 115932,
-      "reason": "Siran Island 2.0 rebake: 36 road/runway ribbons (asphalt + shoulder pairs) re-laid on the 2 km island, baked CCW for the Unity winding flip.",
-      "sha256": "1e92ef0a9ca986a69dadc931405c7119e057414f36504a41fde671eb7e89337c",
+      "reason": "Siran Island 2.0 rebake: 36 road/runway ribbons (asphalt + shoulder pairs) re-laid on the 2 km island, baked CCW for the Unity winding flip. Roads rebaked at 0.12 m hover so the new solid road collider sits inside the CharacterController step offset.",
+      "sha256": "d80f15a7166d3e0f0f26ee221ace622369306acfbc341843f843c5e737e1c80f",
       "size": 48420
     },
     {
@@ -179,8 +179,8 @@
       "path": "unity-project/Assets/Resources/Config/siran_island_manifest.json",
       "previous_sha256": "b35a03a470d05f21ad01bccd561050b345829ef6c462fd58419216a6b8ee08df",
       "previous_size": 1454,
-      "reason": "Siran Island 2.0 manifest: byte counts and SHA-256 of the rebaked payloads.",
-      "sha256": "5a05965f09f26be4754f8da080f61f3a7f0f9e28becc94304807390abaae0d4b",
+      "reason": "Siran Island 2.0 manifest: byte counts and SHA-256 of the rebaked payloads. Roads rebaked at 0.12 m hover so the new solid road collider sits inside the CharacterController step offset.",
+      "sha256": "21a830e5202ced3c185b3f17c8c5eeb94b8577465143a56202b727496618a8f9",
       "size": 1333
     },
     {
@@ -230,6 +230,14 @@
       "reason": "Add HomeScreen_HostsTheRealCharacterShowcase: the lobby must carry the live RawImage showcase (RT bound, idle playing, or honestly hidden when no character is configured).",
       "sha256": "0c24f8e6415973bfd8da1effc50dee09caa692e75ec32c423d1c89f352960cd5",
       "size": 7321
+    },
+    {
+      "path": "unity-project/Assets/Scripts/World/SiranWorldBuilder.cs",
+      "previous_sha256": "4aa5a108760749b31a78dd2c4967f6326c048f2aacd5335a4d5459d8204e852a",
+      "previous_size": 14052,
+      "reason": "Solid ground fix: one combined static MeshCollider for the whole road network at rendered height (player no longer sinks into asphalt), plus a MeshCollider fallback on the island overview if the TerrainCollider is ever missing, and single-build guard for the overview mesh.",
+      "sha256": "f2d790f530ee4f250587d0d0e85c9ee9df5fe18cb62953d0153b78ed5c52b87e",
+      "size": 16879
     }
   ],
   "new_repair_files": [
