@@ -115,3 +115,17 @@ Related docs: [LOOT_SPAWNING.md](LOOT_SPAWNING.md),
 [SAFE_ZONE_AND_SPAWNS.md](SAFE_ZONE_AND_SPAWNS.md),
 [MOBILE_OPTIMIZATION.md](MOBILE_OPTIMIZATION.md),
 [../architecture/UNITY_ARCHITECTURE.md](../architecture/UNITY_ARCHITECTURE.md).
+
+## Ground photos (land texture pass)
+
+The land is no longer flat vertex paint: two authored photos tile across the
+island in world space (6 m per tile) through `BattleHorizons/Radius Clipped Lit`:
+
+* `Resources/Art/Textures/ground_grass_dirt.jpg` - sparse grass / dirt / pebbles, the base photo on most of the land.
+* `Resources/Art/Textures/ground_leaves_dense.jpg` - dense leaf litter, blended in by the colour blob's alpha weight (patchy in grassland, denser on hills).
+
+The baked zone palette still tints the photos (village green, beach sand, hill
+rock), and alpha 255 keeps the flat painted palette where photos would look
+wrong: runway asphalt and the lake bed. Roads keep their painted asphalt.
+Materials are wired in `ProjectBootstrap` (scene assets) and in the runtime
+fallbacks (`SiranWorldBuilder.ApplyGroundPhotos`).

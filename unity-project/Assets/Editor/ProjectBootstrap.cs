@@ -273,6 +273,7 @@ namespace BattleHorizons.EditorTools
                         // 2 = draw only outside the 50 m detail disk.
                         material.SetFloat("_StreamClipMode", 2f);
                         material.enableInstancing = true;
+                        SiranWorldBuilder.ApplyGroundPhotos(material);
                     }),
                 // 10 m streamed detail disk around the player.
                 ["chunk"] = EnsureMaterial(ChunkMaterialPath, "BattleHorizons/Radius Clipped Lit",
@@ -283,6 +284,7 @@ namespace BattleHorizons.EditorTools
                         material.SetFloat("_Smoothness", 0f);
                         material.SetFloat("_StreamClipMode", 1f);
                         material.enableInstancing = true;
+                        SiranWorldBuilder.ApplyGroundPhotos(material);
                     }),
                 // Roads follow the 10 m grid, so they stay inside the detail disk.
                 ["road"] = EnsureMaterial(RoadMaterialPath, "BattleHorizons/Radius Clipped Lit",

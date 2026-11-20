@@ -325,7 +325,30 @@ def bake_colors(heights):
             colors[o] = int(min(1.0, max(0.0, col[0])) * 255)
             colors[o + 1] = int(min(1.0, max(0.0, col[1])) * 255)
             colors[o + 2] = int(min(1.0, max(0.0, col[2])) * 255)
-            colors[o + 3] = 255
+            # Alpha = ground-photo blend weight for the URP shader:
+            #   255      -> keep the flat baked palette (runway asphalt, lake bed)
+            #   0..250   -> blend the sparse grass/dirt photo into the dense
+            #               leaf photo by this weight, tinted by the zone colour
+            a = 40
+            if h < 1.6:
+                a = 12                      # beach: mostly bare sparse photo
+            elif h < 20.0:
+                a = int(35 + 60 * break_up)  # grassland: patchy leaf clumps
+            elif h < 30.0:
+                a = int(60 + 50 * break_up)  # hills: denser scrub
+            else:
+                a = 25
+            if slope > 0.55 or h > 34.0:
+                a = 20                      # rock faces: sparse grit
+            if abs(ax) < 125.0 and abs(az) < 16.0:
+                a = 255                     # runway asphalt stays painted
+            if math.hypot(ldx / LAKE["radius"][0], ldz / LAKE["radius"][1]) < 1.0 and h < LAKE["surface"]:
+                a = 255                     # lake bed hides under the water sheet
+            for zone in ZONES:
+                if zone_sdf(zone, x, z) < 0.0 and zone[2] in ("URBAN", "INDUSTRIAL", "DOCK", "AIRFIELD"):
+                    a = min(a, 15)          # compacted yard dirt inside built zones
+                    break
+            colors[o + 3] = a
     return bytes(colors)
 
 

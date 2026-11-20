@@ -139,8 +139,8 @@
       "path": "unity-project/Assets/Resources/Config/siran_island_colors.bytes",
       "previous_sha256": "a78d09cafe6267c9c1d5654d796c50b2d1247f3fa336b9e87bd74508c1bf4fa3",
       "previous_size": 643204,
-      "reason": "Siran Island 2.0 rebake: biome palette + slope rock + zone tint + runway markings repainted for the denser 5 m grid.",
-      "sha256": "c7d79a39a673c54f8f61cf845335239a987f8bec154a56339589d3de3aa4edeb",
+      "reason": "Siran Island 2.0 rebake: biome palette + slope rock + zone tint + runway markings repainted for the denser 5 m grid. Later: Alpha channel now carries the ground-photo blend weight (sparse grass vs dense leaf litter); 255 keeps flat palette on runway/lake bed.",
+      "sha256": "7889155fd106d855918a081e2505d0e2667a55fdbd9c04bff3ef429f4e70bd87",
       "size": 643204
     },
     {
@@ -179,8 +179,8 @@
       "path": "unity-project/Assets/Resources/Config/siran_island_manifest.json",
       "previous_sha256": "b35a03a470d05f21ad01bccd561050b345829ef6c462fd58419216a6b8ee08df",
       "previous_size": 1454,
-      "reason": "Siran Island 2.0 manifest: byte counts and SHA-256 of the rebaked payloads. Roads rebaked at 0.12 m hover so the new solid road collider sits inside the CharacterController step offset.",
-      "sha256": "21a830e5202ced3c185b3f17c8c5eeb94b8577465143a56202b727496618a8f9",
+      "reason": "Siran Island 2.0 manifest: byte counts and SHA-256 of the rebaked payloads. Roads rebaked at 0.12 m hover so the new solid road collider sits inside the CharacterController step offset. Later: Manifest mirrored to the rebaked colour blob with ground-photo blend weights.",
+      "sha256": "5f76625a1999d63deae15e586ad8c8141bf9caf461e894a61be8e1d6691f1b4d",
       "size": 1333
     },
     {
@@ -203,9 +203,9 @@
       "path": "unity-project/Assets/Editor/ProjectBootstrap.cs",
       "previous_sha256": "93853ae6d2a0afed30ed12ff9c5ed4c4f5ad9cbcd06bb98203e4929c35df4ce8",
       "previous_size": 38917,
-      "reason": "Stop spawning the retired WorldDebugHud debug overlay into configured scenes; everything else in the project setup flow is unchanged.",
-      "sha256": "e3486e058da6aa80bf8f6009e39f87c1a0973ecc2a0b19ab92d7524d8554bd1d",
-      "size": 38806
+      "reason": "Stop spawning the retired WorldDebugHud debug overlay into configured scenes; everything else in the project setup flow is unchanged. Later: Island and chunk scene materials get the ground photos at configure time.",
+      "sha256": "6c4d0e3ad1f4c91b5181925f31a14bbc5f2dc5cc94e0449ecd4f6d8bb54b5901",
+      "size": 38948
     },
     {
       "path": "unity-project/Assets/Tests/EditMode/SiranIslandDataTests.cs",
@@ -235,9 +235,25 @@
       "path": "unity-project/Assets/Scripts/World/SiranWorldBuilder.cs",
       "previous_sha256": "4aa5a108760749b31a78dd2c4967f6326c048f2aacd5335a4d5459d8204e852a",
       "previous_size": 14052,
-      "reason": "Solid ground fix: one combined static MeshCollider for the whole road network at rendered height (player no longer sinks into asphalt), plus a MeshCollider fallback on the island overview if the TerrainCollider is ever missing, and single-build guard for the overview mesh.",
-      "sha256": "f2d790f530ee4f250587d0d0e85c9ee9df5fe18cb62953d0153b78ed5c52b87e",
-      "size": 16879
+      "reason": "Solid ground fix: one combined static MeshCollider for the whole road network at rendered height (player no longer sinks into asphalt), plus a MeshCollider fallback on the island overview if the TerrainCollider is ever missing, and single-build guard for the overview mesh. Later: ApplyGroundPhotos helper binds the ground photos to generated island material; runtime fallback passes groundPhotos flag.",
+      "sha256": "82a0356976388cd1a1c45dde0922492c654ec3e69b5f3decee8c7f91f7e31078",
+      "size": 18233
+    },
+    {
+      "path": "unity-project/Assets/Shaders/SiranRadiusClip.shader",
+      "previous_sha256": "ee7598b4fda9e3bf9c5e38d72cdaf0c6ea6ea74e13f83049bb3a351ba1b63cf1",
+      "previous_size": 7948,
+      "reason": "Ground-photo path: tiles the two authored ground photos in world space, blended by vertex-colour alpha and tinted by the zone palette.",
+      "sha256": "16690b1f0a128a828aea002d6619756b11215db3bf26ad3da9521d9a1137e1d8",
+      "size": 9550
+    },
+    {
+      "path": "unity-project/Assets/Scripts/World/SiranChunkStreamer.cs",
+      "previous_sha256": "cd7070cfbce285b9dfc7d58ef42e9a6575c7beb0e8afead94c40fa84c1ba0a95",
+      "previous_size": 11560,
+      "reason": "Chunk fallback material also receives the ground photos so the detail disk matches the island shell.",
+      "sha256": "d518867b29ecd172b47f69f8a7cc0e73e9fd0b59425967e9169d3a310a1b3fb1",
+      "size": 11632
     }
   ],
   "new_repair_files": [

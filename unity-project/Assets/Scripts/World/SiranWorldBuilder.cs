@@ -162,7 +162,7 @@ namespace BattleHorizons.World
 
             var material = islandMaterial != null
                 ? islandMaterial
-                : CreateVertexColorMaterial("GeneratedIslandMaterial", 0f, streamClipMode: 2);
+                : CreateVertexColorMaterial("GeneratedIslandMaterial", 0f, streamClipMode: 2, groundPhotos: true);
             if (material == null)
             {
                 GameLog.Warn("world", "no island material available; the full-island mesh was skipped");
@@ -358,7 +358,8 @@ namespace BattleHorizons.World
             return camera != null ? camera.transform : transform;
         }
 
-        private static Material CreateVertexColorMaterial(string name, float smoothness, int streamClipMode = 1)
+        private static Material CreateVertexColorMaterial(string name, float smoothness, int streamClipMode = 1,
+            bool groundPhotos = false)
         {
             var shader = Shader.Find(SiranRadiusClip.ShaderName);
             if (shader == null)
@@ -372,7 +373,44 @@ namespace BattleHorizons.World
             material.SetFloat("_Metallic", 0f);
             material.SetFloat("_Smoothness", smoothness);
             material.SetFloat("_StreamClipMode", streamClipMode);
+            if (groundPhotos)
+            {
+                ApplyGroundPhotos(material);
+            }
+
             return material;
+        }
+
+        /// <summary>
+        /// Binds the two authored ground photos (sparse grass/dirt + dense leaf
+        /// litter) that the radius-clip shader tiles across the land in world
+        /// space. The blob's vertex-colour alpha chooses the mix per vertex, so
+        /// roads / runway / water (alpha 255) never sample them.
+        /// </summary>
+        public static void ApplyGroundPhotos(Material material)
+        {
+            if (material == null)
+            {
+                return;
+            }
+
+            var sparse = Resources.Load<Texture2D>("Art/Textures/ground_grass_dirt");
+            var dense = Resources.Load<Texture2D>("Art/Textures/ground_leaves_dense");
+            if (sparse != null)
+            {
+                material.SetTexture("_BaseMap", sparse);
+            }
+
+            if (dense != null)
+            {
+                material.SetTexture("_GroundMapB", dense);
+            }
+
+            material.SetFloat("_GroundTile", 6f);
+            if (sparse == null || dense == null)
+            {
+                GameLog.Warn("world", "ground photos missing from Resources/Art/Textures; land falls back to the baked palette");
+            }
         }
 
         private static Material CreateWaterFallback()
