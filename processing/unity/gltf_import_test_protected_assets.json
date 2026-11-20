@@ -27,7 +27,9 @@
     "unity-project/Assets/Scripts/UI/WorldDebugHud.cs",
     "unity-project/Assets/Scripts/World/SiranMapConfig.cs",
     "unity-project/Assets/Editor/ProjectBootstrap.cs",
-    "unity-project/Assets/Tests/EditMode/SiranIslandDataTests.cs"
+    "unity-project/Assets/Tests/EditMode/SiranIslandDataTests.cs",
+    "unity-project/Assets/Scripts/Characters/CharacterPreviewController.cs",
+    "unity-project/Assets/Tests/PlayMode/CharacterPreviewRuntimeTests.cs"
   ],
   "captured_from_head": "b6c7d14dd5ba393ac9f32902b1b3180223326133",
   "description": "Hashes of production Unity assets/ProjectSettings captured before the isolated GLTF import experiment, adjusted for four UserAssets placeholder/demo files deleted on main after this branch was created. The static validator permits only new files, the two explicitly allowlisted test asmdefs, and the exact hashed targeted FBX repair files listed in processing/unity/fbx_production_repair_manifest.json.",
@@ -1030,8 +1032,8 @@
     },
     {
       "path": "unity-project/Assets/Scripts/Characters/CharacterPreviewController.cs",
-      "sha256": "bd8eb2444db2278b374d61a64f1af9ba91ba573e45952ddbd911c8c1c2e9628a",
-      "size": 18274
+      "sha256": "1d6cf1a7ff25da90d84720900c64f010d6dde29f4523df73ff84b116b284356b",
+      "size": 18425
     },
     {
       "path": "unity-project/Assets/Scripts/Characters/PlayerCharacterVisual.cs",
@@ -1100,8 +1102,8 @@
     },
     {
       "path": "unity-project/Assets/Scripts/UI/MainMenuController.cs",
-      "sha256": "f72e25f1b673f9eb90d165e71a1127622960ac5afd0100a12a094dcdd3de0200",
-      "size": 34213
+      "sha256": "99aa990863b0c30bbb721c562de3912496af02135791d5d2eb281b8ed6f2aa17",
+      "size": 34433
     },
     {
       "path": "unity-project/Assets/Scripts/UI/MobileControlsBuilder.cs",
@@ -1205,8 +1207,8 @@
     },
     {
       "path": "unity-project/Assets/Tests/PlayMode/CharacterPreviewRuntimeTests.cs",
-      "sha256": "800d81937f316563b3a4a8fdd1fe88739b5667a5a0ddd4e7c17a1991f013b868",
-      "size": 5803
+      "sha256": "0c24f8e6415973bfd8da1effc50dee09caa692e75ec32c423d1c89f352960cd5",
+      "size": 7321
     },
     {
       "path": "unity-project/Assets/Tests/PlayMode/WorldAndPlayerPlayModeTests.cs",

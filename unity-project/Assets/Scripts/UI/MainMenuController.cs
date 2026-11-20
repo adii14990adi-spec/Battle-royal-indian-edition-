@@ -88,6 +88,10 @@ namespace BattleHorizons.UI
             frameFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
             frameFitter.aspectRatio = 16f / 9f;
 
+            // The real operator: configured production character rendered live
+            // into a transparent RT, composited where the baked soldier stood.
+            LobbyCharacterShowcase.Build(frame.transform);
+
             BuildLogo(frame.transform);
             BuildTopBar(frame.transform);
             BuildLeftNav(frame.transform);

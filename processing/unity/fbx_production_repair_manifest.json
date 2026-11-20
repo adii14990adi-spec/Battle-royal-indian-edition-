@@ -115,9 +115,9 @@
       "path": "unity-project/Assets/Scripts/UI/MainMenuController.cs",
       "previous_sha256": "176082af4be5fcdb0627d0c485b21ef98f9910849d29a264ceea0e6c3f9634dc",
       "previous_size": 24434,
-      "reason": "Rebuild the Home Screen as a 100% code-built lobby: procedural vista/panels/icons from LobbyArtFactory replace the baked 16:9 JPEG hotspots; public API, canvas node names (HomeArtworkFrame/EnterSiranIsland/ModeSolo/SettingsButton/CharacterButton) and modal behaviour preserved for PlayMode tests. Also updates the lobby notification copy to the rebaked 2000x2000 m island.",
-      "sha256": "f72e25f1b673f9eb90d165e71a1127622960ac5afd0100a12a094dcdd3de0200",
-      "size": 34213
+      "reason": "Rebuild the Home Screen as a 100% code-built lobby: procedural vista/panels/icons from LobbyArtFactory replace the baked 16:9 JPEG hotspots; public API, canvas node names (HomeArtworkFrame/EnterSiranIsland/ModeSolo/SettingsButton/CharacterButton) and modal behaviour preserved for PlayMode tests. Also updates the lobby notification copy to the rebaked 2000x2000 m island. Also builds the live LobbyCharacterShowcase on the stage frame.",
+      "sha256": "99aa990863b0c30bbb721c562de3912496af02135791d5d2eb281b8ed6f2aa17",
+      "size": 34433
     },
     {
       "path": "unity-project/Assets/Tests/PlayMode/WorldAndPlayerPlayModeTests.cs",
@@ -214,6 +214,22 @@
       "reason": "Retarget the island contract tests to the Siran Island 2.0 rebake: 5 m spacing, 1000 m half-extent, 2000 m map, -12..23.3231 m heights, spawn (20,-15) at 15.3592 m ground, 36 road ribbons / 2076 triangles, 192 river triangles, 10 m overview stride.",
       "sha256": "566bcb588bbec3439f1f9715df50a988fa8bb5b4970af57f9989e0ddf934ffd0",
       "size": 11400
+    },
+    {
+      "path": "unity-project/Assets/Scripts/Characters/CharacterPreviewController.cs",
+      "previous_sha256": "bd8eb2444db2278b374d61a64f1af9ba91ba573e45952ddbd911c8c1c2e9628a",
+      "previous_size": 18274,
+      "reason": "Expose PreviewCamera so the lobby showcase can set a zero-alpha clear colour and composite the operator over the vista; no other behaviour changes.",
+      "sha256": "1d6cf1a7ff25da90d84720900c64f010d6dde29f4523df73ff84b116b284356b",
+      "size": 18425
+    },
+    {
+      "path": "unity-project/Assets/Tests/PlayMode/CharacterPreviewRuntimeTests.cs",
+      "previous_sha256": "800d81937f316563b3a4a8fdd1fe88739b5667a5a0ddd4e7c17a1991f013b868",
+      "previous_size": 5803,
+      "reason": "Add HomeScreen_HostsTheRealCharacterShowcase: the lobby must carry the live RawImage showcase (RT bound, idle playing, or honestly hidden when no character is configured).",
+      "sha256": "0c24f8e6415973bfd8da1effc50dee09caa692e75ec32c423d1c89f352960cd5",
+      "size": 7321
     }
   ],
   "new_repair_files": [

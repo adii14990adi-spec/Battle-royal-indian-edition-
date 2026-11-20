@@ -134,6 +134,36 @@ namespace BattleHorizons.Tests.PlayMode
             visual.ResetToDefaultState();
             yield return null;
             Assert.IsNotNull(motor);
+        }        [UnityTest]
+        public IEnumerator HomeScreen_HostsTheRealCharacterShowcase()
+        {
+            _menuRoot = new GameObject("MainMenu");
+            _menuRoot.AddComponent<BattleHorizons.UI.MainMenuController>();
+            yield return null;
+
+            var canvas = _menuRoot.transform.Find("MainMenuCanvas");
+            var showcaseGo = canvas.Find("HomeArtworkFrame/" + BattleHorizons.UI.LobbyCharacterShowcase.RootName);
+            Assert.IsNotNull(showcaseGo, "Home Screen must host the live character showcase");
+
+            var showcase = showcaseGo.GetComponent<BattleHorizons.UI.LobbyCharacterShowcase>();
+            Assert.IsNotNull(showcase, "showcase root must carry LobbyCharacterShowcase");
+            var raw = showcaseGo.GetComponent<UnityEngine.UI.RawImage>();
+            Assert.IsNotNull(raw, "showcase must render through a RawImage");
+            Assert.IsFalse(raw.raycastTarget, "showcase must not swallow touches");
+
+            if (showcase.HasCharacter)
+            {
+                Assert.AreEqual(showcase.Preview.OutputTexture, raw.texture,
+                    "showcase RawImage must display the preview RenderTexture");
+                Assert.IsTrue(showcase.Preview.IsPlaying, "the idle clip must be playing on the lobby");
+            }
+            else
+            {
+                Assert.IsFalse(raw.enabled,
+                    "with no configured character the showcase hides instead of faking one");
+            }
+
+            yield return null;
         }
     }
 }

@@ -39,6 +39,9 @@ namespace BattleHorizons.Characters
         private string _lastMessage = "not initialized";
 
         public RenderTexture OutputTexture => _texture;
+
+        /// <summary>The preview camera (exposed so hosts can tune the clear colour).</summary>
+        public Camera PreviewCamera => previewCamera;
         public bool IsPlaying => _playing;
         public float Yaw => _yaw;
         public float Pitch => _pitch;

@@ -18,6 +18,7 @@ picture, not an interface.
 | --- | --- |
 | `Assets/Scripts/UI/LobbyArtFactory.cs` | Deterministic pixel painter (`Painter`) + cached procedural sprites: sunset vista with fortress silhouette, dusk sky gradient, rounded panels, gold START gradient and 18 glyphs (cart, luck crate, trophy, target, calendar, vault, rifle, operator, gear, bell, coin, gem, avatar, compass, solo/duo/squad, caret). |
 | `Assets/Scripts/UI/MainMenuController.cs` | Lays the widgets out on a 1920×1080 reference canvas, wires every button, owns the Solo/Duo/Squad selector, the info/settings modals and the START → Siran Island flow. |
+| `Assets/Scripts/UI/LobbyCharacterShowcase.cs` | Hosts the real-time operator on the stage: preview RT compositing, idle-clip auto-select, turntable drift, honest hide when no character is configured. |
 | `Assets/Scripts/UI/LobbyProfile.cs` | PlayerPrefs-backed wallet & callsign shown in the top chips (defaults 45,820 coins / 1,240 gems / `Commander_K`), `GrantCoins` hook for missions/events. |
 
 ### Widget tree (names are stable — PlayMode tests resolve them by path)
@@ -26,6 +27,11 @@ picture, not an interface.
 MainMenuCanvas (ScreenSpaceOverlay, ScaleWithScreenSize 1920×1080)
 ├── Background            full-bleed dusk gradient (raycast off)
 ├── HomeArtworkFrame      16:9 painted vista, FitInParent (raycast off)
+│   ├── CharacterShowcase  LIVE operator: configured production character rendered
+│   │   │                  by CharacterPreviewController into a 720x1024 transparent
+│   │   │                  RenderTexture (zero-alpha clear), idle clip playing, slow
+│   │   │                  9°/s turntable; hides honestly when nothing is configured
+│   │   └── Spotlight      radial ground glow under the operator's feet
 │   ├── LogoMark / LogoTitle / LogoSubtitle
 │   ├── ProfileButton (avatar + callsign + online dot)
 │   ├── CoinChip / GemChip (icon + formatted balance)

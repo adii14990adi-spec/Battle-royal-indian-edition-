@@ -103,6 +103,17 @@ namespace BattleHorizons.UI
             });
         }
 
+        /// <summary>Soft radial ground glow used under the lobby operator.</summary>
+        public static Sprite Spotlight()
+        {
+            return Cached("lobby.spotlight", () =>
+            {
+                var p = new Painter(128, 128);
+                p.RadialGlow(64f, 64f, 62f, Color.white);
+                return p.ToSprite("BH_Lobby_Spotlight", 100f);
+            });
+        }
+
         /// <summary>One of the lobby glyphs, painted white so Image.color can tint it.</summary>
         public static Sprite Icon(LobbyIcon kind)
         {
