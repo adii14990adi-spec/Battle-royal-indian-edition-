@@ -64,6 +64,29 @@ namespace BattleHorizons.Gameplay.Match
 
                     ground = GroundHeight(x, z, island);
                     dry = ground > IslandShapeMath.WaterSurfaceAt(x, z);
+
+                    // Keep thumbs from stacking: a candidate that lands on top
+                    // of an already placed point walks further around the ring.
+                    if (dry)
+                    {
+                        var crowded = false;
+                        for (var k = 0; k < i; k++)
+                        {
+                            var dx = points[k].x - x;
+                            var dz = points[k].z - z;
+                            if (dx * dx + dz * dz < 25f * 25f)
+                            {
+                                crowded = true;
+                                break;
+                            }
+                        }
+
+                        if (crowded)
+                        {
+                            dry = false;
+                            angle += 2.5f;
+                        }
+                    }
                 }
 
                 if (!dry)

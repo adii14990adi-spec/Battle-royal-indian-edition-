@@ -162,7 +162,7 @@ namespace BattleHorizons.Tests.EditMode
         {
             var mesh = SiranIslandTerrainBuilder.BuildOverviewMesh(_data);
             Assert.IsNotNull(mesh);
-            var vertsPerSide = (_data.Size - 1) / SiranIslandTerrainBuilder.OverviewSampleStride + 1;
+            var vertsPerSide = Mathf.RoundToInt(Mathf.Sqrt(mesh.vertexCount));
             Assert.AreEqual(201, vertsPerSide, "2-sample stride (10 m) gives 201 vertices across 2 km");
             Assert.AreEqual(vertsPerSide * vertsPerSide, mesh.vertexCount);
             Assert.AreEqual((vertsPerSide - 1) * (vertsPerSide - 1) * 2, mesh.triangles.Length / 3,

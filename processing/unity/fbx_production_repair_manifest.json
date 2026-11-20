@@ -211,9 +211,9 @@
       "path": "unity-project/Assets/Tests/EditMode/SiranIslandDataTests.cs",
       "previous_sha256": "c5c4b1b98bf1dc952f83247eab4a4fea5ab439ac17ff45ce76dca1bd822b3be4",
       "previous_size": 11391,
-      "reason": "Retarget the island contract tests to the Siran Island 2.0 rebake: 5 m spacing, 1000 m half-extent, 2000 m map, -12..23.3231 m heights, spawn (20,-15) at 15.3592 m ground, 36 road ribbons / 2076 triangles, 192 river triangles, 10 m overview stride. Later: Zone lookup probe moved onto the rescaled 2 km airfield footprint.",
-      "sha256": "1d302fd864c80c83d1426545a175acc6afcdac4d3f61bf852585f896188ef39e",
-      "size": 11398
+      "reason": "Retarget the island contract tests to the Siran Island 2.0 rebake: 5 m spacing, 1000 m half-extent, 2000 m map, -12..23.3231 m heights, spawn (20,-15) at 15.3592 m ground, 36 road ribbons / 2076 triangles, 192 river triangles, 10 m overview stride. Later: Zone lookup probe moved onto the rescaled 2 km airfield footprint. Later: overview vertsPerSide derived from mesh vertexCount (stride formula was stale for the 2 km grid).",
+      "sha256": "c8452eb623172a4d082c684357360a37e7295977361fd4144b1f3dea7d300c09",
+      "size": 11375
     },
     {
       "path": "unity-project/Assets/Scripts/Characters/CharacterPreviewController.cs",

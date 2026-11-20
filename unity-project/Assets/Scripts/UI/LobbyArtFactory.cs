@@ -160,7 +160,7 @@ namespace BattleHorizons.UI
             for (var y = (int)(h * 0.44f); y < (int)(h * 0.56f); y++)
             {
                 var t = 1f - Mathf.Abs((y - h * 0.50f) / (h * 0.06f));
-                p.Row(y, new Color(1f, 0.78f, 0.52f, 0.16f * Mathf.Clamp01(t)), true);
+                p.Row(y, new Color(1f, 0.66f, 0.34f, 0.45f * Mathf.Clamp01(t)), true);
             }
 
             // Far ridge (violet dust).
