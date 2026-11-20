@@ -895,16 +895,35 @@ jobs:
             done
             echo
             echo "## failed test cases"
-            python3 -c "import sys, xml.etree.ElementTree as ET
-            for path in sys.argv[1:]:
-                for c in ET.parse(path).getroot().iter('test-case'):
-                    if c.get('result') in ('Failed', 'Error'):
-                        m = c.find('./failure/message')
-                        st = c.find('./failure/stack-trace')
-                        print('FAIL:', c.get('fullname'))
-                        print('  msg:', (m.text or '').strip()[:500] if m is not None else '')
-                        print('  at:', (st.text or '').strip().splitlines()[0][:240] if st is not None else '')
-            " $(find unity-test-results -name "*.xml" 2>/dev/null | head -6) || true
+            python3 - <<'PYEOF' || true
+            import glob, xml.etree.ElementTree as ET
+            files = sorted(glob.glob('unity-test-results/**/*.xml', recursive=True))
+            print('xml files found:', len(files))
+            for path in files:
+                print('---', path)
+                try:
+                    root = ET.parse(path).getroot()
+                except Exception as exc:
+                    print('  PARSE ERROR', exc)
+                    continue
+                for node in root.iter():
+                    if node.tag not in ('test-case', 'test-suite'):
+                        continue
+                    if node.get('result') not in ('Failed', 'Error', 'NotRunnable'):
+                        continue
+                    m = node.find('failure/message')
+                    st = node.find('failure/stack-trace')
+                    msg = (m.text or '').strip().splitlines() if m is not None and m.text else []
+                    tr = (st.text or '').strip().splitlines() if st is not None and st.text else []
+                    print(node.tag.upper(), node.get('result'), node.get('fullname'))
+                    for line in msg[:6]:
+                        print('  msg:', line[:300])
+                    for line in tr[:4]:
+                        print('  at:', line[:240])
+            PYEOF
+            echo
+            echo "## editmode unity.log tail"
+            tail -n 40 unity-test-results/editmode/unity.log 2>/dev/null || echo "(no editmode log)"
           } > docs/ci/last-failure.md
           git config user.name "arena-ci-diagnostics"
           git config user.email "arena-ci-diagnostics@users.noreply.github.com"
