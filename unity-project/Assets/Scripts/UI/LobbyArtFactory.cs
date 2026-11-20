@@ -151,7 +151,7 @@ namespace BattleHorizons.UI
             }
 
             // Sun glow, low over the plains (fixed position = deterministic).
-            var sunX = w * 0.70f;
+            var sunX = w * 0.78f;
             var sunY = h * 0.52f;
             p.RadialGlow(sunX, sunY, h * 0.42f, new Color(1f, 0.80f, 0.42f, 0.55f));
             p.Circle(sunX, sunY, h * 0.045f, new Color(1f, 0.93f, 0.72f, 0.95f));
@@ -473,7 +473,9 @@ namespace BattleHorizons.UI
                 }
 
                 var i = y * Width + x;
-                var dst = _pixels[i];
+                // Color32 fields are bytes; normalize to 0..1 floats or the
+                // composite below mixes scales and blows every channel to white.
+                var dst = (Color)_pixels[i];
                 var a = c.a + dst.a * (1f - c.a);
                 if (a <= 0f)
                 {

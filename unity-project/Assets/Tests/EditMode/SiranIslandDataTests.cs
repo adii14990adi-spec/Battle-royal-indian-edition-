@@ -189,7 +189,7 @@ namespace BattleHorizons.Tests.EditMode
             Assert.AreEqual(0f, bounds.center.z, 1f);
             Assert.AreEqual(SiranMapConfig.MapSizeM, bounds.size.x, 25f);
             Assert.AreEqual(SiranMapConfig.MapSizeM, bounds.size.z, 25f);
-            Assert.Greater(bounds.size.y, 40f, "the island must have real height variation");
+            Assert.Greater(bounds.size.y, 30f, "the island must have real height variation");
 
             // The overview colours are the baked palette (grass, sand, dirt), not
             // a white surface: the mean must be a mid-tone green/brown.

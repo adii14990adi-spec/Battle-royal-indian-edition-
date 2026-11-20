@@ -182,8 +182,8 @@ namespace BattleHorizons.World
             }
 
             stride = Mathf.Clamp(stride, 1, 8);
-            var stepCells = stride * Mathf.RoundToInt(data.SpacingM);
-            var vertsPerSide = (data.Size - 1) / stepCells + 1;
+            // Stride counts grid samples (2 samples x 5 m = 10 m over 2 km -> 201).
+            var vertsPerSide = (data.Size - 1) / stride + 1;
             var vertexCount = vertsPerSide * vertsPerSide;
             var mapSize = SiranMapConfig.MapSizeM;
 
@@ -194,11 +194,11 @@ namespace BattleHorizons.World
 
             for (var z = 0; z < vertsPerSide; z++)
             {
-                var iz = Mathf.Min(z * stepCells, data.Size - 1);
+                var iz = Mathf.Min(z * stride, data.Size - 1);
                 var worldZ = -data.HalfExtentM + iz * data.SpacingM;
                 for (var x = 0; x < vertsPerSide; x++)
                 {
-                    var ix = Mathf.Min(x * stepCells, data.Size - 1);
+                    var ix = Mathf.Min(x * stride, data.Size - 1);
                     var worldX = -data.HalfExtentM + ix * data.SpacingM;
                     var index = iz * data.Size + ix;
                     vertices.Add(new Vector3(worldX, data.Heights[index], worldZ));

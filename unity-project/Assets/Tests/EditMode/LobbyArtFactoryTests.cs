@@ -106,7 +106,7 @@ namespace BattleHorizons.Tests.EditMode
             var zenith = Mean(w / 8, 3 * w / 8, (int)(h * 0.92f), h);
             var horizon = Mean(w / 8, 3 * w / 8, (int)(h * 0.46f), (int)(h * 0.54f));
             var foreground = Mean(w / 3, 2 * w / 3, 0, (int)(h * 0.06f));
-            var sunBox = Mean((int)(w * 0.66f), (int)(w * 0.74f), (int)(h * 0.48f), (int)(h * 0.56f));
+            var sunBox = Mean((int)(w * 0.74f), (int)(w * 0.82f), (int)(h * 0.48f), (int)(h * 0.56f));
             var skyBox = Mean((int)(w * 0.35f), (int)(w * 0.45f), (int)(h * 0.58f), (int)(h * 0.66f));
 
             Assert.Greater(zenith.z, zenith.x, "zenith band must be blue-dominant");
