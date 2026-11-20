@@ -895,10 +895,16 @@ jobs:
             done
             echo
             echo "## failed test cases"
-            while IFS= read -r xml; do
-              echo "--- $xml"
-              grep -A4 'result="Failed"' "$xml" | grep -E "test-case|message" | head -30 || true
-            done < <(find unity-test-results -name "*.xml" 2>/dev/null | head -6)
+            python3 -c "import sys, xml.etree.ElementTree as ET
+            for path in sys.argv[1:]:
+                for c in ET.parse(path).getroot().iter('test-case'):
+                    if c.get('result') in ('Failed', 'Error'):
+                        m = c.find('./failure/message')
+                        st = c.find('./failure/stack-trace')
+                        print('FAIL:', c.get('fullname'))
+                        print('  msg:', (m.text or '').strip()[:500] if m is not None else '')
+                        print('  at:', (st.text or '').strip().splitlines()[0][:240] if st is not None else '')
+            " $(find unity-test-results -name "*.xml" 2>/dev/null | head -6) || true
           } > docs/ci/last-failure.md
           git config user.name "arena-ci-diagnostics"
           git config user.email "arena-ci-diagnostics@users.noreply.github.com"
