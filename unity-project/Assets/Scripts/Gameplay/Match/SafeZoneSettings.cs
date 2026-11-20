@@ -59,7 +59,7 @@ namespace BattleHorizons.Gameplay.Match
                 new SafeZonePhase { waitSeconds = 60f, shrinkSeconds = 120f, radiusFactor = 0.55f, damagePerSecond = 1.6f },
                 new SafeZonePhase { waitSeconds = 45f, shrinkSeconds = 100f, radiusFactor = 0.50f, damagePerSecond = 3.0f },
                 new SafeZonePhase { waitSeconds = 30f, shrinkSeconds = 80f, radiusFactor = 0.45f, damagePerSecond = 6.0f },
-                new SafeZonePhase { waitSeconds = 20f, shrinkSeconds = 60f, radiusFactor = 0.40f, damagePerSecond = 12.0f },
+                new SafeZonePhase { waitSeconds = 20f, shrinkSeconds = 60f, radiusFactor = 0.45f, damagePerSecond = 12.0f },
             };
             return settings;
         }

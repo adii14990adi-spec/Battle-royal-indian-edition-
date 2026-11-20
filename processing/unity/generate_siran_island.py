@@ -375,9 +375,12 @@ def ribbon_mesh(centerline, width, color):
         for tri in ((a, b, c), (a, c, d)):
             va, vb, vc = verts[tri[0]], verts[tri[1]], verts[tri[2]]
             cross_y = (vb[0] - va[0]) * (vc[2] - va[2]) - (vb[2] - va[2]) * (vc[0] - va[0])
-            # Baked counter-clockwise: after Unity's MakeClockwiseFromAbove swap
-            # the geometric normal must point up (cross.y > 0), so bake < 0.
-            if cross_y > 0:
+            # Bake counter-clockwise from above (cross.y > 0): the Unity loader
+            # swaps i+1/i+2 on load, so the rendered winding ends up clockwise
+            # from above - the front face for a camera looking down. Baking the
+            # other way made every ribbon a back face (invisible) and failed
+            # BakedRibbonsAreFlippedToUnitysClockwiseUpWinding.
+            if cross_y < 0:
                 tri = (tri[0], tri[2], tri[1])
             indices.extend(tri)
     return verts, cols, indices

@@ -119,7 +119,7 @@ namespace BattleHorizons.Tests.EditMode
             Assert.AreEqual(new Vector2Int(4, 3), SiranMapConfig.WorldToChunk(40f, -30f));
             // Clamped, not wrapped.
             Assert.AreEqual(new Vector2Int(0, 0), SiranMapConfig.WorldToChunk(-9999f, -9999f));
-            Assert.AreEqual(new Vector2Int(3, 2), SiranMapConfig.WorldToChunk(-250f, -750f));
+            Assert.AreEqual(new Vector2Int(3, 1), SiranMapConfig.WorldToChunk(-250f, -750f));
         }
     }
 

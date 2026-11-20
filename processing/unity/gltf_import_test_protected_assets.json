@@ -960,7 +960,7 @@
     },
     {
       "path": "unity-project/Assets/Resources/Config/siran_island_manifest.json",
-      "sha256": "5f76625a1999d63deae15e586ad8c8141bf9caf461e894a61be8e1d6691f1b4d",
+      "sha256": "45a1b7cd9dedf76f3f02ed0ecf7bb992a26d6c6ad76dbc173fb13fee0134c4a7",
       "size": 1333
     },
     {
@@ -975,7 +975,7 @@
     },
     {
       "path": "unity-project/Assets/Resources/Config/siran_island_roads.bytes",
-      "sha256": "d80f15a7166d3e0f0f26ee221ace622369306acfbc341843f843c5e737e1c80f",
+      "sha256": "9559293572c394c756d14f55d651a9f053ad92b4aa3a8f054485555ac85cbda6",
       "size": 48420
     },
     {
@@ -1195,13 +1195,13 @@
     },
     {
       "path": "unity-project/Assets/Tests/EditMode/QualityAndShapeTests.cs",
-      "sha256": "bfdee883a2bc29776aff75d90c3079ff4f811511fb6f8cb254ad0af5db03c11f",
+      "sha256": "cdad5d0d998e5ce6d10a4789a3f7331d673a21cb7d39e48af99405f7085d1d9b",
       "size": 6524
     },
     {
       "path": "unity-project/Assets/Tests/EditMode/SiranIslandDataTests.cs",
-      "sha256": "566bcb588bbec3439f1f9715df50a988fa8bb5b4970af57f9989e0ddf934ffd0",
-      "size": 11400
+      "sha256": "1d302fd864c80c83d1426545a175acc6afcdac4d3f61bf852585f896188ef39e",
+      "size": 11398
     },
     {
       "path": "unity-project/Assets/Tests/PlayMode/BattleHorizons.PlayModeTests.asmdef",

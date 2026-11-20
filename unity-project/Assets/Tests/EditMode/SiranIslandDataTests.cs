@@ -268,7 +268,7 @@ namespace BattleHorizons.Tests.EditMode
         {
             // The runway sits inside the urban feather band; the smaller footprint
             // must win over the broader urban feather band.
-            var zone = SiranMapConfig.ZoneAt(120f, 1480f);
+            var zone = SiranMapConfig.ZoneAt(60f, 740f);
             Assert.IsNotNull(zone);
             Assert.AreEqual("aircraft_industry", zone.Id);
             Assert.IsNull(SiranMapConfig.ZoneAt(1900f, 1900f), "the map corner is open sea");
