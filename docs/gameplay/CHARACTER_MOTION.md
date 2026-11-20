@@ -97,8 +97,13 @@ everything under `Assets/Characters` and `UserAssets/Models/{Male,Female}`.
   eased 0.35 → 0.9 when aiming, body weight 0.15, smooth 0.4. No neck snaps.
 
 **Animation Rigging (editor route, package pinned in `Packages/manifest.json`
-at `com.unity.animation.rigging@1.4.3`)** — for artists who want tweakable
-constraints instead of code:
+at `com.unity.animation.rigging@1.4.0` — the Unity 6000.0 release; 1.4.3 does
+not exist in the registry and broke the APK build until it was repinned)** —
+for artists who want tweakable constraints instead of code. If a future Unity
+6 patch ever fails to resolve the pin, delete the manifest line and install
+Animation Rigging through the Package Manager instead: no runtime code
+references the package (the motion stack is built-in Humanoid IK), so builds
+never depend on it.
 
 1. Select the character instance root → Add Component → **Rig Builder**.
 2. Create a child GameObject "Rig", Add Component → **Rig**; register it in
