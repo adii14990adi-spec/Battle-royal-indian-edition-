@@ -21,6 +21,20 @@ Press feedback is a cyan flash (`pressedColor`), not the default grey dim.
 The invisible `LookArea` sits behind everything so drags on empty screen turn
 the camera while drags on orbs hit their control.
 
+## Control semantics (playtest-locked)
+
+* **Crouch button** = tap to SIT, tap again to stand. The seated pose is stable:
+  the PlayerInputRouter is the single per-frame writer of motor input, so the
+  crouch state can no longer flicker stand/sit ("up-down") frame to frame.
+* **Sprint button** = tap to RUN (toggle, cyan-green orb tint while on), tap
+  again to walk. Jump leaves the crouch.
+* **Move joystick** = WALK only. Full stick deflection no longer auto-sprints;
+  running happens exclusively through the sprint button (or shift / gamepad
+  stick-button on desktop).
+
+Tests: `ControlSemanticsTests` locks sit-stays-seated over 60 frames,
+sprint-stays-on while toggled, full-stick = walk, jump stands up.
+
 ## Wiring
 
 * `MobileControlsBuilder.Build` creates the canvas and returns the `Rig`.

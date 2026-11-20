@@ -75,9 +75,9 @@
       "path": "unity-project/Assets/Scripts/Player/PlayerInputRouter.cs",
       "previous_sha256": "6f63b3c2223cd07905c24940f5857439d65a4a6fbfdc320f4134aa9fc8a54bb5",
       "previous_size": 7264,
-      "reason": "Read Q, gamepad left trigger and mobile AIM hold-button state into the motor, and expose AimHeld/FireHeld (touch FIRE button, mouse LMB, gamepad right trigger) for the WeaponController shooting system.",
-      "sha256": "ce2bb8839134e0504cabb55f9cd9add6e710f79bd0316fec0aac748302ce3272",
-      "size": 8965
+      "reason": "Read Q, gamepad left trigger and mobile AIM hold-button state into the motor, and expose AimHeld/FireHeld (touch FIRE button, mouse LMB, gamepad right trigger) for the WeaponController shooting system. Later: Joystick is walk-only: removed full-deflection auto-sprint so running happens only through the sprint button.",
+      "sha256": "67c784c4edbe93a4bda8c6cab7fc2b9f12fd70912066deb08c8644a15af6802e",
+      "size": 8959
     },
     {
       "path": "unity-project/Assets/Scripts/Player/ThirdPersonMotor.cs",

@@ -1070,13 +1070,13 @@
     },
     {
       "path": "unity-project/Assets/Scripts/Player/PlayerController.cs",
-      "sha256": "23014984a7358a823670fff5e2bb65f27ddb21690c7c124153a89f398b166f92",
-      "size": 14860
+      "sha256": "e2b7335807a3fb408db47422879d1ba900e205bc334d8a9181f4cfc129495516",
+      "size": 15014
     },
     {
       "path": "unity-project/Assets/Scripts/Player/PlayerInputRouter.cs",
-      "sha256": "ce2bb8839134e0504cabb55f9cd9add6e710f79bd0316fec0aac748302ce3272",
-      "size": 8965
+      "sha256": "67c784c4edbe93a4bda8c6cab7fc2b9f12fd70912066deb08c8644a15af6802e",
+      "size": 8959
     },
     {
       "path": "unity-project/Assets/Scripts/Player/ThirdPersonMotor.cs",

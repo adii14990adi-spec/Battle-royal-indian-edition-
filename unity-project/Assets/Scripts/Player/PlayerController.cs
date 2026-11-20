@@ -231,24 +231,19 @@ namespace BattleHorizons.Player
             {
                 var yaw = cameraRig != null ? cameraRig.Yaw : transform.eulerAngles.y;
                 var worldMove = Quaternion.Euler(0f, yaw, 0f) * new Vector3(move2D.x, 0f, move2D.y);
-                if (worldMove.sqrMagnitude > 0.0001f)
+                if (inputRouter == null)
                 {
+                    // No router in this scene: this controller owns the motor.
                     motor.MoveInput = Vector3.ClampMagnitude(worldMove, 1f);
-                }
-                else if (inputRouter == null)
-                {
-                    motor.MoveInput = Vector3.zero;
+                    motor.SprintInput = _isSprinting;
+                    motor.CrouchInput = _isCrouching;
                 }
 
-                if (_isSprinting)
-                {
-                    motor.SprintInput = true;
-                }
-
-                if (_isCrouching)
-                {
-                    motor.CrouchInput = true;
-                }
+                // With a router present it is the SINGLE writer of motor input
+                // every frame (it aggregates stick, keyboard and the held states
+                // this controller pushes through SetSprintHeld/SetCrouchHeld).
+                // Writing here as well raced the router and made crouch flicker
+                // stand/sit every frame ("up-down"), so it must not happen.
 
                 UpdateVisualCapsuleScale(motor.IsCrouching ? crouchHeight : standingHeight);
                 return;
@@ -430,15 +425,15 @@ namespace BattleHorizons.Player
             if (sprintButton != null && sprintButton.targetGraphic != null)
             {
                 sprintButton.targetGraphic.color = _isSprinting
-                    ? new Color(0.2f, 0.95f, 0.35f, 0.85f)
-                    : new Color(0.6f, 1f, 0.7f, 0.45f);
+                    ? new Color(0.45f, 1f, 0.80f, 1f)
+                    : Color.white;
             }
 
             if (crouchButton != null && crouchButton.targetGraphic != null)
             {
                 crouchButton.targetGraphic.color = _isCrouching
-                    ? new Color(0.25f, 0.65f, 1.0f, 0.85f)
-                    : new Color(0.55f, 0.75f, 1f, 0.45f);
+                    ? new Color(0.45f, 0.90f, 1f, 1f)
+                    : Color.white;
             }
         }
     }
