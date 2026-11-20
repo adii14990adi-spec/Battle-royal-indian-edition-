@@ -71,6 +71,8 @@ namespace BattleHorizons.Gameplay.Combat
         private int _lastAmmoReserve = -1;
 
         public WeaponData CurrentWeapon => _runtime?.Data;
+        /// <summary>Where the gun model hangs — CharacterMotionRig parents the hand-IK grip here.</summary>
+        public Transform WeaponMount => weaponMount;
         public bool HasWeapon => _runtime != null && _runtime.Data != null;
         public bool IsAiming => _aiming;
         public int MagAmmo => _runtime?.MagAmmo ?? 0;

@@ -102,6 +102,17 @@ The match foundations live in `unity-project/Assets/Scripts/Gameplay/`:
   state machine (wait → shrink × 6 phases ≈ 16.8 min to a ~37 m final circle),
   ramping 0.4 → 12 HP/s damage outside the rim through `IDamageable`, with a
   greybox cylinder wall and Scene-view gizmos.
+* **Character motion** (`Scripts/Characters`) — a runtime stack that removes
+  the "readymade video" feel: `PlayerLocomotion` drives the blend `Speed`
+  parameter from measured controller displacement (anti-slide), `FootIK`
+  plants feet on uneven ground, `WeaponHandIK` grips the foregrip,
+  `HeadLookIK` eases the head toward the aim point, and `ProceduralLean`
+  banks the spine into turns — all built-in Humanoid IK plus pure,
+  EditMode-tested math, orchestrated by `CharacterMotionRig`. The generated
+  UpperBody avatar-mask layer already lets shooting play over locomotion, and
+  Animation Rigging 1.4.3 is pinned for the editor-side Multi-Aim/Two-Bone
+  artist workflow. See
+  [`docs/gameplay/CHARACTER_MOTION.md`](docs/gameplay/CHARACTER_MOTION.md).
 * **Combat** (`Gameplay/Combat`) — hitscan shooting: `WeaponData` stats per
   loot gun (itemId-keyed), a pure fire-rate/magazine/reload state machine
   (`WeaponRuntime`), ADS with a seeded 60° → 45° FOV pull-in, deterministic
