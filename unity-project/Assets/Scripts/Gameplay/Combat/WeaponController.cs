@@ -160,9 +160,9 @@ namespace BattleHorizons.Gameplay.Combat
             _runtime = new WeaponRuntime(data);
             _recoil.Reset();
             EnsureMuzzlePoint();
-            if (usePlaceholderFx && _muzzleFlash == null && _muzzlePoint != null)
+            if (usePlaceholderFx && _muzzleFlash == null && muzzlePoint != null)
             {
-                _muzzleFlash = CombatPlaceholderFx.BuildMuzzleFlash(_muzzlePoint);
+                _muzzleFlash = CombatPlaceholderFx.BuildMuzzleFlash(muzzlePoint);
             }
 
             GameLog.Info(Tag, $"equipped {data.displayName} ({data.tier}, {data.fireMode}) mag {MagAmmo}/{ReserveAmmo}");
@@ -273,7 +273,7 @@ namespace BattleHorizons.Gameplay.Combat
 
             // Hitscan from the crosshair (camera centre), with seeded cone spread.
             var ray = _camera != null
-                ? _camera.ViewportPointToRay(0.5f, 0.5f)
+                ? _camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f))
                 : new Ray(transform.position + Vector3.up * 1.5f, transform.forward);
             var spread = _aiming ? data.adsSpreadDeg : data.hipSpreadDeg;
             if (spread > 0f)
