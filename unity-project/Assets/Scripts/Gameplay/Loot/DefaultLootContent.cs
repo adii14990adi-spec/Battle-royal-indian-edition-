@@ -99,7 +99,11 @@ namespace BattleHorizons.Gameplay.Loot
                 Entry(I("armor_vest_t2"), 2f),
                 Entry(I("wpn_smg"), 2f),
                 Entry(I("ammo_heavy"), 4f, 20, 60),
-                Entry(I("heal_medkit"), 3f, 1, 2));
+                Entry(I("heal_medkit"), 3f, 1, 2),
+                // Tier-1 support stock: even a military base has loose 9mm and
+                // field dressings, and Tier-1 rolls must never come back empty.
+                Entry(I("ammo_light"), 3f, 15, 45),
+                Entry(I("heal_bandage"), 2f, 2, 5));
 
             var village = Table(
                 "village",

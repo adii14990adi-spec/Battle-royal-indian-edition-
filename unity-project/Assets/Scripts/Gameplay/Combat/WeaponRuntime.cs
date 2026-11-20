@@ -62,16 +62,22 @@ namespace BattleHorizons.Gameplay.Combat
 
             var fired = 0;
             var triggerEdge = triggerHeld && (!_triggerWasHeld || _data.fireMode == FireMode.Auto);
-            if (triggerEdge && time >= _nextShotTime)
+            if (triggerEdge)
             {
                 if (MagAmmo > 0)
                 {
-                    MagAmmo--;
-                    _nextShotTime = time + _data.SecondsPerShot;
-                    fired = 1;
+                    if (time >= _nextShotTime)
+                    {
+                        MagAmmo--;
+                        _nextShotTime = time + _data.SecondsPerShot;
+                        fired = 1;
+                    }
                 }
-                else if (triggerHeld)
+                else
                 {
+                    // An empty mag starts reloading the moment the trigger is
+                    // pulled — the shot cadence gates firing, not reloading
+                    // (StartReload ignores the call while one is running).
                     StartReload(time);
                 }
             }

@@ -60,10 +60,14 @@ namespace BattleHorizons.Tests.EditMode
             lean = CharacterMotionMath.ComputeLeanAnglesDeg(0f, 120f, 0f);
             Assert.Greater(lean.x, 0f);
 
-            // Mirrored inputs mirror the lean.
-            var left = CharacterMotionMath.ComputeLeanAnglesDeg(-2f, -120f, 0f);
+            // Mirrored inputs mirror the lean. Both sides stay inside the ±8°
+            // clamp (1 m/s strafe = 3.5° + 60°/s yaw = 2.1° → 5.6°); feeding
+            // asymmetric inputs would compare a raw value against a clamped one.
+            var right = CharacterMotionMath.ComputeLeanAnglesDeg(1f, 60f, 0f);
+            var left = CharacterMotionMath.ComputeLeanAnglesDeg(-1f, -60f, 0f);
+            Assert.Greater(right.x, 0f);
             Assert.Less(left.x, 0f);
-            Assert.AreEqual(lean.x, -left.x, 0.001f);
+            Assert.AreEqual(right.x, -left.x, 0.001f);
         }
 
         [Test]

@@ -105,7 +105,11 @@ namespace BattleHorizons.EditorTools
             }
 
             RenderSettings.skybox = skybox;
-            EditorUtility.SetDirty(RenderSettings.instance);
+            // RenderSettings is a static class, not a UnityEngine.Object, so it
+            // cannot be passed to EditorUtility.SetDirty. Marking the active
+            // scene dirty is what makes the skybox change persist on save.
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             Debug.Log("[bh][editor] scene skybox set to the morning panorama; save the scene to keep it. " +
                       "ThirdPersonCameraController switches its clear flags to Skybox automatically.");
         }
