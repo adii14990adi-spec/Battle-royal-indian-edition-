@@ -37,9 +37,18 @@ namespace BattleHorizons.Player
         private bool _touchCrouchHeld;
         private bool _touchSprintHeld;
         private bool _touchAimHeld;
+        private bool _touchFireHeld;
+        private bool _aimHeld;
+        private bool _fireHeld;
 
         /// <summary>Last look input, degrees accumulated this frame (for the camera).</summary>
         public Vector2 LookDelta => _lookDelta;
+
+        /// <summary>ADS/aim held this frame (touch AIM button OR Q OR left trigger).</summary>
+        public bool AimHeld => _aimHeld;
+
+        /// <summary>Fire held this frame (touch FIRE button OR mouse LMB OR right trigger).</summary>
+        public bool FireHeld => _fireHeld;
 
         /// <summary>
         /// On-screen hold buttons (crouch, sprint). They are ORed with the physical
@@ -53,6 +62,9 @@ namespace BattleHorizons.Player
 
         /// <summary>On-screen AIM hold button; ORed with physical aim bindings.</summary>
         public void SetAimHeld(bool held) => _touchAimHeld = held;
+
+        /// <summary>On-screen FIRE hold button; ORed with physical fire bindings.</summary>
+        public void SetFireHeld(bool held) => _touchFireHeld = held;
 
         public void Configure(ThirdPersonMotor targetMotor, ThirdPersonCameraController targetCamera,
             VirtualJoystick move, VirtualJoystick look)
@@ -77,7 +89,9 @@ namespace BattleHorizons.Player
             motor.MoveInput = CameraRelative(move);
             motor.SprintInput = ReadSprint(move);
             motor.CrouchInput = ReadCrouch();
-            motor.AimInput = ReadAim();
+            _aimHeld = ReadAim();
+            _fireHeld = ReadFire();
+            motor.AimInput = _aimHeld;
 
             if (ReadJump())
             {
@@ -188,6 +202,23 @@ namespace BattleHorizons.Player
 
             var gamepad = Gamepad.current;
             return gamepad != null && gamepad.leftTrigger.ReadValue() > 0.5f;
+        }
+
+        private bool ReadFire()
+        {
+            if (_touchFireHeld)
+            {
+                return true;
+            }
+
+            var mouse = Mouse.current;
+            if (mouse != null && mouse.leftButton.isPressed)
+            {
+                return true;
+            }
+
+            var gamepad = Gamepad.current;
+            return gamepad != null && gamepad.rightTrigger.ReadValue() > 0.5f;
         }
 
         private bool ReadCrouch()

@@ -82,6 +82,67 @@ step is required. Validate the committed blobs and hashes with:
 python3 processing/unity/validate_unity_map.py
 ```
 
+## Gameplay systems: loot, spawns and the safe zone
+
+The match foundations live in `unity-project/Assets/Scripts/Gameplay/`:
+
+* **Loot** (`Gameplay/Loot`) — ScriptableObject items, weighted loot tables and
+  a per-POI `LootSpawnConfig`. Tier contract: Tier 3 (snipers/assault rifles)
+  spawns only in the Military Base (`central_state`); the Abandoned Village and
+  Docks cap at Tier 2; the Forest & Quarry is resources only. `LootSpawner`
+  rolls every `LootContainer` (building bounds) from the match seed; greybox
+  tier-coloured cubes stand in until art prefabs exist. A starter set of 15
+  items and 4 tables is authored in code (`DefaultLootContent`) and can be
+  persisted as editable assets via **Battle Horizons > Gameplay > Create Default
+  Loot Assets**.
+* **Spawns** (`Gameplay/Match/PlayerSpawnService`) — 50 deterministic drop
+  points on a coastal ring (~1520 m radius), water-rejected against the sea,
+  lake and river, placed by `PlayerSpawnController`.
+* **Safe zone** (`Gameplay/Match/SafeZoneController`) — seeded shrinking-circle
+  state machine (wait → shrink × 6 phases ≈ 16.8 min to a ~37 m final circle),
+  ramping 0.4 → 12 HP/s damage outside the rim through `IDamageable`, with a
+  greybox cylinder wall and Scene-view gizmos.
+* **Character motion** (`Scripts/Characters`) — a runtime stack that removes
+  the "readymade video" feel: `PlayerLocomotion` drives the blend `Speed`
+  parameter from measured controller displacement (anti-slide), `FootIK`
+  plants feet on uneven ground, `WeaponHandIK` grips the foregrip,
+  `HeadLookIK` eases the head toward the aim point, and `ProceduralLean`
+  banks the spine into turns — all built-in Humanoid IK plus pure,
+  EditMode-tested math, orchestrated by `CharacterMotionRig`. The generated
+  UpperBody avatar-mask layer already lets shooting play over locomotion, and
+  Animation Rigging 1.4.3 is pinned for the editor-side Multi-Aim/Two-Bone
+  artist workflow. See
+  [`docs/gameplay/CHARACTER_MOTION.md`](docs/gameplay/CHARACTER_MOTION.md).
+* **Combat** (`Gameplay/Combat`) — hitscan shooting: `WeaponData` stats per
+  loot gun (itemId-keyed), a pure fire-rate/magazine/reload state machine
+  (`WeaponRuntime`), ADS with a seeded 60° → 45° FOV pull-in, deterministic
+  procedural recoil with recovery bleed (`RecoilModel` → camera `AddLook`),
+  `HealthComponent` (the shared `IDamageable` for bullets and the blue zone)
+  and zero-asset placeholder FX (procedural muzzle flash, synthesised gunshot
+  PCM, tracer). Weapons equip straight off the `LootPickup.Collected` event,
+  and a touch FIRE button joined the generated mobile rig. See
+  [`docs/gameplay/SHOOTING_MECHANICS.md`](docs/gameplay/SHOOTING_MECHANICS.md).
+
+All randomness goes through the seeded `Core/RandomStream` (never
+`UnityEngine.Random`), so one match seed reproduces loot, drops and zone
+shifts exactly — enforced by `validate_csharp.py` and by
+`Assets/Tests/EditMode/GameplaySystemsTests.cs`. See
+[`docs/gameplay/`](docs/gameplay/MAP_POI_LAYOUT.md) for the POI layout, loot,
+safe-zone and mobile-optimization guides.
+
+## Environment textures & material pipeline
+
+`unity-project/Assets/UserAssets/Textures/` carries the AI-generated POI
+texture set (red/white brick, dark concrete, grass/dirt, wood, terracotta
+roof tiles, asphalt, hazard-striped loot crate, equirectangular morning
+skybox, decals). **Battle Horizons > Assets > Build Materials From User
+Textures** derives Sobel normal maps (`*_n.png`, imported as linear
+NormalMaps), keys black-background decals to alpha, and writes URP
+Lit/Decal/Panoramic materials with the matte house style and the brief's
+4×4 brick tiling. The import gate keeps every environment texture at
+512² ASTC 6×6 on Android per the UNISOC budget. Guide:
+[`docs/asset-pipeline/USER_TEXTURE_PIPELINE.md`](docs/asset-pipeline/USER_TEXTURE_PIPELINE.md).
+
 ## Offline and mobile settings
 
 The Android target is ARM64, landscape, ASTC-compressed and does not request a

@@ -51,7 +51,11 @@ namespace BattleHorizons.CameraRig
             {
                 cam.nearClipPlane = 0.1f;
                 cam.farClipPlane = 1000f;
-                cam.clearFlags = CameraClearFlags.SolidColor;
+                // A scene skybox (Battle Horizons > Assets > Apply Morning Skybox)
+                // wins over the greybox flat colour; otherwise keep the solid sky.
+                cam.clearFlags = RenderSettings.skybox != null
+                    ? CameraClearFlags.Skybox
+                    : CameraClearFlags.SolidColor;
                 cam.backgroundColor = new Color(0.55f, 0.72f, 0.88f, 1f);
             }
 

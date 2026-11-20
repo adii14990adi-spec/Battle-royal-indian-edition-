@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.unity.animation.rigging": "1.4.3",
     "com.unity.cloud.gltfast": "6.21.0",
     "com.unity.inputsystem": "1.11.2",
     "com.unity.mobile.android-logcat": "1.4.2",

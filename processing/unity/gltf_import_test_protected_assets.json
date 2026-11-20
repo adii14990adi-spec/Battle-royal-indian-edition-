@@ -5,6 +5,7 @@
     "unity-project/Assets/Editor/AnimatorControllerBuilder.cs",
     "unity-project/Assets/Editor/AssetImportRules.cs",
     "unity-project/Assets/Editor/CharacterAnimationManagerWindow.cs",
+    "unity-project/Assets/Scripts/Camera/ThirdPersonCameraController.cs",
     "unity-project/Assets/Scripts/Characters/CharacterAnimationConfig.cs",
     "unity-project/Assets/Scripts/Characters/PlayerCharacterVisual.cs",
     "unity-project/Assets/Scripts/Player/PlayerInputRouter.cs",
@@ -851,8 +852,8 @@
     },
     {
       "path": "unity-project/Assets/Editor/AssetImportRules.cs",
-      "sha256": "ff44a3f7ef28f98a994f57a0a6a60d5fe559999952f2a8c218f4e44be5b201c6",
-      "size": 13170
+      "sha256": "ebf148d8dcb7607279852f0456970f284dae867da0f97c4b3a10e21f88644963",
+      "size": 14450
     },
     {
       "path": "unity-project/Assets/Editor/BattleHorizons.Editor.asmdef",
@@ -1001,8 +1002,8 @@
     },
     {
       "path": "unity-project/Assets/Scripts/Camera/ThirdPersonCameraController.cs",
-      "sha256": "729a7ab83c97dbc6b39a313f0e31949e016bd48149d13b0b6718e5ad68edcdee",
-      "size": 6110
+      "sha256": "1f941c75ddc568b61e7dc93d6b1c62f8c7d641a5cd77c5342df9069a3d71f49a",
+      "size": 6376
     },
     {
       "path": "unity-project/Assets/Scripts/Characters/CharacterAnimationConfig.cs",
@@ -1056,8 +1057,8 @@
     },
     {
       "path": "unity-project/Assets/Scripts/Player/PlayerInputRouter.cs",
-      "sha256": "671445df381b5d4cd796615ff946138a664584f0e7abb995e2eb608194254f8c",
-      "size": 7925
+      "sha256": "ce2bb8839134e0504cabb55f9cd9add6e710f79bd0316fec0aac748302ce3272",
+      "size": 8965
     },
     {
       "path": "unity-project/Assets/Scripts/Player/ThirdPersonMotor.cs",
@@ -1091,8 +1092,8 @@
     },
     {
       "path": "unity-project/Assets/Scripts/UI/MobileControlsBuilder.cs",
-      "sha256": "2db3764489381d2cd847a24725b99b7ef4a204ab76a4e80da17902c271a0ea32",
-      "size": 15441
+      "sha256": "8535708f7996a0d425319899241a1eb3926bb7a0a42da4854e6785d742635af1",
+      "size": 15964
     },
     {
       "path": "unity-project/Assets/Scripts/UI/TouchControlsHost.cs",
