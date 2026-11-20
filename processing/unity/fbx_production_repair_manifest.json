@@ -254,6 +254,14 @@
       "reason": "Chunk fallback material also receives the ground photos so the detail disk matches the island shell.",
       "sha256": "d518867b29ecd172b47f69f8a7cc0e73e9fd0b59425967e9169d3a310a1b3fb1",
       "size": 11632
+    },
+    {
+      "path": "unity-project/Assets/Editor/ProjectValidator.cs",
+      "previous_sha256": "6e206234e6bb89970f9f8c01a6613f51bf2cdca21019196909dadb129f00ac1c",
+      "previous_size": 37277,
+      "reason": "Island validation constants updated for the Siran Island 2.0 bake: 5 m grid spacing, 1000 m half extent and 250 m chunk spans replace the old 10 m / 2000 m / 500 m values.",
+      "sha256": "0e26f938875f861f3dfd18754ef0470a7ae69317a77c92f3a8f930170a26e371",
+      "size": 37276
     }
   ],
   "new_repair_files": [

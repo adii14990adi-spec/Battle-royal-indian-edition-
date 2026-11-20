@@ -885,12 +885,16 @@ jobs:
               echo "(no configure log)"
             fi
             for log in /tmp/unity-integration.log \
+                       /tmp/unity-validate.log \
                        unity-test-results/editmode/unity.log \
                        unity-test-results/playmode/unity.log; do
               if [[ -f "$log" ]]; then
                 echo
                 echo "## $log errors"
-                grep -n -E "(error CS|Exception|FAILED|Aborting batchmode)" "$log" | tail -n 25 || true
+                grep -n -E "(error CS|Exception|FAILED|Aborting batchmode|\[bh\]|FAIL)" "$log" | tail -n 40 || true
+                echo
+                echo "## $log tail"
+                tail -n 40 "$log" || true
               fi
             done
             echo

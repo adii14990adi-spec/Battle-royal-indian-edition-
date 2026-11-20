@@ -301,8 +301,8 @@ namespace BattleHorizons.EditorTools
             Pass("island data loads", string.Format("{0}x{0} grid, {1} road ribbons", data.Size, data.RoadRibbons.Count));
 
             Check("island grid resolution", data.Size == 401, data.Size + " samples/axis (expected 401)");
-            Check("island spacing", Mathf.Approximately(data.SpacingM, 10f), data.SpacingM + " m");
-            Check("island extent", Mathf.Approximately(data.HalfExtentM, 2000f), data.HalfExtentM + " m half extent");
+            Check("island spacing", Mathf.Approximately(data.SpacingM, 5f), data.SpacingM + " m");
+            Check("island extent", Mathf.Approximately(data.HalfExtentM, 1000f), data.HalfExtentM + " m half extent");
             Check("island chunk grid", data.ChunksPerSide == 8, data.ChunksPerSide + " chunks/side");
             Check("island spawn ground height",
                 Mathf.Abs(data.SpawnPoint().y - (data.SpawnGroundHeightM + 1.2f)) < 0.5f,
@@ -429,7 +429,7 @@ namespace BattleHorizons.EditorTools
                         maxZ = Mathf.Max(maxZ, vertices[i].z);
                     }
 
-                    if (Mathf.Abs(maxX - minX - 500f) > 0.01f || Mathf.Abs(maxZ - minZ - 500f) > 0.01f)
+                    if (Mathf.Abs(maxX - minX - 250f) > 0.01f || Mathf.Abs(maxZ - minZ - 250f) > 0.01f)
                     {
                         spanErrors++;
                     }
@@ -462,7 +462,7 @@ namespace BattleHorizons.EditorTools
 
             Check("64 chunk meshes build", totalTriangles == 64 * 5000,
                 totalTriangles + " triangles (expected 320000)");
-            Check("every chunk spans 500 m", spanErrors == 0, spanErrors + " chunks with a wrong span");
+            Check("every chunk spans 250 m", spanErrors == 0, spanErrors + " chunks with a wrong span");
             Check("mesh winding faces up", woundDown == 0,
                 woundDown + " triangles wound the wrong way");
             Check("mesh heights match the height grid", heightErrors == 0,

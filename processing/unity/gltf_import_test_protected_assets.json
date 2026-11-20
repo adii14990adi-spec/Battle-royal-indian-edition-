@@ -32,7 +32,8 @@
     "unity-project/Assets/Tests/PlayMode/CharacterPreviewRuntimeTests.cs",
     "unity-project/Assets/Scripts/World/SiranWorldBuilder.cs",
     "unity-project/Assets/Scripts/World/SiranChunkStreamer.cs",
-    "unity-project/Assets/Shaders/SiranRadiusClip.shader"
+    "unity-project/Assets/Shaders/SiranRadiusClip.shader",
+    "unity-project/Assets/Editor/ProjectValidator.cs"
   ],
   "captured_from_head": "b6c7d14dd5ba393ac9f32902b1b3180223326133",
   "description": "Hashes of production Unity assets/ProjectSettings captured before the isolated GLTF import experiment, adjusted for four UserAssets placeholder/demo files deleted on main after this branch was created. The static validator permits only new files, the two explicitly allowlisted test asmdefs, and the exact hashed targeted FBX repair files listed in processing/unity/fbx_production_repair_manifest.json.",
@@ -915,8 +916,8 @@
     },
     {
       "path": "unity-project/Assets/Editor/ProjectValidator.cs",
-      "sha256": "6e206234e6bb89970f9f8c01a6613f51bf2cdca21019196909dadb129f00ac1c",
-      "size": 37277
+      "sha256": "0e26f938875f861f3dfd18754ef0470a7ae69317a77c92f3a8f930170a26e371",
+      "size": 37276
     },
     {
       "path": "unity-project/Assets/Editor/RigDetectionUtility.cs",
