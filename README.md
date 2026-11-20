@@ -153,6 +153,14 @@ are project settings and targets, not proof of device performance. See
 [`docs/performance/ANDROID_PROFILES.md`](docs/performance/ANDROID_PROFILES.md) and
 [`docs/UNISOC_BUDGET.md`](docs/UNISOC_BUDGET.md).
 
+## Home screen (code-built lobby)
+
+The lobby is 100% procedural: `LobbyArtFactory` paints the sunset vista,
+panels, chips and every glyph at runtime and `MainMenuController` lays them
+out as real widgets (logo, profile/coin/gem chips, Store…Events nav, loadout
+bar, Solo/Duo/Squad selector, golden START). No baked UI artwork — see
+[`docs/gameplay/HOME_SCREEN.md`](docs/gameplay/HOME_SCREEN.md).
+
 ## Validation commands
 
 ```bash

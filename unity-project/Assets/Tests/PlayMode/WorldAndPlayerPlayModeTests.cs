@@ -322,7 +322,7 @@ namespace BattleHorizons.Tests.PlayMode
             var homeFrame = canvas.transform.Find("HomeArtworkFrame");
             Assert.IsNotNull(homeFrame, "HomeArtworkFrame must exist on the Home Screen");
             Assert.IsNotNull(homeFrame.GetComponent<UnityEngine.UI.Image>().sprite,
-                "Home Screen background sprite must load from Resources");
+                "Home Screen vista sprite must be painted procedurally by LobbyArtFactory");
 
             var enterButton = canvas.transform.Find("HomeArtworkFrame/EnterSiranIsland");
             Assert.IsNotNull(enterButton, "START (EnterSiranIsland) button must exist on the Home Screen");

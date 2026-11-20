@@ -110,6 +110,22 @@
       "reason": "Update the missing-Idle negative test to use an empty scratch config and isolate the full-controller test in a scratch config/controller path, so shared clip fallback works and EditMode fixtures cannot leak arbitrary per-character clip overrides into the generated config, captures or APK.",
       "sha256": "3078f61c840a730f6583b91cec70d808240e1f036a131f2e18003f6770dfe648",
       "size": 34782
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/MainMenuController.cs",
+      "previous_sha256": "176082af4be5fcdb0627d0c485b21ef98f9910849d29a264ceea0e6c3f9634dc",
+      "previous_size": 24434,
+      "reason": "Rebuild the Home Screen as a 100% code-built lobby: procedural vista/panels/icons from LobbyArtFactory replace the baked 16:9 JPEG hotspots; public API, canvas node names (HomeArtworkFrame/EnterSiranIsland/ModeSolo/SettingsButton/CharacterButton) and modal behaviour preserved for PlayMode tests.",
+      "sha256": "a67323ac3b62bc12dc1e53cd4ab44825ecf9fe9aa9e957950864864cf9aba562",
+      "size": 34213
+    },
+    {
+      "path": "unity-project/Assets/Tests/PlayMode/WorldAndPlayerPlayModeTests.cs",
+      "previous_sha256": "c3c97c10acb11fb3dcd5a6c78ed3f09b4cbec7d0042c52a0d0960718abe6f529",
+      "previous_size": 19068,
+      "reason": "Update one assertion message: the Home Screen vista sprite is now painted procedurally by LobbyArtFactory instead of loaded from Resources; the assertion itself (sprite != null) and every other expectation are unchanged.",
+      "sha256": "a1bc9e926372cbe70abb4031c511ea73b9e803087593ebc94f3e0af2d5cb2401",
+      "size": 19086
     }
   ],
   "new_repair_files": [
