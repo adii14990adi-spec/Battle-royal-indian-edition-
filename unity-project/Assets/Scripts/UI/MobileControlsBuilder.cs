@@ -98,33 +98,33 @@ namespace BattleHorizons.UI
             CreateLobbyReturnButton(canvasObject.transform);
 
             var moveStick = CreateStick(canvasObject.transform, "MoveStick", new Vector2(0f, 0f),
-                new Vector2(300f, 300f), new Vector2(320f, 300f), new Color(1f, 1f, 1f, 0.25f));
+                new Vector2(300f, 300f), new Vector2(320f, 300f), new Color(1f, 1f, 1f, 1f));
             var lookStick = CreateStick(canvasObject.transform, "LookStick", new Vector2(1f, 0.5f),
-                new Vector2(220f, 220f), new Vector2(-260f, -120f), new Color(1f, 1f, 1f, 0.16f));
+                new Vector2(220f, 220f), new Vector2(-260f, 210f), new Color(1f, 1f, 1f, 0.45f));
 
             var jump = CreateJumpButton(canvasObject.transform, motor, playerController);
             var crouch = CreateHoldButton(canvasObject.transform, "CrouchButton", "CROUCH",
-                new Vector2(1f, 0f), new Vector2(180f, 130f), new Vector2(-430f, 150f),
-                new Color(0.55f, 0.75f, 1f, 0.45f),
+                new Vector2(1f, 0f), new Vector2(140f, 140f), new Vector2(-465f, 95f),
+                new Color(1f, 1f, 1f, 1f), HudArtFactory.CrouchOrb(), HudArtFactory.IconCrouch(),
                 playerController == null && router != null ? (Action<bool>)router.SetCrouchHeld : null,
                 playerController != null ? (UnityEngine.Events.UnityAction)playerController.OnCrouchButtonClicked : null,
                 out var crouchUiButton);
             var sprint = CreateHoldButton(canvasObject.transform, "SprintButton", "SPRINT",
-                new Vector2(1f, 0f), new Vector2(180f, 130f), new Vector2(-430f, 320f),
-                new Color(0.6f, 1f, 0.7f, 0.45f),
+                new Vector2(1f, 0f), new Vector2(140f, 140f), new Vector2(-500f, 265f),
+                new Color(1f, 1f, 1f, 1f), HudArtFactory.SprintOrb(), HudArtFactory.IconSprint(),
                 playerController == null && router != null ? (Action<bool>)router.SetSprintHeld : null,
                 playerController != null ? (UnityEngine.Events.UnityAction)playerController.OnSprintButtonClicked : null,
                 out var sprintUiButton);
             var aim = CreateHoldButton(canvasObject.transform, "AimButton", "AIM",
-                new Vector2(1f, 0f), new Vector2(180f, 130f), new Vector2(-220f, 370f),
-                new Color(1f, 0.62f, 0.35f, 0.55f),
+                new Vector2(1f, 0f), new Vector2(140f, 140f), new Vector2(-465f, 455f),
+                new Color(1f, 1f, 1f, 1f), HudArtFactory.AimOrb(), HudArtFactory.IconAim(),
                 router != null ? (Action<bool>)router.SetAimHeld : null,
                 null,
                 out var aimUiButton);
 
             var fire = CreateHoldButton(canvasObject.transform, "FireButton", "FIRE",
-                new Vector2(1f, 0f), new Vector2(180f, 130f), new Vector2(-220f, 190f),
-                new Color(1f, 0.35f, 0.3f, 0.55f),
+                new Vector2(1f, 0f), new Vector2(220f, 220f), new Vector2(-250f, 210f),
+                new Color(1f, 1f, 1f, 1f), HudArtFactory.FireOrb(), HudArtFactory.IconBullet(),
                 router != null ? (Action<bool>)router.SetFireHeld : null,
                 null,
                 out var fireUiButton);
@@ -179,12 +179,15 @@ namespace BattleHorizons.UI
         }
 
         private static HoldButton CreateHoldButton(Transform parent, string name, string label,
-            Vector2 anchor, Vector2 size, Vector2 anchoredPosition, Color color, Action<bool> onHeldChanged,
+            Vector2 anchor, Vector2 size, Vector2 anchoredPosition, Color color, Sprite orb, Sprite icon,
+            Action<bool> onHeldChanged,
             UnityEngine.Events.UnityAction onClickAction, out Button uiButton)
         {
             var rect = CreatePanel(parent, name, anchor, size, new Vector2(0.5f, 0.5f), anchoredPosition, color);
+            ApplyOrbArt(rect, orb);
             uiButton = rect.gameObject.AddComponent<Button>();
             uiButton.targetGraphic = rect.GetComponent<Image>();
+            ApplyNeonTransition(uiButton);
             if (onClickAction != null)
             {
                 uiButton.onClick.AddListener(onClickAction);
@@ -192,26 +195,59 @@ namespace BattleHorizons.UI
 
             var hold = rect.gameObject.AddComponent<HoldButton>();
             hold.Configure(onHeldChanged);
-            CreateLabel(rect, label, 30);
+            CreateIcon(rect, icon);
             return hold;
         }
 
-        private static void CreateLabel(RectTransform parent, string text, int fontSize)
+        /// <summary>Swaps the flat panel tint for the painted glass-orb sprite.</summary>
+        private static void ApplyOrbArt(RectTransform rect, Sprite orb)
         {
-            var label = new GameObject("Label", typeof(RectTransform), typeof(Text));
-            label.transform.SetParent(parent, false);
-            var component = label.GetComponent<Text>();
-            component.text = text;
-            component.alignment = TextAnchor.MiddleCenter;
-            component.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            component.fontSize = fontSize;
-            component.color = new Color(0.08f, 0.1f, 0.12f, 0.9f);
-            component.raycastTarget = false;
-            var labelRect = (RectTransform)label.transform;
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = Vector2.zero;
-            labelRect.offsetMax = Vector2.zero;
+            var image = rect.GetComponent<Image>();
+            if (image == null)
+            {
+                return;
+            }
+
+            if (orb != null)
+            {
+                image.sprite = orb;
+                image.type = Image.Type.Simple;
+                image.preserveAspect = true;
+            }
+        }
+
+        /// <summary>Cyan flash on press instead of the default grey dim.</summary>
+        private static void ApplyNeonTransition(Button button)
+        {
+            var colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = Color.white;
+            colors.pressedColor = new Color(0.55f, 1f, 1f, 1f);
+            colors.selectedColor = Color.white;
+            colors.disabledColor = new Color(1f, 1f, 1f, 0.35f);
+            colors.fadeDuration = 0.05f;
+            button.colors = colors;
+        }
+
+        private static void CreateIcon(RectTransform parent, Sprite icon)
+        {
+            if (icon == null)
+            {
+                return;
+            }
+
+            var go = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var image = go.GetComponent<Image>();
+            image.sprite = icon;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            var rect = (RectTransform)go.transform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = parent.rect.size * 0.62f;
+            rect.anchoredPosition = Vector2.zero;
         }
 
         public static EventSystem EnsureEventSystem()
@@ -259,11 +295,13 @@ namespace BattleHorizons.UI
             Vector2 size, Vector2 pivotOffset, Color tint)
         {
             var area = CreatePanel(parent, name, anchor, size, new Vector2(0.5f, 0.5f), pivotOffset, tint);
+            ApplyOrbArt(area, HudArtFactory.JoystickBase());
             // A pointer handler needs a graphic that raycasts; the panel has one.
             var stick = area.gameObject.AddComponent<VirtualJoystick>();
 
             var knob = CreatePanel(area, "Knob", new Vector2(0.5f, 0.5f), size * 0.45f,
-                new Vector2(0.5f, 0.5f), Vector2.zero, new Color(1f, 1f, 1f, 0.35f));
+                new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+            ApplyOrbArt(knob, HudArtFactory.JoystickKnob());
             var knobImage = knob.GetComponent<Image>();
             if (knobImage != null)
             {
@@ -294,11 +332,13 @@ namespace BattleHorizons.UI
         private static Button CreateJumpButton(Transform parent, ThirdPersonMotor motor,
             PlayerController playerController = null)
         {
-            var rect = CreatePanel(parent, "JumpButton", new Vector2(1f, 0f), new Vector2(190f, 190f),
-                new Vector2(0.5f, 0.5f), new Vector2(-220f, 190f), new Color(1f, 0.85f, 0.35f, 0.55f));
+            var rect = CreatePanel(parent, "JumpButton", new Vector2(1f, 0f), new Vector2(150f, 150f),
+                new Vector2(0.5f, 0.5f), new Vector2(-250f, 455f), new Color(1f, 1f, 1f, 1f));
+            ApplyOrbArt(rect, HudArtFactory.JumpOrb());
             var button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = rect.GetComponent<Image>();
-            CreateLabel(rect, "JUMP", 34);
+            ApplyNeonTransition(button);
+            CreateIcon(rect, HudArtFactory.IconJump());
 
             if (playerController != null)
             {

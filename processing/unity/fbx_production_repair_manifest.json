@@ -91,9 +91,9 @@
       "path": "unity-project/Assets/Scripts/UI/MobileControlsBuilder.cs",
       "previous_sha256": "d91cd4c13fa10c81608571976fe4f5761fda1da5c7f8c8778fd27864bd01c9cb",
       "previous_size": 14929,
-      "reason": "Add and wire a deterministic AIM hold button for mobile input, plus a FIRE hold button routed to PlayerInputRouter.SetFireHeld for the shooting system.",
-      "sha256": "8535708f7996a0d425319899241a1eb3926bb7a0a42da4854e6785d742635af1",
-      "size": 15964
+      "reason": "Add and wire a deterministic AIM hold button for mobile input, plus a FIRE hold button routed to PlayerInputRouter.SetFireHeld for the shooting system. Later: neon glass-orb restyle - painted orb/icon sprites from HudArtFactory, arc thumb-cluster layout, cyan press transition.",
+      "sha256": "f93fec98880fb82d117aaf6b12b6abc6af5e231b40b276f5f6297819bd9a983f",
+      "size": 17419
     },
     {
       "path": "unity-project/Assets/Tests/EditMode/AssetImportRulesTests.cs",
