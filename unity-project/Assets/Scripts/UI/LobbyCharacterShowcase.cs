@@ -1,4 +1,5 @@
 using BattleHorizons.Characters;
+using BattleHorizons.Core;
 using UnityEngine;
 using UnityEngine.UI;
 

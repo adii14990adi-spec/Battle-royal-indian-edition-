@@ -1125,8 +1125,8 @@
     },
     {
       "path": "unity-project/Assets/Scripts/UI/WorldDebugHud.cs",
-      "sha256": "b79f5aefebbf93661e530400f6b86516434167c0453a95150764d945b7da6b61",
-      "size": 794
+      "sha256": "3f83fecdc8d2a545022592a86626e7e5217725bf972dd0b040a796d7af7e1299",
+      "size": 821
     },
     {
       "path": "unity-project/Assets/Scripts/World/IslandShapeMath.cs",

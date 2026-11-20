@@ -195,9 +195,9 @@
       "path": "unity-project/Assets/Scripts/UI/WorldDebugHud.cs",
       "previous_sha256": "cf53e07f9d0e708c6f6ea45f6ad6504eaba5e50ec735411bd23088da868234f9",
       "previous_size": 5518,
-      "reason": "Debug HUD retired at the user's request: the component now builds no overlay; ProjectBootstrap no longer spawns it.",
-      "sha256": "b79f5aefebbf93661e530400f6b86516434167c0453a95150764d945b7da6b61",
-      "size": 794
+      "reason": "Debug HUD retired at the user's request: the component now builds no overlay; ProjectBootstrap no longer spawns it. Later: added the missing BattleHorizons.Core using so the retired stub compiles (CI compile error CS0103).",
+      "sha256": "3f83fecdc8d2a545022592a86626e7e5217725bf972dd0b040a796d7af7e1299",
+      "size": 821
     },
     {
       "path": "unity-project/Assets/Editor/ProjectBootstrap.cs",
