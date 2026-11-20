@@ -637,8 +637,6 @@ namespace BattleHorizons.EditorTools
             touchHostSerialized.FindProperty("playerController").objectReferenceValue = playerController;
             touchHostSerialized.ApplyModifiedPropertiesWithoutUndo();
 
-            var hud = new GameObject("HUD");
-            var hudComponent = hud.AddComponent<WorldDebugHud>();
         }
 
         private static void EnsureBuildSettings()

@@ -163,11 +163,11 @@ def main() -> int:
     chunk_size = float(grid.get("chunk_size_m", 0))
     chunks_per_side = int(grid.get("chunks_per_side", 0))
     cells_per_chunk = round(chunk_size / spacing) if spacing > 0 else 0
-    report.check(size == 401 and spacing == 10.0 and half_extent == 2000.0,
-                 "terrain metadata describes a 401 x 401 grid at 10 m spacing over a 4 km map")
-    report.check(chunk_size == 500.0 and chunks_per_side == 8 and
+    report.check(size == 401 and spacing == 5.0 and half_extent == 1000.0,
+                 "terrain metadata describes a 401 x 401 grid at 5 m spacing over a 2 km map")
+    report.check(chunk_size == 250.0 and chunks_per_side == 8 and
                  cells_per_chunk * chunks_per_side == size - 1,
-                 "the 500 m chunk grid covers the complete terrain with shared edges")
+                 "the 250 m chunk grid covers the complete terrain with shared edges")
     report.check(terrain.get("provenance", {}).get("note", "").startswith("These Unity Resources"),
                  "terrain metadata names the Unity resources as the current source of truth")
 
@@ -230,7 +230,7 @@ def main() -> int:
                     if max(indices, default=0) >= vertex_count:
                         all_indices_valid = False
                     total_triangles += index_count // 3
-                report.check(all_indices_valid and total_triangles == 4212,
+                report.check(all_indices_valid and total_triangles == 2076,
                              f"all road indices are valid ({total_triangles} triangles across {count} ribbons)")
     else:
         report.check(False, "road blob is present")

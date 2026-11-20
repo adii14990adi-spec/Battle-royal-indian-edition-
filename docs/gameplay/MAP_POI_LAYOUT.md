@@ -12,18 +12,16 @@ data in `unity-project/Assets/Resources/Config/` — not a hand-sculpted Unity
 
 | Property | Value |
 | --- | --- |
-| Map size | **4 × 4 km** (`MapSizeM = 4000`), centred on the origin |
-| Island radius | 1950 m coastline (noise ±170 m) |
-| Chunk streaming | 500 m tiles, 50 m full-detail disk around the player |
-| Height range | −38 m … 132 m, sea level 0 m |
+| Map size | **2 × 2 km** (`MapSizeM = 2000`), centred on the origin — the 2.0 rebake |
+| Island radius | 975 m coastline (noise ±85 m) |
+| Chunk streaming | 250 m tiles, 50 m full-detail disk around the player |
+| Height range | −12 m … 23.3 m, sea level 0 m |
 | Water | Sea, Siran Lake (inland), Siran River, Iron Mill channel |
 
-The original brief asked for a 2 × 2 km terrain. On Siran Island that brief is
-honoured as the **2 × 2 km core battlefield**: every POI below sits within
-±1000 m of the centre except the two coastal POIs, and the safe-zone schedule
-compresses the 4 km island into that core within the first two phases. If a
-dedicated 2 × 2 km map is ever wanted, the steps at the bottom of this document
-recreate one from scratch with Unity's Terrain tool.
+The original brief asked for a 2 × 2 km terrain, and the 2.0 rebake
+(`processing/unity/generate_siran_island.py`) delivers exactly that: the whole
+island now IS the 2 × 2 km battlefield at 5 m height resolution. POI positions
+below are the rebaked coordinates; the tier contract is unchanged.
 
 ## POI plan (mapped onto Siran Island zones)
 
@@ -33,11 +31,11 @@ using the zone ids below, so **POI identity = zone id** everywhere in code
 
 | POI (brief) | Siran zone id | Position | Loot tier cap | Notes |
 | --- | --- | --- | --- | --- |
-| **Military Base** (centre) | `central_state` | (40, −30), 1150 × 1150 m | **Tier 3** | High-tier loot only here: assault rifles, snipers, riot helmets. Build concrete bunkers, watchtowers, parade ground with ProBuilder inside the Central State urban pad. |
-| **Abandoned Village** (west→NW) | `factory_island` | (−1250, −1300), 760 × 640 m | Tier 2 | 15 modular houses: reuse one ProBuilder house prefab, vary rotation/mirror. Medium-tier loot + bandages. |
-| **Forest & Quarry** (east) | `graveyard_center` | (1350, −80), 820 × 900 m | Tier 1 (resources only) | Resource nodes: Wood and Stone clusters (`res_wood`, `res_stone`, `res_scrap_metal`). Trees must carry LOD Groups (see MOBILE_OPTIMIZATION.md). |
-| **Docks** (brief: south → actual: west coast) | `konkan_docks` | (−1470, 130), 780 × 540 m | Tier 2 | Boat spawns and water access already exist on Siran's west coast; the southern pad is the Airfield instead. |
-| **Airfield Hangars** (south, map-specific extra) | `aircraft_industry` | (120, 1480), 1020 × 740 m | Tier 2 | Hangars + runway; second mid-tier hotspot so the south is not empty. |
+| **Military Base** (centre) | `central_state` | (20, −15), 575 × 575 m | **Tier 3** | High-tier loot only here: assault rifles, snipers, riot helmets. Build concrete bunkers, watchtowers, parade ground with ProBuilder inside the Central State urban pad. |
+| **Abandoned Village** (west→NW) | `factory_island` | (−625, −650), 380 × 320 m | Tier 2 | 15 modular houses: reuse one ProBuilder house prefab, vary rotation/mirror. Medium-tier loot + bandages. |
+| **Forest & Quarry** (east) | `graveyard_center` | (675, −40), 410 × 450 m | Tier 1 (resources only) | Resource nodes: Wood and Stone clusters (`res_wood`, `res_stone`, `res_scrap_metal`). Trees must carry LOD Groups (see MOBILE_OPTIMIZATION.md). |
+| **Docks** (brief: south → actual: west coast) | `konkan_docks` | (−735, 65), 390 × 270 m | Tier 2 | Boat spawns and water access already exist on Siran's west coast; the southern pad is the Airfield instead. |
+| **Airfield Hangars** (south, map-specific extra) | `aircraft_industry` | (60, 740), 510 × 370 m | Tier 2 | Hangars + runway; second mid-tier hotspot so the south is not empty. |
 
 Deviation from the brief, stated explicitly: Siran Island's water POI (Konkan
 Docks) is on the **west** coast and the **south** pad is the airfield. The tier

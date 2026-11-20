@@ -25,8 +25,8 @@ namespace BattleHorizons.Gameplay.Match
     [CreateAssetMenu(menuName = "Battle Horizons/Match/Safe Zone Settings", fileName = "SafeZoneSettings_New")]
     public class SafeZoneSettings : ScriptableObject
     {
-        [Tooltip("Initial radius in metres; 1900 covers Siran Island (IslandRadiusM = 1950).")]
-        public float startRadiusM = 1900f;
+        [Tooltip("Initial radius in metres; 950 covers the 2 km Siran Island (IslandRadiusM = 975).")]
+        public float startRadiusM = 950f;
         public SafeZonePhase[] phases = Array.Empty<SafeZonePhase>();
 
         /// <summary>Damage of the final phase, used once the schedule is exhausted.</summary>
@@ -49,7 +49,7 @@ namespace BattleHorizons.Gameplay.Match
         {
             var settings = CreateInstance<SafeZoneSettings>();
             settings.name = "SafeZoneSettings_Default";
-            settings.startRadiusM = 1900f;
+            settings.startRadiusM = 950f;
             settings.finalDamagePerSecond = 12f;
             // ~16.8 min island-wide → ~37 m final circle (dps ramps 0.4 → 12).
             settings.phases = new[]

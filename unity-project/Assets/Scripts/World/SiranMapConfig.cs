@@ -84,18 +84,18 @@ namespace BattleHorizons.World
     public static class SiranMapConfig
     {
         public const string DisplayName = "Siran Island";
-        public const float MapSizeM = 4000.0f;
-        public const float ChunkSizeM = 500.0f;
-        public const float VertexSpacingM = 10.0f;
+        public const float MapSizeM = 2000.0f;
+        public const float ChunkSizeM = 250.0f;
+        public const float VertexSpacingM = 5.0f;
         public const float SeaLevel = 0.0f;
-        public const float IslandRadiusM = 1950.0f;
-        public const float CoastlineNoiseM = 170.0f;
-        public const float MinHeightM = -38.0f;
-        public const float MaxHeightM = 132.0f;
-        public const int GeneratorVersion = 3;
-        public const int NoiseSeed = 20261106;
+        public const float IslandRadiusM = 975.0f;
+        public const float CoastlineNoiseM = 85.0f;
+        public const float MinHeightM = -12.0f;
+        public const float MaxHeightM = 23.3231f;
+        public const int GeneratorVersion = 4;
+        public const int NoiseSeed = 20261120;
         /// <summary>Where a match starts, world metres (Y is a guess: use the ground).</summary>
-        public static readonly Vector3 SpawnPoint = new Vector3(40.0f, 28.0f, -30.0f);
+        public static readonly Vector3 SpawnPoint = new Vector3(20.0f, 20.0f, -15.0f);
 
         public static int ChunksPerSide => Mathf.Max(1, Mathf.RoundToInt(MapSizeM / ChunkSizeM));
         public static int ChunkCount => ChunksPerSide * ChunksPerSide;
@@ -110,14 +110,14 @@ namespace BattleHorizons.World
                 Id = "factory_island",
                 DisplayName = "Factory Island \u2014 Iron Mill",
                 Kind = ZoneKind.Industrial,
-                Center = new Vector2(-1250.0f, -1300.0f),
-                Size = new Vector2(760.0f, 640.0f),
+                Center = new Vector2(-625.0f, -650.0f),
+                Size = new Vector2(380.0f, 320.0f),
                 RotationDeg = -12.0f,
                 Shape = ZoneShape.Ellipse,
-                CornerRadiusM = 140.8f,
-                FlatHeight = 26.0f,
+                CornerRadiusM = 70.4f,
+                FlatHeight = 19.5f,
                 Flatness = 1.0f,
-                FeatherM = 90.0f,
+                FeatherM = 45.0f,
                 Tint = new Color(0.41f, 0.39f, 0.35f, 1f),
             },
             new IslandZone
@@ -125,14 +125,14 @@ namespace BattleHorizons.World
                 Id = "konkan_docks",
                 DisplayName = "Dock Island \u2014 Konkan Docks",
                 Kind = ZoneKind.Dock,
-                Center = new Vector2(-1470.0f, 130.0f),
-                Size = new Vector2(780.0f, 540.0f),
+                Center = new Vector2(-735.0f, 65.0f),
+                Size = new Vector2(390.0f, 270.0f),
                 RotationDeg = 6.0f,
                 Shape = ZoneShape.Ellipse,
-                CornerRadiusM = 118.8f,
-                FlatHeight = 4.5f,
+                CornerRadiusM = 59.4f,
+                FlatHeight = 3.4f,
                 Flatness = 1.0f,
-                FeatherM = 110.0f,
+                FeatherM = 55.0f,
                 Tint = new Color(0.38f, 0.4f, 0.43f, 1f),
             },
             new IslandZone
@@ -140,14 +140,14 @@ namespace BattleHorizons.World
                 Id = "central_state",
                 DisplayName = "Central State \u2014 Urban",
                 Kind = ZoneKind.Urban,
-                Center = new Vector2(40.0f, -30.0f),
-                Size = new Vector2(1150.0f, 1150.0f),
+                Center = new Vector2(20.0f, -15.0f),
+                Size = new Vector2(575.0f, 575.0f),
                 RotationDeg = 0.0f,
                 Shape = ZoneShape.RoundedRect,
-                CornerRadiusM = 253.0f,
-                FlatHeight = 16.0f,
+                CornerRadiusM = 126.5f,
+                FlatHeight = 12.0f,
                 Flatness = 0.72f,
-                FeatherM = 170.0f,
+                FeatherM = 85.0f,
                 Tint = new Color(0.52f, 0.5f, 0.45f, 1f),
             },
             new IslandZone
@@ -155,14 +155,14 @@ namespace BattleHorizons.World
                 Id = "graveyard_center",
                 DisplayName = "Graveyard Center \u2014 Foggy Hills",
                 Kind = ZoneKind.Graveyard,
-                Center = new Vector2(1350.0f, -80.0f),
-                Size = new Vector2(820.0f, 900.0f),
+                Center = new Vector2(675.0f, -40.0f),
+                Size = new Vector2(410.0f, 450.0f),
                 RotationDeg = 12.0f,
                 Shape = ZoneShape.Ellipse,
-                CornerRadiusM = 180.4f,
-                FlatHeight = 42.0f,
-                Flatness = 0.55f,
-                FeatherM = 190.0f,
+                CornerRadiusM = 90.2f,
+                FlatHeight = 28.0f,
+                Flatness = 0.40f,
+                FeatherM = 95.0f,
                 Tint = new Color(0.33f, 0.36f, 0.32f, 1f),
             },
             new IslandZone
@@ -170,14 +170,14 @@ namespace BattleHorizons.World
                 Id = "aircraft_industry",
                 DisplayName = "Aircraft Industry \u2014 Hangars & Runway",
                 Kind = ZoneKind.Airfield,
-                Center = new Vector2(120.0f, 1480.0f),
-                Size = new Vector2(1020.0f, 740.0f),
+                Center = new Vector2(60.0f, 740.0f),
+                Size = new Vector2(510.0f, 370.0f),
                 RotationDeg = 0.0f,
                 Shape = ZoneShape.RoundedRect,
-                CornerRadiusM = 162.8f,
-                FlatHeight = 12.0f,
+                CornerRadiusM = 81.4f,
+                FlatHeight = 9.0f,
                 Flatness = 1.0f,
-                FeatherM = 90.0f,
+                FeatherM = 45.0f,
                 Tint = new Color(0.61f, 0.6f, 0.56f, 1f),
             },
         };
@@ -187,38 +187,38 @@ namespace BattleHorizons.World
         {
             Id = "siran_lake",
             DisplayName = "Siran Lake",
-            Center = new Vector2(250.0f, -1150.0f),
-            Radius = new Vector2(520.0f, 380.0f),
-            SurfaceHeight = 9.0f,
-            Depth = 11.0f,
-            ShoreFeatherM = 80.0f,
+            Center = new Vector2(125.0f, -575.0f),
+            Radius = new Vector2(260.0f, 190.0f),
+            SurfaceHeight = 6.5f,
+            Depth = 8.0f,
+            ShoreFeatherM = 40.0f,
         };
 
         public static readonly IslandRiver River = new IslandRiver
+    {
+        Id = "siran_river",
+        DisplayName = "Siran River",
+        Points = new[]
         {
-            Id = "siran_river",
-            DisplayName = "Siran River",
-            Points = new[]
-            {
-                new Vector2(250.0f, -790.0f),
-                new Vector2(500.0f, -520.0f),
-                new Vector2(760.0f, -300.0f),
-                new Vector2(880.0f, -40.0f),
-                new Vector2(900.0f, 420.0f),
-                new Vector2(960.0f, 900.0f),
-                new Vector2(1080.0f, 1380.0f),
-                new Vector2(1160.0f, 1750.0f),
-                new Vector2(1200.0f, 2060.0f),
-            },
-            Widths = new[] { 70.0f, 72.0f, 76.0f, 80.0f, 86.0f, 92.0f, 100.0f, 110.0f, 110.0f },
-            SurfaceStart = 9.0f,
-            SurfaceEnd = -0.5f,
-            Depth = 2.8f,
-            BankWidthM = 24.0f,
-            SourceBlendM = 90.0f,
-        };
+            new Vector2(125.0f, -395.0f),
+            new Vector2(250.0f, -260.0f),
+            new Vector2(380.0f, -150.0f),
+            new Vector2(440.0f, -20.0f),
+            new Vector2(450.0f, 210.0f),
+            new Vector2(480.0f, 450.0f),
+            new Vector2(540.0f, 690.0f),
+            new Vector2(580.0f, 875.0f),
+            new Vector2(600.0f, 985.0f),
+        },
+        Widths = new[] { 35.0f, 36.0f, 38.0f, 40.0f, 43.0f, 46.0f, 50.0f, 55.0f, 55.0f },
+        SurfaceStart = 6.5f,
+        SurfaceEnd = -0.4f,
+        Depth = 2.1f,
+        BankWidthM = 12.0f,
+        SourceBlendM = 45.0f,
+    };
 
-        public static readonly IslandChannel[] Channels =
+    public static readonly IslandChannel[] Channels =
         {
             new IslandChannel
             {
@@ -226,30 +226,30 @@ namespace BattleHorizons.World
                 DisplayName = "Iron Mill Channel",
                 Points = new[]
                 {
-                    new Vector2(-754.891029f, -1405.238661f),
-                    new Vector2(-745.027124f, -1265.444844f),
-                    new Vector2(-801.193718f, -1132.013426f),
-                    new Vector2(-889.933892f, -1014.840732f),
-                    new Vector2(-1016.707523f, -931.216385f),
-                    new Vector2(-1165.515084f, -902.529722f),
-                    new Vector2(-1308.961989f, -896.689759f),
-                    new Vector2(-1462.952034f, -893.041966f),
-                    new Vector2(-1613.80227f, -942.234129f),
-                    new Vector2(-1697.260829f, -1063.041322f),
-                    new Vector2(-1713.475678f, -1201.485204f),
-                    new Vector2(-1711.948792f, -1331.61103f),
-                    new Vector2(-1681.803375f, -1461.622448f),
-                    new Vector2(-1598.03133f, -1575.628162f),
-                    new Vector2(-1482.979231f, -1668.288442f),
-                    new Vector2(-1344.319139f, -1743.736659f),
-                    new Vector2(-1182.795803f, -1759.688378f),
-                    new Vector2(-1044.165633f, -1693.35595f),
-                    new Vector2(-943.389385f, -1601.52317f),
-                    new Vector2(-840.846143f, -1516.769614f),
+                    new Vector2(-377.445515f, -702.619331f),
+                    new Vector2(-372.513562f, -632.722422f),
+                    new Vector2(-400.596859f, -566.006713f),
+                    new Vector2(-444.966946f, -507.420366f),
+                    new Vector2(-508.353762f, -465.608192f),
+                    new Vector2(-582.757542f, -451.264861f),
+                    new Vector2(-654.480994f, -448.344879f),
+                    new Vector2(-731.476017f, -446.520983f),
+                    new Vector2(-806.901135f, -471.117065f),
+                    new Vector2(-848.630415f, -531.520661f),
+                    new Vector2(-856.737839f, -600.742602f),
+                    new Vector2(-855.974396f, -665.805515f),
+                    new Vector2(-840.901687f, -730.811224f),
+                    new Vector2(-799.015665f, -787.814081f),
+                    new Vector2(-741.489616f, -834.144221f),
+                    new Vector2(-672.159569f, -871.868329f),
+                    new Vector2(-591.397901f, -879.844189f),
+                    new Vector2(-522.082817f, -846.677975f),
+                    new Vector2(-471.694692f, -800.761585f),
+                    new Vector2(-420.423071f, -758.384807f),
                 },
-                HalfWidthM = 34.0f,
-                DepthM = 4.5f,
-                BankWidthM = 30.0f,
+                HalfWidthM = 17.0f,
+                DepthM = 3.4f,
+                BankWidthM = 15.0f,
             },
         };
 
@@ -261,14 +261,14 @@ namespace BattleHorizons.World
                 DisplayName = "Konkan Docks \u2192 Central State",
                 Points = new[]
                 {
-                    new Vector2(-1470.0f, 130.0f),
-                    new Vector2(-1180.0f, 110.0f),
-                    new Vector2(-820.0f, 70.0f),
-                    new Vector2(-430.0f, 20.0f),
-                    new Vector2(40.0f, -30.0f),
+                    new Vector2(-735.0f, 65.0f),
+                    new Vector2(-590.0f, 55.0f),
+                    new Vector2(-410.0f, 35.0f),
+                    new Vector2(-215.0f, 10.0f),
+                    new Vector2(20.0f, -15.0f),
                 },
-                Width = 16.0f,
-                ShoulderWidth = 7.0f,
+                Width = 8.0f,
+                ShoulderWidth = 3.5f,
             },
             new IslandRoad
             {
@@ -276,15 +276,15 @@ namespace BattleHorizons.World
                 DisplayName = "Iron Mill \u2192 Central State",
                 Points = new[]
                 {
-                    new Vector2(-1250.0f, -1300.0f),
-                    new Vector2(-1080.0f, -980.0f),
-                    new Vector2(-880.0f, -700.0f),
-                    new Vector2(-560.0f, -420.0f),
-                    new Vector2(-160.0f, -160.0f),
-                    new Vector2(40.0f, -30.0f),
+                    new Vector2(-625.0f, -650.0f),
+                    new Vector2(-540.0f, -490.0f),
+                    new Vector2(-440.0f, -350.0f),
+                    new Vector2(-280.0f, -210.0f),
+                    new Vector2(-80.0f, -80.0f),
+                    new Vector2(20.0f, -15.0f),
                 },
-                Width = 16.0f,
-                ShoulderWidth = 7.0f,
+                Width = 8.0f,
+                ShoulderWidth = 3.5f,
             },
             new IslandRoad
             {
@@ -292,14 +292,14 @@ namespace BattleHorizons.World
                 DisplayName = "Central State \u2192 Aircraft Industry",
                 Points = new[]
                 {
-                    new Vector2(40.0f, -30.0f),
-                    new Vector2(60.0f, 320.0f),
-                    new Vector2(80.0f, 760.0f),
-                    new Vector2(110.0f, 1120.0f),
-                    new Vector2(120.0f, 1480.0f),
+                    new Vector2(20.0f, -15.0f),
+                    new Vector2(30.0f, 160.0f),
+                    new Vector2(40.0f, 380.0f),
+                    new Vector2(55.0f, 560.0f),
+                    new Vector2(60.0f, 740.0f),
                 },
-                Width = 16.0f,
-                ShoulderWidth = 7.0f,
+                Width = 8.0f,
+                ShoulderWidth = 3.5f,
             },
             new IslandRoad
             {
@@ -307,14 +307,14 @@ namespace BattleHorizons.World
                 DisplayName = "Central State \u2192 Graveyard Center",
                 Points = new[]
                 {
-                    new Vector2(40.0f, -30.0f),
-                    new Vector2(380.0f, -140.0f),
-                    new Vector2(700.0f, -160.0f),
-                    new Vector2(1000.0f, -120.0f),
-                    new Vector2(1350.0f, -80.0f),
+                    new Vector2(20.0f, -15.0f),
+                    new Vector2(190.0f, -70.0f),
+                    new Vector2(350.0f, -80.0f),
+                    new Vector2(500.0f, -60.0f),
+                    new Vector2(675.0f, -40.0f),
                 },
-                Width = 16.0f,
-                ShoulderWidth = 7.0f,
+                Width = 8.0f,
+                ShoulderWidth = 3.5f,
             },
             new IslandRoad
             {
@@ -322,14 +322,14 @@ namespace BattleHorizons.World
                 DisplayName = "Coast Highway \u2014 Aircraft Industry \u2192 Konkan Docks",
                 Points = new[]
                 {
-                    new Vector2(120.0f, 1480.0f),
-                    new Vector2(-350.0f, 1330.0f),
-                    new Vector2(-900.0f, 940.0f),
-                    new Vector2(-1280.0f, 560.0f),
-                    new Vector2(-1470.0f, 130.0f),
+                    new Vector2(60.0f, 740.0f),
+                    new Vector2(-175.0f, 665.0f),
+                    new Vector2(-450.0f, 470.0f),
+                    new Vector2(-640.0f, 280.0f),
+                    new Vector2(-735.0f, 65.0f),
                 },
-                Width = 16.0f,
-                ShoulderWidth = 7.0f,
+                Width = 8.0f,
+                ShoulderWidth = 3.5f,
             },
         };
 

@@ -24,10 +24,10 @@ namespace BattleHorizons.Tests.EditMode
         [Test]
         public void GridMatchesTheCommittedIslandMetadata()
         {
-            Assert.AreEqual(401, _data.Size, "401 samples across 400 cells at 10 m");
-            Assert.AreEqual(10f, _data.SpacingM, 0.001f);
-            Assert.AreEqual(2000f, _data.HalfExtentM, 0.001f);
-            Assert.AreEqual(4000f, SiranMapConfig.MapSizeM, 0.001f);
+            Assert.AreEqual(401, _data.Size, "401 samples across 400 cells at 5 m");
+            Assert.AreEqual(5f, _data.SpacingM, 0.001f);
+            Assert.AreEqual(1000f, _data.HalfExtentM, 0.001f);
+            Assert.AreEqual(2000f, SiranMapConfig.MapSizeM, 0.001f);
             Assert.AreEqual(8, _data.ChunksPerSide);
             Assert.AreEqual(160801, _data.Heights.Length);
             Assert.AreEqual(160801, _data.Colors.Length);
@@ -37,11 +37,11 @@ namespace BattleHorizons.Tests.EditMode
         public void HeightsAreInTheBakedRange()
         {
             // siran_island_terrain.json: min -38.0, max 64.8359, sea level 0
-            Assert.AreEqual(-38f, _data.MinHeightM, 0.01f);
-            Assert.AreEqual(64.8359f, _data.MaxHeightM, 0.01f);
+            Assert.AreEqual(-12f, _data.MinHeightM, 0.01f);
+            Assert.AreEqual(23.3231f, _data.MaxHeightM, 0.01f);
             Assert.AreEqual(0f, _data.SeaLevelM, 0.001f);
-            Assert.AreEqual(-38f, _data.Heights.Min(), 0.01f);
-            Assert.AreEqual(64.8359f, _data.Heights.Max(), 0.01f);
+            Assert.AreEqual(-12f, _data.Heights.Min(), 0.01f);
+            Assert.AreEqual(23.3231f, _data.Heights.Max(), 0.01f);
         }
 
         [Test]
@@ -49,10 +49,10 @@ namespace BattleHorizons.Tests.EditMode
         {
             // summary: spawn_ground_height_m = 17.5249 at (40, -30)
             var spawn = _data.SpawnPoint();
-            Assert.AreEqual(40f, spawn.x, 0.01f);
-            Assert.AreEqual(-30f, spawn.z, 0.01f);
+            Assert.AreEqual(20f, spawn.x, 0.01f);
+            Assert.AreEqual(-15f, spawn.z, 0.01f);
             Assert.AreEqual(_data.SpawnGroundHeightM + 1.2f, spawn.y, 0.05f);
-            Assert.AreEqual(17.5249f, _data.SpawnGroundHeightM, 0.05f);
+            Assert.AreEqual(15.3592f, _data.SpawnGroundHeightM, 0.05f);
         }
 
         [Test]
@@ -103,9 +103,9 @@ namespace BattleHorizons.Tests.EditMode
         public void RoadRibbonsWereConverted()
         {
             // The committed road data contains 18 ribbons and 4,212 triangles.
-            Assert.AreEqual(18, _data.RoadRibbons.Count);
+            Assert.AreEqual(36, _data.RoadRibbons.Count);
             var triangles = _data.RoadRibbons.Sum(ribbon => ribbon.Indices.Length / 3);
-            Assert.AreEqual(4212, triangles);
+            Assert.AreEqual(2076, triangles);
             foreach (var ribbon in _data.RoadRibbons)
             {
                 Assert.Greater(ribbon.Vertices.Length, 0, ribbon.Name);
@@ -121,7 +121,7 @@ namespace BattleHorizons.Tests.EditMode
         public void RiverRibbonWasRebuilt()
         {
             Assert.IsNotNull(_data.River, "river surface missing (rebuilt from the authored centreline)");
-            Assert.AreEqual(348, _data.River.Indices.Length / 3);
+            Assert.AreEqual(192, _data.River.Indices.Length / 3);
             foreach (var vertex in _data.River.Vertices)
             {
                 Assert.Less(Mathf.Abs(vertex.y), 20f, "river surface should sit between the lake and the sea");
@@ -163,7 +163,7 @@ namespace BattleHorizons.Tests.EditMode
             var mesh = SiranIslandTerrainBuilder.BuildOverviewMesh(_data);
             Assert.IsNotNull(mesh);
             var vertsPerSide = (_data.Size - 1) / SiranIslandTerrainBuilder.OverviewSampleStride + 1;
-            Assert.AreEqual(201, vertsPerSide, "20 m stride gives 201 vertices across 4 km");
+            Assert.AreEqual(201, vertsPerSide, "2-sample stride (10 m) gives 201 vertices across 2 km");
             Assert.AreEqual(vertsPerSide * vertsPerSide, mesh.vertexCount);
             Assert.AreEqual((vertsPerSide - 1) * (vertsPerSide - 1) * 2, mesh.triangles.Length / 3,
                 "two triangles per 20 m cell");

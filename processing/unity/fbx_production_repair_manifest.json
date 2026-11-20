@@ -110,6 +110,110 @@
       "reason": "Update the missing-Idle negative test to use an empty scratch config and isolate the full-controller test in a scratch config/controller path, so shared clip fallback works and EditMode fixtures cannot leak arbitrary per-character clip overrides into the generated config, captures or APK.",
       "sha256": "3078f61c840a730f6583b91cec70d808240e1f036a131f2e18003f6770dfe648",
       "size": 34782
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/MainMenuController.cs",
+      "previous_sha256": "176082af4be5fcdb0627d0c485b21ef98f9910849d29a264ceea0e6c3f9634dc",
+      "previous_size": 24434,
+      "reason": "Rebuild the Home Screen as a 100% code-built lobby: procedural vista/panels/icons from LobbyArtFactory replace the baked 16:9 JPEG hotspots; public API, canvas node names (HomeArtworkFrame/EnterSiranIsland/ModeSolo/SettingsButton/CharacterButton) and modal behaviour preserved for PlayMode tests. Also updates the lobby notification copy to the rebaked 2000x2000 m island.",
+      "sha256": "f72e25f1b673f9eb90d165e71a1127622960ac5afd0100a12a094dcdd3de0200",
+      "size": 34213
+    },
+    {
+      "path": "unity-project/Assets/Tests/PlayMode/WorldAndPlayerPlayModeTests.cs",
+      "previous_sha256": "c3c97c10acb11fb3dcd5a6c78ed3f09b4cbec7d0042c52a0d0960718abe6f529",
+      "previous_size": 19068,
+      "reason": "Update one assertion message: the Home Screen vista sprite is now painted procedurally by LobbyArtFactory instead of loaded from Resources; the assertion itself (sprite != null) and every other expectation are unchanged.",
+      "sha256": "a1bc9e926372cbe70abb4031c511ea73b9e803087593ebc94f3e0af2d5cb2401",
+      "size": 19086
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_heights.bytes",
+      "previous_sha256": "dbab12b66e90cb14b6ba1755e38366665abe6a30dfbe057be7911c08744cb35a",
+      "previous_size": 643204,
+      "reason": "Siran Island 2.0 rebake: 2 km footprint at 5 m spacing (same 401x401 grid), -12 m shelf instead of a -38 m abyss, tuned zone plateaus; baked deterministically by processing/unity/generate_siran_island.py.",
+      "sha256": "9aa4ebe62fd3604b5e8c05d640130449657480ca14009a01dafb7a09810d6e94",
+      "size": 643204
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_colors.bytes",
+      "previous_sha256": "a78d09cafe6267c9c1d5654d796c50b2d1247f3fa336b9e87bd74508c1bf4fa3",
+      "previous_size": 643204,
+      "reason": "Siran Island 2.0 rebake: biome palette + slope rock + zone tint + runway markings repainted for the denser 5 m grid.",
+      "sha256": "c7d79a39a673c54f8f61cf845335239a987f8bec154a56339589d3de3aa4edeb",
+      "size": 643204
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_roads.bytes",
+      "previous_sha256": "7b453fd91cf9d814a258841449f15c873d46a3bfbfbe9e70dd5abc6cfc5e48fd",
+      "previous_size": 115932,
+      "reason": "Siran Island 2.0 rebake: 36 road/runway ribbons (asphalt + shoulder pairs) re-laid on the 2 km island, baked CCW for the Unity winding flip.",
+      "sha256": "1e92ef0a9ca986a69dadc931405c7119e057414f36504a41fde671eb7e89337c",
+      "size": 48420
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_river.bytes",
+      "previous_sha256": "538c4f73a1a3e20c9b2057cd7aec6f6dcd0d8783ce195ee7557ed979fdd4de17",
+      "previous_size": 8392,
+      "reason": "Siran Island 2.0 rebake: proportional Siran River surface (6.5 m lake outlet to -0.4 m at the sea) on the halved centreline.",
+      "sha256": "08977b4664a1850da9aabd28dcbe6e7e782cc884b209b6b77d8f7704f083dbaa",
+      "size": 4648
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_terrain.json",
+      "previous_sha256": "b3543c3ee3c1aee664b38ae0922ac755ca3f7f4014a7b2f46cc1d28e37eb6921",
+      "previous_size": 4825,
+      "reason": "Siran Island 2.0 metadata: 5 m grid, new height stats, ribbon directory and river stats from the in-repo generator.",
+      "sha256": "57e9879f842688476d0944d393b6e2e63ab127e6812774c6c0f1a2c4fc23085b",
+      "size": 4335
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_layout.json",
+      "previous_sha256": "49c74c357e19102f346a055ab6aa14ccd338e0ec02c1807fd64304b4e1e75c94",
+      "previous_size": 8153,
+      "reason": "Siran Island 2.0 layout: zones/lake/river/channel/roads/spawn rescaled to the 2 km battlefield; generator_version 4.",
+      "sha256": "d7b33513e41f4a992305e092246832ac471e041fa0549d142844e54b3ee005ca",
+      "size": 8911
+    },
+    {
+      "path": "unity-project/Assets/Resources/Config/siran_island_manifest.json",
+      "previous_sha256": "b35a03a470d05f21ad01bccd561050b345829ef6c462fd58419216a6b8ee08df",
+      "previous_size": 1454,
+      "reason": "Siran Island 2.0 manifest: byte counts and SHA-256 of the rebaked payloads.",
+      "sha256": "5a05965f09f26be4754f8da080f61f3a7f0f9e28becc94304807390abaae0d4b",
+      "size": 1333
+    },
+    {
+      "path": "unity-project/Assets/Scripts/World/SiranMapConfig.cs",
+      "previous_sha256": "150ea56d9240990314719ab5e6b70669f9154928765a9e49668bafec17b2d196",
+      "previous_size": 14602,
+      "reason": "Siran Island 2.0 constants mirror: 2000 m map, 250 m chunks, 5 m spacing, 975 m radius, retuned zone plateaus, lake/river/moat/road control points halved.",
+      "sha256": "345378dcbbac72fe4740cb91c61627aa880659aa64ff64d19e8b1b11addb357c",
+      "size": 14427
+    },
+    {
+      "path": "unity-project/Assets/Scripts/UI/WorldDebugHud.cs",
+      "previous_sha256": "cf53e07f9d0e708c6f6ea45f6ad6504eaba5e50ec735411bd23088da868234f9",
+      "previous_size": 5518,
+      "reason": "Debug HUD retired at the user's request: the component now builds no overlay; ProjectBootstrap no longer spawns it.",
+      "sha256": "b79f5aefebbf93661e530400f6b86516434167c0453a95150764d945b7da6b61",
+      "size": 794
+    },
+    {
+      "path": "unity-project/Assets/Editor/ProjectBootstrap.cs",
+      "previous_sha256": "93853ae6d2a0afed30ed12ff9c5ed4c4f5ad9cbcd06bb98203e4929c35df4ce8",
+      "previous_size": 38917,
+      "reason": "Stop spawning the retired WorldDebugHud debug overlay into configured scenes; everything else in the project setup flow is unchanged.",
+      "sha256": "e3486e058da6aa80bf8f6009e39f87c1a0973ecc2a0b19ab92d7524d8554bd1d",
+      "size": 38806
+    },
+    {
+      "path": "unity-project/Assets/Tests/EditMode/SiranIslandDataTests.cs",
+      "previous_sha256": "c5c4b1b98bf1dc952f83247eab4a4fea5ab439ac17ff45ce76dca1bd822b3be4",
+      "previous_size": 11391,
+      "reason": "Retarget the island contract tests to the Siran Island 2.0 rebake: 5 m spacing, 1000 m half-extent, 2000 m map, -12..23.3231 m heights, spawn (20,-15) at 15.3592 m ground, 36 road ribbons / 2076 triangles, 192 river triangles, 10 m overview stride.",
+      "sha256": "566bcb588bbec3439f1f9715df50a988fa8bb5b4970af57f9989e0ddf934ffd0",
+      "size": 11400
     }
   ],
   "new_repair_files": [
