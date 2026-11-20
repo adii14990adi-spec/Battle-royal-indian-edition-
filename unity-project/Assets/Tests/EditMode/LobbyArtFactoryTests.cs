@@ -84,19 +84,36 @@ namespace BattleHorizons.Tests.EditMode
             var w = tex.width;
             var h = tex.height;
 
-            Color At(float u, float v) => pixels[(int)(v * (h - 1)) * w + (int)(u * (w - 1))];
+            // Region means keep the band lock robust: zenith rows must stay
+            // blue-dominant, the horizon band warm-dominant, the foreground
+            // dark for UI contrast, and the sun box the brightest sky region.
+            Vector3 Mean(int x0, int x1, int y0, int y1)
+            {
+                double r = 0, g = 0, b = 0;
+                var n = 0;
+                for (var y = y0; y < y1; y++)
+                {
+                    for (var x = x0; x < x1; x++)
+                    {
+                        var c = pixels[y * w + x];
+                        r += c.r; g += c.g; b += c.b; n++;
+                    }
+                }
 
-            var zenith = At(0.15f, 0.97f);
-            var horizon = At(0.15f, 0.52f);
-            var ground = At(0.5f, 0.03f);
-            Assert.Greater(zenith.b, zenith.r, "zenith must be blue-dominant");
-            Assert.Greater(horizon.r, horizon.b, "horizon must be warm");
-            Assert.Less(ground.r + ground.g + ground.b, 1.2f, "foreground must stay dark for UI contrast");
+                return new Vector3((float)(r / n), (float)(g / n), (float)(b / n));
+            }
 
-            // The sun glow region must be brighter than the sky beside it.
-            var sun = At(0.70f, 0.52f);
-            var beside = At(0.40f, 0.62f);
-            Assert.Greater(sun.r + sun.g + sun.b, beside.r + beside.g + beside.b,
+            var zenith = Mean(w / 8, 3 * w / 8, (int)(h * 0.92f), h);
+            var horizon = Mean(w / 8, 3 * w / 8, (int)(h * 0.46f), (int)(h * 0.54f));
+            var foreground = Mean(w / 3, 2 * w / 3, 0, (int)(h * 0.06f));
+            var sunBox = Mean((int)(w * 0.66f), (int)(w * 0.74f), (int)(h * 0.48f), (int)(h * 0.56f));
+            var skyBox = Mean((int)(w * 0.35f), (int)(w * 0.45f), (int)(h * 0.58f), (int)(h * 0.66f));
+
+            Assert.Greater(zenith.b, zenith.r, "zenith band must be blue-dominant");
+            Assert.Greater(horizon.r, horizon.b, "horizon band must be warm");
+            Assert.Less(foreground.r + foreground.g + foreground.b, 300f,
+                "foreground must stay dark for UI contrast");
+            Assert.Greater(sunBox.r + sunBox.g + sunBox.b, skyBox.r + skyBox.g + skyBox.b,
                 "sun glow must brighten its neighbourhood");
         }
 
