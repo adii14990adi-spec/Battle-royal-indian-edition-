@@ -102,17 +102,18 @@ The match foundations live in `unity-project/Assets/Scripts/Gameplay/`:
   state machine (wait → shrink × 6 phases ≈ 16.8 min to a ~37 m final circle),
   ramping 0.4 → 12 HP/s damage outside the rim through `IDamageable`, with a
   greybox cylinder wall and Scene-view gizmos.
-* **Character motion** (`Scripts/Characters`) — a runtime stack that removes
-  the "readymade video" feel: `PlayerLocomotion` drives the blend `Speed`
-  parameter from measured controller displacement (anti-slide), `FootIK`
-  plants feet on uneven ground, `WeaponHandIK` grips the foregrip,
-  `HeadLookIK` eases the head toward the aim point, and `ProceduralLean`
-  banks the spine into turns — all built-in Humanoid IK plus pure,
-  EditMode-tested math, orchestrated by `CharacterMotionRig`. The generated
-  UpperBody avatar-mask layer already lets shooting play over locomotion, and
-  Animation Rigging 1.4.3 is pinned for the editor-side Multi-Aim/Two-Bone
-  artist workflow. See
-  [`docs/gameplay/CHARACTER_MOTION.md`](docs/gameplay/CHARACTER_MOTION.md).
+* **Character visuals** (`Scripts/Characters`) — `PlayerCharacterVisual`
+  spawns the configured Male/Female model under the player and hides the
+  capsule, `CharacterPreviewController` renders it live into the Character
+  Bay and the Home Screen showcase, and `CharacterBayMenu` builds the modal in
+  code. **The animation system was removed on 2026-11-20 at the owner's
+  request**: the 74 Mixamo FBX clips under `Assets/Animations/`, the generated
+  Animator Controllers, the category/clip config data and the IK + procedural
+  motion components (`FootIK`, `HeadLookIK`, `WeaponHandIK`, `ProceduralLean`,
+  `CharacterMotionRig`, `PlayerLocomotion`, `CharacterMotionMath` and its
+  EditMode tests) are gone, so characters hold their
+  static imported pose while `ThirdPersonMotor` moves them. `Assets/Animations/`
+  must stay free of FBX files — the validators fail if a clip reappears.
 * **Combat** (`Gameplay/Combat`) — hitscan shooting: `WeaponData` stats per
   loot gun (itemId-keyed), a pure fire-rate/magazine/reload state machine
   (`WeaponRuntime`), ADS with a seeded 60° → 45° FOV pull-in, deterministic
@@ -167,32 +168,29 @@ bar, Solo/Duo/Squad selector, golden START). No baked UI artwork — see
 python3 -m pip install tree-sitter tree-sitter-c-sharp
 python3 processing/unity/validate_structure.py
 python3 processing/unity/validate_csharp.py
-python3 processing/unity/validate_character_animation.py   # FBX / .meta / GUID / clips / rigs
+python3 processing/unity/validate_fbx_production.py         # production character FBX + protection
+python3 processing/unity/validate_gltf_import_test.py       # isolated GLTF import experiment
 python3 processing/unity/validate_unity_map.py
 python3 -m unittest discover -s processing/unity/tests -v
 python3 -m unittest discover -s processing/blender/tests -v
-python3 -m unittest discover -s processing/animation-metadata/tests -v
 ```
 
-`validate_character_animation.py` reads the FBX bytes directly (no Unity, no
-third-party packages) and prints `PASS` / `FAIL` / `SKIP`. `SKIP` is an
-Editor-only check and is never counted as a pass. Unity editor tests and
-Android device measurements require Unity and a device. See
-[`docs/verification/UNITY_CHARACTER_ANIMATION_VERIFICATION.md`](docs/verification/UNITY_CHARACTER_ANIMATION_VERIFICATION.md)
-for the full verification status and the remaining manual tests.
+`validate_fbx_production.py` reads the FBX bytes directly (no Unity, no
+third-party packages) and prints `PASS` / `FAIL` / `NOT VERIFIED`. A
+`NOT VERIFIED` row is never counted as a pass. Unity editor tests and Android
+device measurements require Unity and a device.
 
-## Animation metadata
+## Animation status
 
-The Unity importer settings for the Mixamo clips in
-`unity-project/Assets/Animations/` are authored in the public companion
-repository
-[`Animation-.meta-`](https://github.com/adii14990adi-spec/Animation-.meta-) and
-synced here by exact file name. The
-[`Sync animation metadata`](.github/workflows/sync-animation-metadata.yml)
-workflow polls it daily and on demand, and proposes the result as a pull request
-on `chore/sync-animation-metadata`; nothing is ever pushed to `main` and no
-`.fbx` is modified. See
-[`docs/asset-pipeline/ANIMATION_METADATA_SYNC.md`](docs/asset-pipeline/ANIMATION_METADATA_SYNC.md).
+There is no animation system in this project any more. On 2026-11-20 the owner
+asked to remove all animations, so the 74 Mixamo FBX clips under
+`unity-project/Assets/Animations/`, their `.meta` importer settings, the clip
+import service, the generated Animator Controllers, the IK/procedural-motion
+components and the `.fbx.meta` metadata-sync workflow were all deleted.
+Character models still import as Humanoid (that rig check stays), but nothing
+plays: the character holds its imported pose while the motor moves the
+transform. Static validators now assert that `Assets/Animations/` contains no
+FBX and that no runtime script references an `Animator` or an `AnimationClip`.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md),
 [`docs/architecture/UNITY_ARCHITECTURE.md`](docs/architecture/UNITY_ARCHITECTURE.md),

@@ -8,9 +8,15 @@
 This validator is deliberately honest about its boundary: it reads committed
 FBX bytes, FBX metadata, C# source, ProjectSettings and the isolated GLTF
 fallback manifests. It does NOT open Unity, import an FBX, build an Avatar,
-play an animation, render a frame, build an APK or test a phone. Editor-only
-evidence is produced separately by `FBXProductionVerifier.VerifyFromCommandLine`
-and the optional software-GL capture in the licensed Unity workflow.
+render a frame, build an APK or test a phone.
+
+History: this validator used to prove the 74 imported Mixamo animation clips,
+their Humanoid import metadata and the generated Animator Controllers. All
+animation FBX clips were removed from the project on 2026-11-20 by owner
+decision ("remove all animations"), so the clip gates were replaced by a
+negative gate that proves `unity-project/Assets/Animations` stays free of FBX
+clips, and the licensed-Unity FBX verifier/capture tools were retired with
+them.
 
 A `NOT VERIFIED` row is never counted as a pass. A `FAIL` row makes the process
 exit non-zero; known source defects are reported, not hidden.
@@ -35,7 +41,6 @@ FBX_BASELINE = PROCESSING / "fbx-baseline.json"
 PROTECTED_MANIFEST = PROCESSING / "gltf_import_test_protected_assets.json"
 TEXTURE_MANIFEST = PROCESSING / "fbx_production_textures.json"
 MATERIAL_MANIFEST = PROCESSING / "fbx_production_materials.json"
-REPAIR_MANIFEST = PROCESSING / "fbx_production_repair_manifest.json"
 GITATTRIBUTES = REPO_ROOT / ".gitattributes"
 GLTF_SOURCE_MANIFEST = PROCESSING / "gltf_import_test_source_manifest.json"
 FEMALE_NORMAL_SHA = "cf922460b43ccd31e983e34db05514c9d451dd2f9cdd01a843978e797719f859"
@@ -71,17 +76,7 @@ CHARACTERS = {
     },
 }
 
-# Only clips that actually exist in the repository are listed. No unavailable
-# clip is inferred, invented or marked as passing.
-REQUIRED_CLIPS = {
-    "Idle": "Movement/idle.fbx",
-    "Walk": "Movement/walking.fbx",
-    "Run": "Movement/Running.fbx",
-    "Jump": "Movement/jump up.fbx",
-    "Aim": "Combat/idle aiming.fbx",
-    "Shoot": "Weapon/firing rifle.fbx",
-    "Reload": "Weapon/reloading.fbx",
-}
+ANIMATIONS_ROOT = ASSETS_ROOT / "Animations"
 
 CHARACTER_META_EXPECTED = {
     "animationType": "3",                         # Humanoid
@@ -95,16 +90,6 @@ CHARACTER_META_EXPECTED = {
     "materialLocation": "1",                      # InPrefab / embedded source material names
     "animationCompression": "3",                  # Optimal
     "importAnimation": "1",
-}
-
-CLIP_META_EXPECTED = {
-    "animationType": "3",
-    "avatarSetup": "1",
-    "autoGenerateAvatarMappingIfUnspecified": "1",
-    "importAnimation": "1",
-    "animationCompression": "3",
-    "isReadable": "0",
-    "maxBonesPerVertex": "4",
 }
 
 
@@ -280,10 +265,10 @@ def check_protection(report: Report) -> None:
         if path.stat().st_size != record["bytes"] or sha256(path) != record["sha256"]:
             problems.append(f"changed {rel}")
     report.check(
-        "all 76 production FBX files immutable",
-        not problems,
-        f"{len(fbx_files)}/{len(fbx_files)} FBX files match processing/unity/fbx-baseline.json byte-for-byte",
-        "; ".join(problems[:8]),
+        f"all {len(fbx_files)} production FBX files immutable",
+        not problems and len(fbx_files) == 2,
+        f"{len(fbx_files)}/{len(fbx_files)} committed production FBX files (the Male and Female character models) match processing/unity/fbx-baseline.json byte-for-byte",
+        "; ".join(problems[:8]) or f"unexpected baseline size {len(fbx_files)} (expected exactly 2 character FBX files)",
     )
 
     manifest = load_json(PROTECTED_MANIFEST)
@@ -308,63 +293,21 @@ def check_protection(report: Report) -> None:
         "; ".join(protected_problems[:8]),
     )
 
-    repair = load_json(REPAIR_MANIFEST) if REPAIR_MANIFEST.is_file() else {}
-    baseline_path = REPO_ROOT / repair.get("pre_repair_protected_manifest_path", "")
-    repair_entries = repair.get("changed_protected_files", [])
-    repair_paths = {entry["path"] for entry in repair_entries}
-    repair_problems: list[str] = []
-    if not baseline_path.is_file():
-        repair_problems.append("pre-repair protected manifest is missing")
-        baseline_by_path: dict[str, dict[str, Any]] = {}
-    else:
-        baseline_data = baseline_path.read_bytes()
-        if sha256_bytes(baseline_data) != repair.get("pre_repair_protected_manifest_sha256"):
-            repair_problems.append("pre-repair baseline manifest hash mismatch")
-        baseline = load_json(baseline_path)
-        baseline_by_path = {entry["path"]: entry for entry in baseline.get("files", [])}
-        if set(baseline_by_path) != set(protected_by_path):
-            repair_problems.append("pre-repair baseline has a different protected file set")
-        base_allow = set(baseline.get("allowlisted_modified_paths", []))
-        if base_allow != BASE_ALLOWLIST:
-            repair_problems.append("pre-repair baseline does not have exactly the two test asmdefs allowlisted")
-    for entry in repair_entries:
-        rel = entry["path"]
-        path = REPO_ROOT / rel
-        previous = baseline_by_path.get(rel)
-        current = protected_by_path.get(rel)
-        if previous is None or current is None:
-            repair_problems.append(f"{rel} is not a protected file")
-            continue
-        if entry.get("previous_size") != previous["size"] or entry.get("previous_sha256") != previous["sha256"]:
-            repair_problems.append(f"{rel} has wrong pre-repair hash")
-        if entry.get("size") != current["size"] or entry.get("sha256") != current["sha256"]:
-            repair_problems.append(f"{rel} has wrong post-repair protected hash")
-        if not path.is_file():
-            repair_problems.append(f"missing {rel}")
-            continue
-        size, digest = current_identity(path)
-        if size != entry.get("size") or digest != entry.get("sha256"):
-            repair_problems.append(f"changed {rel} outside approved repair hash")
-        if rel not in allowlisted:
-            repair_problems.append(f"{rel} is not explicitly allowlisted")
-        if not entry.get("reason"):
-            repair_problems.append(f"{rel} has no justification")
-    unexpected_allowlist = allowlisted - BASE_ALLOWLIST - repair_paths
-    missing_allowlist = repair_paths - allowlisted
-    if unexpected_allowlist:
-        repair_problems.append("unexpected allowlist: " + ", ".join(sorted(unexpected_allowlist)))
-    if missing_allowlist:
-        repair_problems.append("missing allowlist: " + ", ".join(sorted(missing_allowlist)))
-    new_files = repair.get("new_repair_files", [])
-    for entry in new_files:
-        path = REPO_ROOT / entry["path"]
-        if not path.is_file() or current_identity(path) != (entry["size"], entry["sha256"]):
-            repair_problems.append(f"new repair file hash mismatch: {entry['path']}")
+    unexpected_allowlist = sorted(allowlisted - BASE_ALLOWLIST)
     report.check(
-        "targeted repair protected file hashes verified",
-        bool(repair_entries) and bool(new_files) and not repair_problems,
-        f"{len(repair_entries)} protected source files and {len(new_files)} new repair files have exact pre/post SHA-256 hashes in {display(REPAIR_MANIFEST)}; no other protected file is allowlisted",
-        "; ".join(repair_problems[:8]) or "repair manifest missing or empty",
+        "protected manifest allowlist is minimal",
+        not unexpected_allowlist,
+        f"{len(allowlisted)} allowlisted path(s): only the two test asmdefs are exempt from the byte-identity gate",
+        "unexpected allowlisted paths: " + ", ".join(unexpected_allowlist[:6]),
+    )
+
+    animations_fbx = sorted(ANIMATIONS_ROOT.rglob("*.fbx")) if ANIMATIONS_ROOT.is_dir() else []
+    report.check(
+        "animation FBX clips removed",
+        not animations_fbx,
+        f"no FBX animation clip remains under {display(ANIMATIONS_ROOT)}",
+        f"{len(animations_fbx)} animation FBX still present: "
+        + ", ".join(display(f) for f in animations_fbx[:4]),
     )
 
     gltf_report = gltf_validator.run_validation()
@@ -587,31 +530,13 @@ def check_character_fbx(report: Report, sex: str, info: dict[str, Any]) -> None:
     )
 
 
-def check_required_clips(report: Report) -> None:
-    animations = ASSETS_ROOT / "Animations"
-    for category, rel in REQUIRED_CLIPS.items():
-        fbx = animations / rel
-        meta = Path(str(fbx) + ".meta")
-        exists = fbx.is_file() and meta.is_file()
-        if not exists:
-            report.check(f"available clip: {category}", False, "", f"missing {display(fbx)} or its .meta")
-            continue
-        doc = read_fbx(fbx)
-        available = (
-            doc.version == 7700
-            and doc.is_animation
-            and len(doc.stacks) == 1
-            and doc.curve_count > 0
-            and doc.frames() > 0
-            and not doc.missing_required_bones()
-        )
-        report.check(
-            f"available clip: {category}",
-            available,
-            f"{display(fbx)}: FBX 7700, one real AnimationStack, {doc.curve_count} curves, {doc.frames()} frames, {len(doc.humanoid_mapping())} canonical humanoid bones, 0 missing required bones",
-            f"version={doc.version}, stacks={len(doc.stacks)}, curves={doc.curve_count}, frames={doc.frames()}, missing={doc.missing_required_bones()}",
-        )
-        check_meta_settings(report, f"{category} clip Humanoid import metadata", meta, CLIP_META_EXPECTED)
+COMMENT_BLOCK = re.compile(r"/\*.*?\*/", re.DOTALL)
+COMMENT_LINE = re.compile(r"//[^\n]*")
+
+
+def strip_comments(source: str) -> str:
+    """Remove C# block and line comments so history notes never read as code."""
+    return COMMENT_LINE.sub("", COMMENT_BLOCK.sub("", source))
 
 
 def check_gameplay_sources(report: Report) -> None:
@@ -620,108 +545,71 @@ def check_gameplay_sources(report: Report) -> None:
     spawn_ok = (
         "CharacterAnimationConfig.Load()" in text
         and "Instantiate(_active.model, transform)" in text
-        and "_animator.runtimeAnimatorController = _active.controller" in text
         and "SetCapsuleVisible(false)" in text
     )
     report.check(
         "runtime FBX spawn path preserved",
         spawn_ok,
-        "PlayerCharacterVisual loads the generated config, instantiates the FBX model, assigns the controller and disables the capsule MeshRenderer when configured",
+        "PlayerCharacterVisual loads the generated roster config, instantiates the FBX model and disables the capsule MeshRenderer when configured",
         "one or more production spawn/fallback statements are missing from PlayerCharacterVisual.cs",
+    )
+
+    # Comments legitimately mention the removed Animator wiring, so only code
+    # (comments stripped) is scanned.
+    code_only = strip_comments(text)
+    animator_free = not re.search(
+        r"\bAnimator\b|runtimeAnimatorController|AnimationClip", code_only)
+    report.check(
+        "player visual carries no Animator wiring",
+        animator_free,
+        "PlayerCharacterVisual.cs holds no Animator / AnimatorController / AnimationClip reference after the animation removal",
+        "PlayerCharacterVisual.cs still references Animator, runtimeAnimatorController or AnimationClip",
     )
 
     config_source = ASSETS_ROOT / "Scripts" / "Characters" / "CharacterAnimationConfig.cs"
     config_text = config_source.read_text(encoding="utf-8") if config_source.is_file() else ""
-    find_start = config_text.find("public CharacterAnimAssignment FindAssignment")
-    find_end = config_text.find("public AnimationClip FindClip", find_start + 1)
-    find_assignment_source = config_text[find_start:find_end] if find_start >= 0 and find_end > find_start else ""
-    shared_lookup_ok = (
-        bool(find_assignment_source)
-        and "IsSharedCharacterId(assignment.characterId)" in find_assignment_source
-        and "StringComparison.OrdinalIgnoreCase" in find_assignment_source
+    roster_ok = (
+        "public List<CharacterDefinition> characters" in config_text
+        and "public CharacterDefinition SelectedCharacter()" in config_text
+        and "AnimationClip" not in config_text
     )
     report.check(
-        "runtime shared-assignment lookup handles Unity empty strings",
-        shared_lookup_ok,
-        "FindAssignment treats null/empty/whitespace IDs as shared and matches valid IDs case-insensitively",
-        "FindAssignment does not use the repaired shared-ID helper and case-insensitive per-character comparison",
-    )
-
-    builder_source = (ASSETS_ROOT / "Editor" / "AnimatorControllerBuilder.cs").read_text(encoding="utf-8")
-    build_start = builder_source.find("public static BuildResult BuildController")
-    build_end = builder_source.find("// ---- parameters", build_start + 1)
-    build_resolution = builder_source[build_start:build_end] if build_start >= 0 and build_end > build_start else ""
-    builder_shared_ok = (
-        bool(build_resolution)
-        and "CharacterAnimationConfig.IsSharedCharacterId(assignment.characterId)" in build_resolution
-        and "StringComparison.OrdinalIgnoreCase" in build_resolution
-    )
-    report.check(
-        "Animator controller shared-assignment resolution handles Unity empty strings",
-        builder_shared_ok,
-        "BuildController uses the same shared-ID semantics and case-insensitive per-character overrides",
-        "BuildController still skips empty-string shared defaults or uses case-sensitive ID matching",
+        "config asset is a character roster without clips",
+        roster_ok,
+        "CharacterAnimationConfig keeps the character roster and selection helpers and no longer stores AnimationClip assignments or generated controllers",
+        "CharacterAnimationConfig still carries clip/controller data or lost its roster API",
     )
 
     runtime_sources = sorted((ASSETS_ROOT / "Scripts").rglob("*.cs"))
-    aim_setters: list[str] = []
-    aim_calls: list[str] = []
     aim_state: list[str] = []
     aim_ui: list[str] = []
-    shooting_scripts: list[str] = []
+    clip_users: list[str] = []
     for source in runtime_sources:
         source_text = source.read_text(encoding="utf-8")
         for line_number, line in enumerate(source_text.splitlines(), 1):
-            if "SetBool" in line and "IsAiming" in line:
-                aim_setters.append(f"{display(source)}:{line_number}")
-            if "SetAiming(" in line and "public void SetAiming" not in line:
-                aim_calls.append(f"{display(source)}:{line_number}")
             if "AimInput" in line or "IsAiming" in line:
                 aim_state.append(f"{display(source)}:{line_number}")
             if "SetAimHeld" in line or "AimButton" in line:
                 aim_ui.append(f"{display(source)}:{line_number}")
-        lowered = display(source).lower()
-        if any(word in lowered for word in ("weapon", "shooting", "firearm", "gun")):
-            shooting_scripts.append(display(source))
+        if re.search(r"\bAnimator\b|runtimeAnimatorController|AnimationClip|SampleAnimationClip",
+                     strip_comments(source_text)):
+            clip_users.append(display(source))
 
-    report.check(
-        "Aim Animator parameter is driven by runtime",
-        bool(aim_setters),
-        "found SetBool(IsAiming) in runtime source: " + ", ".join(aim_setters[:4]),
-        "no SetBool(IsAiming) exists under Assets/Scripts",
-    )
-    report.check(
-        "Aim gameplay hook is called",
-        bool(aim_calls),
-        "found runtime caller(s): " + ", ".join(aim_calls[:4]),
-        "PlayerCharacterVisual.SetAiming(bool) has no runtime caller in Assets/Scripts",
-    )
     report.check(
         "actual runtime aim state and touch input exist",
         bool(aim_state) and bool(aim_ui),
         "ThirdPersonMotor.AimInput/IsAiming and PlayerInputRouter/MobileControlsBuilder AIM hold-button wiring are present",
         "missing AimInput state or SetAimHeld/AimButton wiring",
     )
-
-    builder_text = (ASSETS_ROOT / "Editor" / "AnimatorControllerBuilder.cs").read_text(encoding="utf-8")
-    is_aiming_parameter_lines = [line for line in builder_text.splitlines()
-                                 if line.strip().startswith("AddParameter(")
-                                 and "CharacterAnimParameters.IsAiming" in line]
-    attach_start = builder_text.find("private static void AttachAimTransitions")
-    attach_end = builder_text.find("private static AvatarMask BuildUpperBodyMask", attach_start + 1)
-    attach_source = builder_text[attach_start:attach_end] if attach_start >= 0 and attach_end > attach_start else ""
-    aim_any_state_lines = [line for line in attach_source.splitlines()
-                           if "AddAnyStateTransition(aimState)" in line]
     report.check(
-        "IsAiming parameter/transition setup is not duplicated",
-        len(is_aiming_parameter_lines) == 1 and len(aim_any_state_lines) == 1,
-        "exactly one IsAiming AddParameter declaration and one Aim Any-State transition in the controller builder",
-        f"IsAiming AddParameter={len(is_aiming_parameter_lines)}, AddAnyStateTransition(aimState)={len(aim_any_state_lines)}",
+        "no runtime script plays animation clips",
+        not clip_users,
+        "no file under Assets/Scripts references an Animator, runtimeAnimatorController or AnimationClip (comments excluded)",
+        "clip playback survives in: " + ", ".join(clip_users[:4]),
     )
     report.not_verified(
         "live shooting gameplay integration",
-        "aiming state now drives IsAiming and SetAiming, but no live weapon/fire system exists under Assets/Scripts; only PlayerCharacterVisual.TriggerShoot/TriggerReload animation hooks and PlayMode hook safety tests were found"
-        + (f" (candidate filenames: {', '.join(shooting_scripts[:4])})" if shooting_scripts else ""),
+        "aiming state exists and the visual hooks are no-ops, but this validator cannot exercise a live match; only PlayMode hook-safety tests cover the call sites",
     )
 
     production_prefabs = [p for p in ASSETS_ROOT.rglob("*.prefab") if "GLTF_Import_Test" not in p.parts]
@@ -729,7 +617,7 @@ def check_gameplay_sources(report: Report) -> None:
     production_configs = [p for p in ASSETS_ROOT.rglob("*.asset") if "GLTF_Import_Test" not in p.parts and "Generated" not in p.parts]
     report.not_verified(
         "committed gameplay prefab / controller / config references",
-        f"no committed production prefab ({len(production_prefabs)}), controller ({len(production_controllers)}) or config asset ({len(production_configs)}) exists; generated config/controllers and PlayerTest scene are Editor-created and must be checked in licensed Unity",
+        f"no committed production prefab ({len(production_prefabs)}), controller ({len(production_controllers)}) or config asset ({len(production_configs)}) exists; the generated roster config and PlayerTest scene are Editor-created and must be checked in licensed Unity",
     )
 
 
@@ -761,13 +649,11 @@ def check_android_configuration(report: Report) -> None:
 
 def check_editor_boundary(report: Report) -> None:
     for name, detail in (
-        ("Unity Editor import settings and Humanoid Avatar validity", "requires licensed Unity 6; see EDITOR_VALIDATION.md"),
-        ("Animator transitions and missing generated references", "requires the Editor-generated config/controllers; see EDITOR_VALIDATION.md"),
-        ("animation deformation and visual mesh quality", "requires AnimationMode sampling and genuine Editor renders; see EDITOR_VALIDATION.md and CAPTURE_RESULT.md"),
-        ("visible player mesh in gameplay scene", "requires PlayerTest scene and generated config in licensed Unity; see EDITOR_VALIDATION.md"),
+        ("Unity Editor import settings and Humanoid Avatar validity", "requires licensed Unity 6"),
+        ("visible player mesh in gameplay scene", "requires the PlayerTest scene and generated roster config in licensed Unity"),
         ("movement / camera / collision / ground alignment", "requires PlayMode tests in licensed Unity; see the PlayMode results in the CI job"),
         ("human front / facial / UV seam inspection", "requires human visual review; rear-view software-GL renders are not sufficient"),
-        ("correct textured Male/Female Editor camera captures", "requires licensed Unity 6 software-GL Camera.Render evidence; see CAPTURE_RESULT.md and screenshots/"),
+        ("correct textured Male/Female Editor camera captures", "requires licensed Unity 6 software-GL Camera.Render evidence"),
     ):
         report.not_verified(name, detail)
 
@@ -785,7 +671,6 @@ def run_validation() -> Report:
     check_production_material_manifest(report)
     for sex, info in CHARACTERS.items():
         check_character_fbx(report, sex, info)
-    check_required_clips(report)
     check_gameplay_sources(report)
     check_android_configuration(report)
     check_editor_boundary(report)

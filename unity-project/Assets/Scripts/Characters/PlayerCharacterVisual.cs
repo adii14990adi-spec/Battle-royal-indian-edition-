@@ -6,20 +6,18 @@ namespace BattleHorizons.Characters
 {
     /// <summary>
     /// Spawns the configured character model (Male/Female/custom) under the
-    /// player and drives its Animator from the existing
-    /// <see cref="BattleHorizons.Player.ThirdPersonMotor"/>. When no character
+    /// player. Movement is owned entirely by
+    /// <see cref="BattleHorizons.Player.ThirdPersonMotor"/>; when no character
     /// is configured the component stays dormant and the original capsule
     /// visual keeps behaving exactly as before — movement, input and gameplay
     /// systems are untouched.
     ///
-    /// Parameter mapping (names shared with the controller builder via
-    /// <see cref="CharacterAnimParameters"/>):
-    ///   Speed          ← motor.HorizontalSpeed (damped)
-    ///   IsAirborne     ← !motor.IsGrounded
-    ///   VerticalSpeed  ← motor.Velocity.y (clamped)
-    ///   IsCrouching    ← motor.IsCrouching
-    ///   IsAiming       ← motor.IsAiming
-    ///   UpperBody layer weight ← current aiming state (damped)
+    /// History: this component used to drive an Animator (Speed/IsCrouching/
+    /// IsAiming parameters, UpperBody layer, shoot/reload/death triggers) from
+    /// the Mixamo clip library. All animation clips were removed from the
+    /// project on 2026-11-20 by owner decision, so the character renders in
+    /// its static imported pose and the gameplay hooks below are honest
+    /// no-ops kept for call-site stability.
     /// </summary>
     [DefaultExecutionOrder(20)]
     [DisallowMultipleComponent]
@@ -32,13 +30,9 @@ namespace BattleHorizons.Characters
         private CharacterAnimationConfig _config;
         private CharacterDefinition _active;
         private GameObject _instance;
-        private Animator _animator;
-        private bool _aiming;
-        private float _upperBodyWeight;
 
         public bool IsCharacterSpawned => _instance != null;
         public CharacterDefinition ActiveDefinition => _active;
-        public Animator CharacterAnimator => _animator;
 
         private void Awake()
         {
@@ -83,120 +77,34 @@ namespace BattleHorizons.Characters
             _instance.transform.localPosition = Vector3.zero;
             _instance.transform.localRotation = Quaternion.identity;
 
-            _animator = _instance.GetComponentInChildren<Animator>();
-            if (_animator == null)
-            {
-                GameLog.Error("characters", _active.displayName + " has no Animator — capsule visual stays active");
-                Destroy(_instance);
-                _instance = null;
-                return false;
-            }
-
-            // Root motion stays off: ThirdPersonMotor owns the character
-            // transform, and the clips are imported with Bake Into Pose so a
-            // Mixamo root cannot slide or spin the model underneath it.
-            _animator.applyRootMotion = false;
-            _animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-            if (_active.controller != null)
-            {
-                _animator.runtimeAnimatorController = _active.controller;
-            }
-            else
-            {
-                GameLog.Error("characters", _active.displayName + " has no generated Animator controller");
-            }
-
-            // A caller may have set aim state before the FBX was spawned.
-            _animator.SetBool(CharacterAnimParameters.IsAiming, _aiming);
-
-            // A Generic (non-converted) Mixamo clip inside a Humanoid
-            // controller plays nothing — the character freezes in its bind
-            // pose. Say that out loud instead of letting it look like a bug.
-            var avatar = _animator.avatar;
-            if (avatar == null || !avatar.isValid || !avatar.isHuman)
-            {
-                GameLog.Error("characters", _active.displayName
-                    + " avatar is not a valid Humanoid — Mixamo clips cannot play on it."
-                    + " Fix: model FBX > Rig > Animation Type Humanoid > Apply");
-            }
-
+            // No Animator wiring: the project ships without animation clips,
+            // so the imported model simply holds its authored pose while the
+            // motor moves the transform.
             SetCapsuleVisible(false);
             GameLog.Info("characters", "spawned character visual: " + _active.displayName);
             return true;
         }
 
-        /// <summary>
-        /// Gameplay hook: aiming drives the existing IsAiming Animator bool and
-        /// the UpperBody layer weight. Shoot/Reload triggers are unchanged.
-        /// </summary>
+        /// <summary>Gameplay hooks — honest no-ops since animations were removed.</summary>
         public void SetAiming(bool aiming)
         {
-            _aiming = aiming;
-            if (_animator != null)
-            {
-                _animator.SetBool(CharacterAnimParameters.IsAiming, aiming);
-            }
         }
 
-        /// <summary>Gameplay hooks for the weapon one-shots (no-op when dormant).</summary>
         public void TriggerShoot()
         {
-            if (_animator != null)
-            {
-                _animator.SetTrigger(CharacterAnimParameters.Shoot);
-            }
         }
 
         public void TriggerReload()
         {
-            if (_animator != null)
-            {
-                _animator.SetTrigger(CharacterAnimParameters.Reload);
-            }
         }
 
         public void TriggerDeath()
         {
-            if (_animator != null)
-            {
-                _animator.SetTrigger(CharacterAnimParameters.Death);
-            }
         }
 
-        /// <summary>Respawn / preview reset: back to the default state.</summary>
+        /// <summary>Respawn / preview reset hook — no animation state remains.</summary>
         public void ResetToDefaultState()
         {
-            if (_animator != null)
-            {
-                _animator.Rebind();
-                _animator.Update(0f);
-            }
-        }
-
-        private void Update()
-        {
-            if (_animator == null || motor == null)
-            {
-                return;
-            }
-
-            var dt = Time.deltaTime;
-            if (_aiming != motor.IsAiming)
-            {
-                SetAiming(motor.IsAiming);
-            }
-            _animator.SetFloat(CharacterAnimParameters.Speed, motor.HorizontalSpeed, 0.12f, dt);
-            _animator.SetBool(CharacterAnimParameters.IsAirborne, !motor.IsGrounded);
-            _animator.SetFloat(CharacterAnimParameters.VerticalSpeed,
-                Mathf.Clamp(motor.Velocity.y, -30f, 30f));
-            _animator.SetBool(CharacterAnimParameters.IsCrouching, motor.IsCrouching);
-
-            if (_animator.layerCount > CharacterAnimParameters.UpperBodyLayerIndex)
-            {
-                var target = _aiming ? 1f : 0f;
-                _upperBodyWeight = Mathf.MoveTowards(_upperBodyWeight, target, dt * 6f);
-                _animator.SetLayerWeight(CharacterAnimParameters.UpperBodyLayerIndex, _upperBodyWeight);
-            }
         }
 
         private void SetCapsuleVisible(bool visible)

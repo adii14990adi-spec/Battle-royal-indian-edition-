@@ -534,7 +534,7 @@ def check_protected_assets(report: Report) -> None:
             problems.append("changed " + rel)
     report.check("production assets unchanged",
                  not problems,
-                 f"{len(manifest['files']) - len(allowlisted)} protected Unity Assets/ProjectSettings files are byte-identical; the two test asmdefs plus {len(allowlisted) - 2} explicitly hashed targeted FBX repair files are allowlisted in processing/unity/fbx_production_repair_manifest.json",
+                 f"{len(manifest['files']) - len(allowlisted)} protected Unity Assets/ProjectSettings files are byte-identical; {len(allowlisted)} path(s) are explicitly allowlisted",
                  "; ".join(problems[:8]))
     report.info("main-branch deletions inherited by PR",
                 "main deleted " + str(len(manifest.get("main_deleted_after_branch_creation", []))) +
@@ -599,18 +599,15 @@ def check_existing_fbx_compatibility(report: Report, analyses: dict[str, dict[st
                  "both GLTF characters and both production character FBXs use the same 65 Unreal-style bone names",
                  "bone-name sets differ")
 
-    animation_files = sorted((ASSETS_ROOT / "Animations").rglob("*.fbx"))
-    problems = []
-    for path in animation_files:
-        doc = read_fbx(path)
-        if doc.missing_required_bones() or not doc.core_hierarchy_connected() or len(doc.bone_names) != 65:
-            problems.append(display(path))
-    report.check("existing animation FBX skeleton conventions",
-                 len(animation_files) == 74 and not problems,
-                 "74/74 existing Mixamo animation FBXs have 65 bones and all required canonical humanoid aliases",
-                 f"count={len(animation_files)}, problems={problems[:4]}")
-    report.info("existing animation FBX compatibility",
-                "Production animations use mixamorig:* names, while GLTF and character FBX use Unreal-style names. Unity Humanoid Avatar mapping must bridge the two namespaces; static name equality is NOT claimed. Avatar and retargeting are tested separately in licensed Unity Editor CI.")
+    animations_root = ASSETS_ROOT / "Animations"
+    animation_files = sorted(animations_root.rglob("*.fbx")) if animations_root.is_dir() else []
+    report.check("animation FBX clips removed",
+                 not animation_files,
+                 f"no FBX animation clip remains under {display(animations_root)} (the 74 Mixamo clips were deleted on 2026-11-20 by owner decision)",
+                 f"{len(animation_files)} animation FBX still present: "
+                 + ", ".join(display(f) for f in animation_files[:4]))
+    report.info("animation namespace",
+                "GLTF and production character FBX use Unreal-style bone names. The mixamorig:* animation library that used to sit beside them has been removed, so no cross-namespace retargeting claim is made or needed.")
 
 
 def run_validation() -> Report:
@@ -626,8 +623,6 @@ def run_validation() -> Report:
                         "requires licensed Unity Editor; run GLTFImportTestValidator.ValidateFromCommandLine in unity.yml")
     report.not_verified("visual appearance / material / UV screenshots",
                         "requires genuine Unity Editor camera renders or human visual inspection")
-    report.not_verified("animation retargeting playback",
-                        "requires a valid Humanoid Avatar and an Editor/PlayMode sample, not just matching bone names")
     report.not_verified("Android build / device runtime",
                         "APK build and FPS/PSS/thermal/touch measurements require a licensed Editor build and a physical device")
     report.info("licence caveat",

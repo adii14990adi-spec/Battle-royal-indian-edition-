@@ -84,7 +84,8 @@ class RepositorySafetyTests(unittest.TestCase):
     def test_guid_uniqueness(self):
         owners, problems = v.guid_map(sorted(v.ASSETS_ROOT.rglob("*.meta")))
         self.assertEqual([], problems)
-        self.assertGreaterEqual(len(owners), 91)
+        # The 74 animation FBX .meta files were removed on 2026-11-20.
+        self.assertGreaterEqual(len(owners), 38)
 
     def test_licence_findings(self):
         findings = v.licence_findings()

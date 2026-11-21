@@ -24,8 +24,9 @@ Flow: `PlayerInputRouter.FireHeld/AimHeld` → `WeaponController.Update` →
 `FireShot()`: hitscan raycast from the crosshair, seeded cone spread, damage via
 `IDamageable` (source = `weaponId` for the kill feed), `RecoilModel.ApplyShot`
 kicks the camera, muzzle flash + gunshot + tracer, and
-`PlayerCharacterVisual.TriggerShoot()` fires the Animator one-shot when a
-character is equipped (the greybox capsule just skips it).
+`PlayerCharacterVisual.TriggerShoot()` is an honest no-op visual hook — the
+animation system was removed on 2026-11-20, so no Animator one-shot exists
+(the greybox capsule skips it too).
 
 Weapons arrive through the static `LootPickup.Collected` event: any item with
 `category == Weapon` equips the matching `WeaponData` by `itemId`; `Ammo`

@@ -7,15 +7,17 @@ namespace BattleHorizons.UI
 {
     /// <summary>
     /// The real operator on the Home Screen: the configured production
-    /// character (imported humanoid + real animation clips) rendered live
-    /// into a transparent RenderTexture and composited over the lobby vista,
-    /// exactly where the key-art soldier used to be baked into the JPEG.
+    /// character (imported humanoid model) rendered live into a transparent
+    /// RenderTexture and composited over the lobby vista, exactly where the
+    /// key-art soldier used to be baked into the JPEG.
     ///
     /// Reuses <see cref="CharacterPreviewController"/> (same engine as the
     /// Character Bay) with a taller 720x1024 target, a zero-alpha clear so the
-    /// sunset shows through, the idle clip auto-selected and a slow turntable
-    /// yaw so the lobby feels alive. When no character is configured the
-    /// showcase honestly hides itself instead of showing a placeholder.
+    /// sunset shows through and a slow turntable yaw so the lobby feels
+    /// alive. The character holds its static imported pose — all animation
+    /// clips were removed from the project on 2026-11-20 by owner decision.
+    /// When no character is configured the showcase honestly hides itself
+    /// instead of showing a placeholder.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class LobbyCharacterShowcase : MonoBehaviour
@@ -84,26 +86,8 @@ namespace BattleHorizons.UI
                 return showcase;
             }
 
-            showcase.SelectIdleClip();
-            showcase._preview.SetPlaying(true);
             GameLog.Info("menu", "home screen showcases " + showcase._preview.CurrentCharacterName);
             return showcase;
-        }
-
-        /// <summary>Picks the first clip whose name reads as an idle/stand loop.</summary>
-        private void SelectIdleClip()
-        {
-            for (var i = 0; i < _preview.AnimationCount; i++)
-            {
-                _preview.SelectAnimation(i);
-                var name = _preview.CurrentAnimationName ?? string.Empty;
-                if (name.ToLowerInvariant().Contains("idle") || name.ToLowerInvariant().Contains("stand"))
-                {
-                    return;
-                }
-            }
-
-            _preview.SelectAnimation(0);
         }
 
         private void Update()

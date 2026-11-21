@@ -1,22 +1,25 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using BattleHorizons.Characters;
 using BattleHorizons.EditorTools;
 using NUnit.Framework;
 using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
 
 namespace BattleHorizons.Tests
 {
     /// <summary>
-    /// End-to-end tests for the character &amp; animation import pipeline on
-    /// the REAL uploaded assets (Male / Female FBX and the Mixamo animation
-    /// library): rig validity, upload + texture extraction + URP materials,
-    /// duplicate prevention, assignment round-trip and Animator Controller
-    /// generation. Nothing here is mocked — if retargeting is broken these
-    /// tests fail instead of the game shipping a fake.
+    /// End-to-end tests for the character import pipeline on the REAL uploaded
+    /// assets (Male / Female FBX): rig validity, upload + texture extraction +
+    /// URP materials, duplicate prevention, roster round-trip and the headless
+    /// integration builder. Nothing here is mocked — if the character import is
+    /// broken these tests fail instead of the game shipping a fake.
+    ///
+    /// History: this file also proved the 74-clip Mixamo animation library
+    /// (Humanoid clip import, category inference, loop defaults and generated
+    /// Animator Controllers). All animation clips were removed from the project
+    /// on 2026-11-20 by owner decision, so those tests were deleted and
+    /// replaced by a regression test that proves the clip library stays gone.
     /// </summary>
     public class CharacterPipelineTests
     {
@@ -41,11 +44,12 @@ namespace BattleHorizons.Tests
                 _scratchCharacterFolder = null;
             }
 
-            // Remove the scratch character entry from the real config.
+            // Remove scratch character entries from the real config.
             var config = CharacterAnimationConfigLibrary.LoadIfExists();
             if (config != null)
             {
-                var changed = config.characters.RemoveAll(c => c != null && c.id == "pipelinetest") > 0;
+                var changed = config.characters.RemoveAll(
+                    c => c != null && (c.id == "pipelinetest" || c.id == "roundtrip")) > 0;
                 if (changed)
                 {
                     CharacterAnimationConfigLibrary.Save(config);
@@ -77,97 +81,60 @@ namespace BattleHorizons.Tests
             Assert.AreEqual(RigKind.Humanoid, report.kind,
                 label + " should import as Humanoid: " + report.Combined);
             Assert.IsTrue(report.success,
-                label + " avatar must be valid for retargeting: " + report.Combined);
+                label + " avatar must be valid: " + report.Combined);
             Assert.IsTrue(report.mappedHumanBones >= 40,
                 label + " humanoid mapping looks incomplete: " + report.Combined);
         }
 
+        // ------------------------------------------------------------------
+        // Animation removal regression
+        // ------------------------------------------------------------------
+
         [Test]
-        public void RealAnimationLibrary_IsHumanoidWithClips()
+        public void AnimationLibrary_IsRemovedAndStaysRemoved()
         {
-            var guids = AssetDatabase.FindAssets("t:AnimationClip", new[] { AnimationsRoot });
-            Assert.Greater(guids.Length, 20,
-                "expected the moved animation library under " + AnimationsRoot);
-
-            var humanoidClips = 0;
-            var totalClips = 0;
-            foreach (var guid in guids)
+            var absolute = CharacterAnimationConfigLibrary.AbsolutePathOf(AnimationsRoot);
+            if (Directory.Exists(absolute))
             {
-                var path = AssetDatabase.GUIDToAssetPath(guid);
-                var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
-                if (clip == null)
-                {
-                    continue;
-                }
-
-                totalClips++;
-                if (clip.humanMotion)
-                {
-                    humanoidClips++;
-                }
-
-                Assert.Greater(clip.length, 0f, path + " has zero duration");
-                Assert.Greater(clip.frameRate, 0f, path + " has zero frame rate");
+                var files = Directory.GetFiles(absolute, "*.fbx", SearchOption.AllDirectories);
+                Assert.AreEqual(0, files.Length,
+                    "the animation FBX library was removed on 2026-11-20 — "
+                    + files.Length + " clip(s) reappeared under " + AnimationsRoot);
             }
 
-            Assert.Greater(humanoidClips, 20,
-                "animation FBX files must import as humanoid (retargetable) clips; only "
-                + humanoidClips + "/" + totalClips + " did");
-        }
-
-        // ------------------------------------------------------------------
-        // Category inference (pure logic)
-        // ------------------------------------------------------------------
-
-        [TestCase("death from the front.fbx", CharacterAnimCategory.Death)]
-        [TestCase("Dying.fbx", CharacterAnimCategory.Death)]
-        [TestCase("Crouch Walking.fbx", CharacterAnimCategory.CrouchWalk)]
-        [TestCase("idle crouching.fbx", CharacterAnimCategory.Crouch)]
-        [TestCase("Prone Idle.fbx", CharacterAnimCategory.Crouch)]
-        [TestCase("sprint forward.fbx", CharacterAnimCategory.Sprint)]
-        [TestCase("rifle run.fbx", CharacterAnimCategory.RifleRun)]
-        [TestCase("rifle aiming idle.fbx", CharacterAnimCategory.RifleIdle)]
-        [TestCase("reloading.fbx", CharacterAnimCategory.Reload)]
-        [TestCase("firing rifle.fbx", CharacterAnimCategory.Shoot)]
-        [TestCase("Grab And Put Back Rifle.fbx", CharacterAnimCategory.WeaponSwitch)]
-        [TestCase("hit reaction.fbx", CharacterAnimCategory.Melee)]
-        [TestCase("toss grenade.fbx", CharacterAnimCategory.Melee)]
-        [TestCase("idle aiming.fbx", CharacterAnimCategory.Aim)]
-        [TestCase("jump up.fbx", CharacterAnimCategory.Jump)]
-        [TestCase("walking.fbx", CharacterAnimCategory.Walk)]
-        public void InferFromFileName_MatchesRealUploadNames(string fileName, CharacterAnimCategory expected)
-        {
-            Assert.AreEqual(expected, CharacterAnimCategories.InferFromFileName(fileName));
+            var clipGuids = AssetDatabase.FindAssets("t:AnimationClip",
+                new[] { "Assets/Characters", "Assets/Generated" });
+            Assert.AreEqual(0, clipGuids.Length,
+                "no generated AnimationClip may be wired into the character roster");
         }
 
         [Test]
-        public void FolderAndLoopMapping_CoversAllCategories()
+        public void IntegrationBuilder_ProducesRosterWithoutClips()
         {
-            var folders = new HashSet<string>();
-            foreach (CharacterAnimCategory category in Enum.GetValues(typeof(CharacterAnimCategory)))
-            {
-                var folder = CharacterAnimCategories.FolderName(category);
-                folders.Add(folder);
-                Assert.IsTrue(
-                    folder == "Movement" || folder == "Combat" || folder == "Weapon"
-                    || folder == "Crouch" || folder == "Death" || folder == "Unsorted",
-                    category + " mapped to unexpected folder " + folder);
-            }
+            string report;
+            var failures = CharacterAnimationIntegration.Build(out report);
+            Assert.AreEqual(0, failures,
+                "headless character integration must pass:\n" + report);
 
-            Assert.IsTrue(folders.Contains("Movement") && folders.Contains("Combat")
-                && folders.Contains("Weapon") && folders.Contains("Crouch")
-                && folders.Contains("Death"), "all five organized folders must be reachable");
+            var config = CharacterAnimationConfigLibrary.LoadIfExists();
+            Assert.IsNotNull(config, "config asset exists at "
+                + CharacterAnimationConfigLibrary.ConfigAssetPath);
 
-            Assert.IsTrue(CharacterAnimCategories.DefaultLoop(CharacterAnimCategory.Idle));
-            Assert.IsTrue(CharacterAnimCategories.DefaultLoop(CharacterAnimCategory.CrouchWalk));
-            Assert.IsFalse(CharacterAnimCategories.DefaultLoop(CharacterAnimCategory.Death));
-            Assert.IsFalse(CharacterAnimCategories.DefaultLoop(CharacterAnimCategory.Shoot));
-            Assert.IsFalse(CharacterAnimCategories.DefaultLoop(CharacterAnimCategory.Reload));
-            Assert.AreEqual(16, CharacterAnimCategories.All.Length, "16 animation categories expected");
+            var male = config.FindCharacter("male");
+            var female = config.FindCharacter("female");
+            Assert.IsNotNull(male, "male roster entry present");
+            Assert.IsNotNull(female, "female roster entry present");
+            Assert.IsNotNull(male.model, "male model reference wired");
+            Assert.IsNotNull(female.model, "female model reference wired");
+            Assert.IsTrue(male.humanoidRigValid, "male rig report: " + male.rigReport);
+            Assert.IsTrue(female.humanoidRigValid, "female rig report: " + female.rigReport);
+
+            var selected = config.SelectedCharacter();
+            Assert.IsNotNull(selected, "a selected character is always resolvable");
         }
 
         // ------------------------------------------------------------------
-        // Character upload (copy, textures, URP materials, rig, dedupe)
+        // Character upload (textures, URP materials, mesh integrity)
         // ------------------------------------------------------------------
 
         [Test]
@@ -193,7 +160,7 @@ namespace BattleHorizons.Tests
                 Assert.IsTrue(AssetDatabase.LoadAssetAtPath<GameObject>(result.assetPath) != null,
                     "imported FBX must produce a GameObject");
 
-                // Rig validated as humanoid on the real asset (retargeting gate).
+                // Rig validated as humanoid on the real asset.
                 Assert.IsTrue(result.definition.humanoidRigValid,
                     "male source must map to a valid humanoid avatar:\n"
                     + result.definition.rigReport);
@@ -292,218 +259,11 @@ namespace BattleHorizons.Tests
         }
 
         // ------------------------------------------------------------------
-        // Animation upload (category, loop, register)
+        // Config persistence
         // ------------------------------------------------------------------
 
         [Test]
-        public void ImportAnimationClip_RegistersCategoryAndLoopDefaults()
-        {
-            var sourcePath = Path.Combine(Path.GetTempPath(), "bh_death_anim_test.fbx");
-            File.Copy(Path.Combine(Application.dataPath,
-                "Animations/Death/death from the front.fbx"), sourcePath, true);
-
-            try
-            {
-                var result = AnimationImportService.ImportAnimations(
-                    new[] { sourcePath },
-                    new AnimationImportService.Options());
-                if (result.Clips.Count == 0)
-                {
-                    // Second local run: content-hash dedupe skipped it (asserted
-                    // in ImportIsIdempotent…) — nothing left to verify here.
-                    Assert.Ignore("death animation already imported — duplicate skip path taken");
-                }
-
-                Assert.Greater(result.Clips.Count, 0,
-                    "death animation must import:\n" + result.report.ToMarkdown());
-
-                var config = CharacterAnimationConfigLibrary.LoadOrCreate();
-                foreach (var clip in result.Clips)
-                {
-                    Assert.IsTrue(config.clips.Contains(clip), "clip registered in config");
-                    var assignment = config.FindAssignment(null, CharacterAnimCategory.Death);
-                    Assert.IsNotNull(assignment,
-                        "death clip must be registered under the Death category");
-                }
-
-                // Death is a one-shot: loop flag off.
-                foreach (var clip in result.Clips)
-                {
-                    Assert.IsFalse(clip.isLooping,
-                        "death clips must default to non-looping: " + clip.name);
-                }
-            }
-            finally
-            {
-                if (File.Exists(sourcePath))
-                {
-                    File.Delete(sourcePath);
-                }
-
-                // Clean the copied test asset out of the Death folder.
-                var copied = AnimationsRoot + "/Death/death from the front.fbx";
-                // (the real library already contains this file — import skipped
-                // or replaced; nothing destructive happens either way)
-                AssetDatabase.Refresh();
-            }
-        }
-
-        // ------------------------------------------------------------------
-        // Assignment + Animator Controller generation
-        // ------------------------------------------------------------------
-
-        [Test]
-        public void BuildController_CreatesAllParametersStatesAndUpperBodyLayer()
-        {
-            // Use a scratch config and a scratch controller path. The old test
-            // wrote arbitrary GUID-order clips as per-character overrides into
-            // the real generated config, which later leaked into captures and
-            // the APK as a non-canonical Walk assignment.
-            var config = ScriptableObject.CreateInstance<CharacterAnimationConfig>();
-            var character = new CharacterDefinition
-            {
-                id = "pipeline_male",
-                displayName = "Pipeline Male",
-                model = AssetDatabase.LoadAssetAtPath<GameObject>(MalePath),
-                humanoidRigValid = true,
-            };
-            config.characters.Add(character);
-            var controllerPath = CharacterAnimationConfigLibrary.ControllersFolder
-                + "/" + character.id + "_Locomotion.controller";
-
-            try
-            {
-                // Assign a real clip for every category the library covers.
-                var clipsByCategory = LoadRealClipsByCategory();
-                foreach (var pair in clipsByCategory)
-                {
-                    config.AddOrUpdateAssignment(new CharacterAnimAssignment
-                    {
-                        characterId = character.id,
-                        category = pair.Key,
-                        clip = pair.Value,
-                        sourcePath = pair.Value.name + ".fbx",
-                    }, character.id);
-                }
-
-                Assert.IsTrue(clipsByCategory.ContainsKey(CharacterAnimCategory.Idle),
-                    "the library must contain an Idle clip for the required state");
-
-                var build = AnimatorControllerBuilder.BuildController(config, character);
-
-                Assert.IsTrue(build.success, "controller build failed: " + build.summary);
-                Assert.IsNotNull(build.controller, "controller asset created");
-                Assert.IsTrue(character.controller == build.controller,
-                    "controller assigned back onto the character definition");
-
-                var controller = build.controller;
-
-                // All ten parameters.
-                var parameterNames = new List<string>();
-                foreach (var parameter in controller.parameters)
-                {
-                    parameterNames.Add(parameter.name);
-                }
-
-                foreach (var expected in new[]
-                {
-                    CharacterAnimParameters.Speed,
-                    CharacterAnimParameters.VerticalSpeed,
-                    CharacterAnimParameters.IsAirborne,
-                    CharacterAnimParameters.IsCrouching,
-                    CharacterAnimParameters.IsAiming,
-                    CharacterAnimParameters.Shoot,
-                    CharacterAnimParameters.Reload,
-                    CharacterAnimParameters.Death,
-                    CharacterAnimParameters.WeaponSwitch,
-                    CharacterAnimParameters.Melee,
-                })
-                {
-                    Assert.Contains(expected, parameterNames, "missing parameter " + expected);
-                }
-
-                // Base layer states for every assigned category that has a state.
-                var baseMachine = controller.layers[0].stateMachine;
-                var stateNames = new List<string>();
-                foreach (var state in baseMachine.states)
-                {
-                    stateNames.Add(state.state.name);
-                }
-
-                foreach (var required in new[]
-                {
-                    "Idle", "Walk", "Run", "Sprint", "Crouch", "Jump", "Fall",
-                    "Aim", "Shoot", "Reload", "WeaponSwitch", "Melee", "Death",
-                })
-                {
-                    Assert.Contains(required, stateNames, "missing base state " + required);
-                }
-
-                // Smooth Any State transitions actually exist.
-                Assert.Greater(baseMachine.anyStateTransitions.Length, 0,
-                    "locomotion must have Any State transitions");
-
-                // UpperBody layer with avatar mask (legs disabled, arms enabled).
-                Assert.AreEqual(2, controller.layers.Length,
-                    "UpperBody weapon layer must exist");
-                var upper = controller.layers[1];
-                Assert.AreEqual("UpperBody", upper.name);
-                Assert.IsNotNull(upper.avatarMask, "UpperBody layer needs an avatar mask");
-                Assert.IsFalse(upper.avatarMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftLeg),
-                    "mask must disable the left leg");
-                Assert.IsFalse(upper.avatarMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.RightLeg),
-                    "mask must disable the right leg");
-                Assert.IsTrue(upper.avatarMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftArm),
-                    "mask must enable the left arm");
-                var upperStates = new List<string>();
-                foreach (var state in upper.stateMachine.states)
-                {
-                    upperStates.Add(state.state.name);
-                }
-
-                Assert.Contains("RifleIdle", upperStates, "Rifle Idle state on UpperBody layer");
-                Assert.Contains("RifleRun", upperStates, "Rifle Run state on UpperBody layer");
-            }
-            finally
-            {
-                if (AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath) != null)
-                {
-                    AssetDatabase.DeleteAsset(controllerPath);
-                }
-                UnityEngine.Object.DestroyImmediate(config);
-            }
-        }
-
-        [Test]
-        public void BuildController_WithoutIdle_FailsWithClearMessage()
-        {
-            // Shared assignments (null/empty/whitespace characterId) now resolve
-            // for every character. Use an empty scratch config rather than
-            // mutating the generated project config: both shared and per-
-            // character Idle clips are genuinely absent here.
-            var config = ScriptableObject.CreateInstance<CharacterAnimationConfig>();
-            try
-            {
-                var character = new CharacterDefinition
-                {
-                    id = "male",
-                    displayName = "Male",
-                    model = AssetDatabase.LoadAssetAtPath<GameObject>(MalePath),
-                };
-
-                var build = AnimatorControllerBuilder.BuildController(config, character);
-                Assert.IsFalse(build.success, "build must fail without an Idle clip");
-                StringAssert.Contains("Idle", build.summary,
-                    "failure must name the missing category: " + build.summary);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(config);
-            }
-        }
-
-        [Test]
-        public void ConfigRoundtrip_PersistsCharactersAssignmentsAndSources()
+        public void ConfigRoundtrip_PersistsCharactersAndSources()
         {
             var config = CharacterAnimationConfigLibrary.LoadOrCreate();
             var character = CharacterAnimationConfigLibrary.GetOrCreateCharacter(
@@ -537,27 +297,30 @@ namespace BattleHorizons.Tests
         // ------------------------------------------------------------------
 
         [Test]
-        public void ImportRules_TreatAnimationAndCharacterPathsAsHumanoid()
+        public void ImportRules_TreatCharacterPathsAsHumanoid()
         {
             Assert.IsTrue(AssetImportRules.IsHumanoidAsset("Assets/Characters/Male/X.fbx"));
-            Assert.IsTrue(AssetImportRules.IsHumanoidAsset("Assets/Animations/Death/y.fbx"));
-            Assert.IsTrue(AssetImportRules.IsHumanoidAsset("Assets/Animations/Movement/z.fbx"));
             Assert.IsTrue(AssetImportRules.IsHumanoidAsset("Assets/UserAssets/Models/Animation/q.fbx"));
             Assert.IsFalse(AssetImportRules.IsHumanoidAsset("Assets/Props/rock.fbx"));
             Assert.IsFalse(AssetImportRules.IsHumanoidAsset(null));
+
+            // The animation clip library is gone, so Assets/Animations is no
+            // longer a Humanoid import folder.
+            Assert.IsFalse(AssetImportRules.IsHumanoidAsset("Assets/Animations/Movement/z.fbx"),
+                "Assets/Animations must not be treated as a Humanoid clip folder any more");
         }
 
         [Test]
-        public void ImportRules_RespectExplicitGenericChoiceOnAnimationAssets()
+        public void ImportRules_RespectExplicitGenericChoiceOnCharacterAssets()
         {
-            var path = AnimationsRoot + "/Movement/idle.fbx";
+            var path = MalePath;
             var importer = AssetImporter.GetAtPath(path) as ModelImporter;
-            Assert.IsNotNull(importer, "idle.fbx must be imported");
+            Assert.IsNotNull(importer, "the male character FBX must be imported");
 
             // Unrecorded paths are never "explicit", even with Generic settings
             // (Unity's fresh-FBX default is Generic too).
             Assert.IsFalse(
-                AssetImportRules.RespectsExplicitGeneric("Assets/Animations/Movement/brand_new.fbx", importer),
+                AssetImportRules.RespectsExplicitGeneric("Assets/Characters/Male/brand_new.fbx", importer),
                 "unrecorded files follow the pipeline default");
 
             var originalType = importer.animationType;
@@ -583,7 +346,7 @@ namespace BattleHorizons.Tests
                 AssetDatabase.WriteImportSettingsIfDirty(path);
                 AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
                 Assert.IsTrue(AssetImportRules.RespectsExplicitGeneric(path, importer),
-                    "a recorded Generic choice on an animation asset must be respected");
+                    "a recorded Generic choice on a character asset must be respected");
                 Assert.AreEqual(ModelImporterAnimationType.Generic, importer.animationType,
                     "the recorded Generic choice must survive the reimport");
             }
@@ -597,128 +360,6 @@ namespace BattleHorizons.Tests
                     AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
                 }
             }
-        }
-
-        // ------------------------------------------------------------------
-        // Mixamo import settings: Rig = Humanoid, Loop Time, baked root motion
-        // ------------------------------------------------------------------
-
-        [Test]
-        public void MixamoLibrary_ImportsHumanoidWithLoopAndBakedRootMotion()
-        {
-            var rows = MixamoAnimationImportService.Audit(MixamoImportSettings.AnimationsRoot);
-            Assert.Greater(rows.Count, 20,
-                "expected the Mixamo animation library under " + MixamoImportSettings.AnimationsRoot);
-            Assert.AreEqual(0, MixamoAnimationImportService.CountProblems(rows),
-                "every Mixamo clip must import as Humanoid, loop per its category and have root motion baked into pose:\n"
-                + MixamoAnimationImportService.Describe(rows));
-        }
-
-        [Test]
-        public void MixamoLibrary_IsDetectedByBonePrefix()
-        {
-            var model = AssetDatabase.LoadAssetAtPath<GameObject>(AnimationsRoot + "/Movement/Running.fbx");
-            Assert.IsNotNull(model, "Running.fbx must import");
-            Assert.Greater(MixamoImportSettings.CountMixamoBones(model), 40,
-                "the real Mixamo hierarchy is expected (mixamorig:* bones)");
-
-            Assert.IsTrue(MixamoImportSettings.IsMixamoSkeleton(new[] { "mixamorig:Hips", "mixamorig:Spine" }));
-            Assert.IsTrue(MixamoImportSettings.IsMixamoSkeleton(new[] { "mixamorig1:LeftArm" }),
-                "Mixamo's numbered namespace suffix is still Mixamo");
-            Assert.IsFalse(MixamoImportSettings.IsMixamoSkeleton(new[] { "Hips", "Spine" }));
-            Assert.IsFalse(MixamoImportSettings.IsMixamoSkeleton(null));
-        }
-
-        [Test]
-        public void MixamoRules_CoverTheRealFileNames()
-        {
-            // Only the animation library takes these rules; characters and props do not.
-            Assert.IsTrue(MixamoImportSettings.IsAnimationAssetPath("Assets/Animations/Movement/Running.fbx"));
-            Assert.IsTrue(MixamoImportSettings.IsAnimationAssetPath("Assets/UserAssets/Models/Animation/idle.fbx"));
-            Assert.IsFalse(MixamoImportSettings.IsAnimationAssetPath("Assets/Characters/Male/Male character.fbx"));
-            Assert.IsFalse(MixamoImportSettings.IsAnimationAssetPath("Assets/Props/rock.fbx"));
-            Assert.IsFalse(MixamoImportSettings.IsAnimationAssetPath(null));
-
-            // Cycles loop, one-shots do not — including the name overrides.
-            Assert.IsTrue(MixamoImportSettings.WantsLoop("walking.fbx"));
-            Assert.IsTrue(MixamoImportSettings.WantsLoop("Running.fbx"));
-            Assert.IsTrue(MixamoImportSettings.WantsLoop("jump loop.fbx"));
-            Assert.IsTrue(MixamoImportSettings.WantsLoop("idle aiming.fbx"));
-            Assert.IsFalse(MixamoImportSettings.WantsLoop("jump up.fbx"));
-            Assert.IsFalse(MixamoImportSettings.WantsLoop("jump down.fbx"));
-            Assert.IsFalse(MixamoImportSettings.WantsLoop("death from the front.fbx"));
-            Assert.IsFalse(MixamoImportSettings.WantsLoop("reloading.fbx"));
-            Assert.IsFalse(MixamoImportSettings.WantsLoop("Running To Stop.fbx"),
-                "a 'to stop' variant must not loop even though it contains 'run' and 'stop'");
-        }
-
-        [Test]
-        public void MixamoClipSettings_BakeIntoPoseAndLoopTime()
-        {
-            var clip = new ModelImporterClipAnimation { name = "Running", loopTime = false, loopPose = false };
-
-            Assert.IsTrue(MixamoImportSettings.ApplyToClip(clip, true),
-                "first application must report a change");
-            Assert.IsTrue(clip.loopTime, "Loop Time on");
-            Assert.IsTrue(clip.loopPose, "Loop Pose on");
-            Assert.IsTrue(clip.lockRootRotation, "Root Transform Rotation: Bake Into Pose");
-            Assert.IsTrue(clip.lockRootHeightY, "Root Transform Position (Y): Bake Into Pose");
-            Assert.IsTrue(clip.lockRootPositionXZ, "Root Transform Position (XZ): Bake Into Pose");
-            Assert.IsTrue(clip.keepOriginalOrientation && clip.keepOriginalPositionY && clip.keepOriginalPositionXZ,
-                "baked values must be based upon the original source pose");
-            Assert.IsTrue(MixamoImportSettings.IsRootMotionBaked(clip));
-
-            Assert.IsFalse(MixamoImportSettings.ApplyToClip(clip, true),
-                "re-applying the same settings is a no-op (no reimport loop)");
-
-            Assert.IsTrue(MixamoImportSettings.ApplyToClip(clip, false), "one-shot must switch loop off");
-            Assert.IsFalse(clip.loopTime, "Loop Time off for a one-shot");
-            Assert.IsTrue(MixamoImportSettings.IsRootMotionBaked(clip), "root motion stays baked");
-        }
-
-        [Test]
-        public void RepairIsIdempotent_AndLeavesACorrectLibraryClean()
-        {
-            // First pass may legitimately touch files whose .meta has no
-            // explicit clip list yet (this repo commits no .meta files).
-            MixamoAnimationImportService.Repair(
-                MixamoImportSettings.AnimationsRoot, new ImportReport { Title = "repair (first pass)" });
-
-            var audit = MixamoAnimationImportService.Audit(MixamoImportSettings.AnimationsRoot);
-            Assert.AreEqual(0, MixamoAnimationImportService.CountProblems(audit),
-                "after the repair every clip must satisfy the rules:\n"
-                + MixamoAnimationImportService.Describe(audit));
-
-            var report = new ImportReport { Title = "repair (second pass)" };
-            var repaired = MixamoAnimationImportService.Repair(MixamoImportSettings.AnimationsRoot, report);
-            Assert.AreEqual(0, repaired,
-                "a repaired library must not be re-imported again (no import loop):\n" + report.ToMarkdown());
-        }
-
-        // ------------------------------------------------------------------
-
-        private static Dictionary<CharacterAnimCategory, AnimationClip> LoadRealClipsByCategory()
-        {
-            var result = new Dictionary<CharacterAnimCategory, AnimationClip>();
-            var guids = AssetDatabase.FindAssets("t:AnimationClip", new[] { AnimationsRoot });
-            foreach (var guid in guids)
-            {
-                var path = AssetDatabase.GUIDToAssetPath(guid);
-                var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
-                if (clip == null)
-                {
-                    continue;
-                }
-
-                var category = CharacterAnimCategories.InferFromFileName(
-                    Path.GetFileName(path));
-                if (!result.ContainsKey(category))
-                {
-                    result[category] = clip;
-                }
-            }
-
-            return result;
         }
     }
 }

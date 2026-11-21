@@ -1,8 +1,8 @@
 {
   "summary": {
-    "pass": 29,
-    "fail": 6,
-    "not_verified": 9
+    "pass": 27,
+    "fail": 0,
+    "not_verified": 8
   },
   "rows": [
     {
@@ -11,19 +11,44 @@
       "detail": "Static validator reads committed bytes and source only; it never claims Unity import, rendering, Avatar validity, animation playback, APK output or device behaviour."
     },
     {
-      "check": "all 76 production FBX files immutable",
+      "check": "all 2 production FBX files immutable",
       "status": "PASS",
-      "detail": "76/76 FBX files match processing/unity/fbx-baseline.json byte-for-byte"
+      "detail": "2/2 committed production FBX files (the Male and Female character models) match processing/unity/fbx-baseline.json byte-for-byte"
     },
     {
-      "check": "production Unity assets and FBX metadata unchanged",
+      "check": "all other production Unity assets and FBX metadata unchanged",
       "status": "PASS",
-      "detail": "246 protected Assets/ProjectSettings files are byte-identical; both character .fbx.meta GUIDs are unchanged"
+      "detail": "86 non-allowlisted protected Assets/ProjectSettings files are byte-identical; FBX binaries and both character GUIDs are unchanged"
+    },
+    {
+      "check": "protected manifest allowlist is minimal",
+      "status": "PASS",
+      "detail": "2 allowlisted path(s): only the two test asmdefs are exempt from the byte-identity gate"
+    },
+    {
+      "check": "animation FBX clips removed",
+      "status": "PASS",
+      "detail": "no FBX animation clip remains under unity-project/Assets/Animations"
     },
     {
       "check": "GLTF fallback files and test scene preserved",
       "status": "PASS",
-      "detail": "isolated GLTF validator: 33 PASS / 0 FAIL / 4 NOT VERIFIED; original GLTF/BIN/PNG files and test scene are present"
+      "detail": "isolated GLTF validator: 33 PASS / 0 FAIL / 3 NOT VERIFIED; original GLTF/BIN/PNG files and test scene are present"
+    },
+    {
+      "check": "Git LFS object identity and checkout smudge rules",
+      "status": "PASS",
+      "detail": "5/5 committed PNG blobs match their LFS oid/size and declare filter/diff/merge=lfs; CI checkout lfs:true smudges the exact objects (water_normal_256.png=pointer, battle_horizons_loading_bar.png=pointer, battle_horizons_loading_spinner.png=pointer, battle_horizons_logo.png=pointer, battle_horizons_icon.png=pointer)"
+    },
+    {
+      "check": "14 exact production character textures and importer settings",
+      "status": "PASS",
+      "detail": "7 Male + 7 Female PNGs are byte-identical to FBX Video Content or, for the one unresolved Female normal, the unchanged existing GLTF fallback; all normal maps are TextureImporterType.NormalMap with linear/no-convert settings"
+    },
+    {
+      "check": "6 deterministic URP/Lit material remaps",
+      "status": "PASS",
+      "detail": "3 Male + 3 Female MI_* FBX material names remap by exact GUID to committed URP/Lit materials with exact base/normal texture GUIDs"
     },
     {
       "check": "Male FBX GUID unchanged",
@@ -33,12 +58,12 @@
     {
       "check": "Male Unity importer settings",
       "status": "PASS",
-      "detail": "8 importer settings match the committed Humanoid policy in unity-project/Assets/Characters/Male/Male character.fbx.meta"
+      "detail": "11 importer settings match the committed Humanoid policy in unity-project/Assets/Characters/Male/Male character.fbx.meta"
     },
     {
       "check": "Male Unity material import mode",
-      "status": "FAIL",
-      "detail": "materialImportMode=0 is Unity's ModelImporterMaterialImportMode.None: materials are not imported, so embedded FBX textures are not bound to the spawned character. The committed .fbx.meta is preserved unchanged."
+      "status": "PASS",
+      "detail": "materialImportMode=1 (ImportStandard); exact committed URP/Lit external material remaps are active"
     },
     {
       "check": "Male FBX binary structure",
@@ -48,12 +73,12 @@
     {
       "check": "Male embedded source textures",
       "status": "PASS",
-      "detail": "7/7 texture nodes carry embedded PNG bytes (3,939,246 bytes); no unresolved external texture path"
+      "detail": "7/7 embedded PNGs (3,939,246 bytes); no unresolved external path"
     },
     {
-      "check": "Male no dangling committed material/texture asset reference",
+      "check": "Male exact targeted material/texture asset scope",
       "status": "PASS",
-      "detail": "unity-project/Assets/Characters/Male/Materials and unity-project/Assets/Characters/Male/Textures contain only .gitkeep; FBX is the self-contained production source"
+      "detail": "7 PNGs + 7 PNG metas + 3 .mat + 3 .mat metas, no unexpected files, both .gitkeep markers retained"
     },
     {
       "check": "Female FBX GUID unchanged",
@@ -63,12 +88,12 @@
     {
       "check": "Female Unity importer settings",
       "status": "PASS",
-      "detail": "8 importer settings match the committed Humanoid policy in unity-project/Assets/Characters/Female/Female character.fbx.meta"
+      "detail": "11 importer settings match the committed Humanoid policy in unity-project/Assets/Characters/Female/Female character.fbx.meta"
     },
     {
       "check": "Female Unity material import mode",
-      "status": "FAIL",
-      "detail": "materialImportMode=0 is Unity's ModelImporterMaterialImportMode.None: materials are not imported, so embedded FBX textures are not bound to the spawned character. The committed .fbx.meta is preserved unchanged."
+      "status": "PASS",
+      "detail": "materialImportMode=1 (ImportStandard); exact committed URP/Lit external material remaps are active"
     },
     {
       "check": "Female FBX binary structure",
@@ -77,113 +102,48 @@
     },
     {
       "check": "Female embedded source textures",
-      "status": "FAIL",
-      "detail": "6/7 texture nodes carry embedded PNG bytes (2,717,177 bytes); unresolved external path(s): C:\\Dropbox\\Work\\Blender\\_FreeModels\\_Unfinished\\Universal Base Characters\\Base Characters\\textures\\T_Superhero_Female_Normal.png"
+      "status": "PASS",
+      "detail": "6/7 embedded PNGs (2,717,177 bytes); the immutable FBX's one external T_Superhero_Female_Normal.png is resolved at import by the byte-identical existing GLTF fallback texture"
     },
     {
-      "check": "Female no dangling committed material/texture asset reference",
+      "check": "Female exact targeted material/texture asset scope",
       "status": "PASS",
-      "detail": "unity-project/Assets/Characters/Female/Materials and unity-project/Assets/Characters/Female/Textures contain only .gitkeep; FBX is the self-contained production source"
-    },
-    {
-      "check": "available clip: Idle",
-      "status": "PASS",
-      "detail": "unity-project/Assets/Animations/Movement/idle.fbx: FBX 7700, one real AnimationStack, 315 curves, 63 frames, 22 canonical humanoid bones, 0 missing required bones"
-    },
-    {
-      "check": "Idle clip Humanoid import metadata",
-      "status": "PASS",
-      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Movement/idle.fbx.meta"
-    },
-    {
-      "check": "available clip: Walk",
-      "status": "PASS",
-      "detail": "unity-project/Assets/Animations/Movement/walking.fbx: FBX 7700, one real AnimationStack, 315 curves, 41 frames, 22 canonical humanoid bones, 0 missing required bones"
-    },
-    {
-      "check": "Walk clip Humanoid import metadata",
-      "status": "PASS",
-      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Movement/walking.fbx.meta"
-    },
-    {
-      "check": "available clip: Run",
-      "status": "PASS",
-      "detail": "unity-project/Assets/Animations/Movement/Running.fbx: FBX 7700, one real AnimationStack, 315 curves, 21 frames, 22 canonical humanoid bones, 0 missing required bones"
-    },
-    {
-      "check": "Run clip Humanoid import metadata",
-      "status": "PASS",
-      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Movement/Running.fbx.meta"
-    },
-    {
-      "check": "available clip: Jump",
-      "status": "PASS",
-      "detail": "unity-project/Assets/Animations/Movement/jump up.fbx: FBX 7700, one real AnimationStack, 315 curves, 16 frames, 22 canonical humanoid bones, 0 missing required bones"
-    },
-    {
-      "check": "Jump clip Humanoid import metadata",
-      "status": "PASS",
-      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Movement/jump up.fbx.meta"
-    },
-    {
-      "check": "available clip: Aim",
-      "status": "PASS",
-      "detail": "unity-project/Assets/Animations/Combat/idle aiming.fbx: FBX 7700, one real AnimationStack, 315 curves, 63 frames, 22 canonical humanoid bones, 0 missing required bones"
-    },
-    {
-      "check": "Aim clip Humanoid import metadata",
-      "status": "PASS",
-      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Combat/idle aiming.fbx.meta"
-    },
-    {
-      "check": "available clip: Shoot",
-      "status": "PASS",
-      "detail": "unity-project/Assets/Animations/Weapon/firing rifle.fbx: FBX 7700, one real AnimationStack, 315 curves, 8 frames, 22 canonical humanoid bones, 0 missing required bones"
-    },
-    {
-      "check": "Shoot clip Humanoid import metadata",
-      "status": "PASS",
-      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Weapon/firing rifle.fbx.meta"
-    },
-    {
-      "check": "available clip: Reload",
-      "status": "PASS",
-      "detail": "unity-project/Assets/Animations/Weapon/reloading.fbx: FBX 7700, one real AnimationStack, 315 curves, 99 frames, 22 canonical humanoid bones, 0 missing required bones"
-    },
-    {
-      "check": "Reload clip Humanoid import metadata",
-      "status": "PASS",
-      "detail": "7 importer settings match the committed Humanoid policy in unity-project/Assets/Animations/Weapon/reloading.fbx.meta"
+      "detail": "7 PNGs + 7 PNG metas + 3 .mat + 3 .mat metas, no unexpected files, both .gitkeep markers retained"
     },
     {
       "check": "runtime FBX spawn path preserved",
       "status": "PASS",
-      "detail": "PlayerCharacterVisual loads the generated config, instantiates the FBX model, assigns the controller and disables the capsule MeshRenderer when configured"
+      "detail": "PlayerCharacterVisual loads the generated roster config, instantiates the FBX model and disables the capsule MeshRenderer when configured"
     },
     {
-      "check": "runtime shared-assignment lookup handles Unity empty strings",
-      "status": "FAIL",
-      "detail": "FindAssignment tests assignment.characterId == null only. Unity deserializes a null serialized string as empty, so shared category assignments can be skipped by CharacterAnimationConfig.FindClip/FindAssignment after a domain reload; licensed Editor verification reported FindClip null while direct assignment entries and generated controller motions existed."
+      "check": "player visual carries no Animator wiring",
+      "status": "PASS",
+      "detail": "PlayerCharacterVisual.cs holds no Animator / AnimatorController / AnimationClip reference after the animation removal"
     },
     {
-      "check": "Aim Animator parameter is driven by runtime",
-      "status": "FAIL",
-      "detail": "no SetBool(IsAiming) exists under Assets/Scripts; the generated Aim state uses IsAiming, while PlayerCharacterVisual.SetAiming only changes UpperBody layer weight"
+      "check": "config asset is a character roster without clips",
+      "status": "PASS",
+      "detail": "CharacterAnimationConfig keeps the character roster and selection helpers and no longer stores AnimationClip assignments or generated controllers"
     },
     {
-      "check": "Aim gameplay hook is called",
-      "status": "FAIL",
-      "detail": "PlayerCharacterVisual.SetAiming(bool) has no runtime caller in Assets/Scripts; the Aim state cannot be entered from current gameplay input"
+      "check": "actual runtime aim state and touch input exist",
+      "status": "PASS",
+      "detail": "ThirdPersonMotor.AimInput/IsAiming and PlayerInputRouter/MobileControlsBuilder AIM hold-button wiring are present"
+    },
+    {
+      "check": "no runtime script plays animation clips",
+      "status": "PASS",
+      "detail": "no file under Assets/Scripts references an Animator, runtimeAnimatorController or AnimationClip (comments excluded)"
     },
     {
       "check": "live shooting gameplay integration",
       "status": "NOT VERIFIED",
-      "detail": "no live weapon/fire system exists under Assets/Scripts; only PlayerCharacterVisual.TriggerShoot/TriggerReload animation hooks and UI copy were found"
+      "detail": "aiming state exists and the visual hooks are no-ops, but this validator cannot exercise a live match; only PlayMode hook-safety tests cover the call sites"
     },
     {
       "check": "committed gameplay prefab / controller / config references",
       "status": "NOT VERIFIED",
-      "detail": "no committed production prefab (0), controller (0) or config asset (0) exists; generated config/controllers and PlayerTest scene are Editor-created and must be checked in licensed Unity"
+      "detail": "no committed production prefab (0), controller (0) or config asset (0) exists; the generated roster config and PlayerTest scene are Editor-created and must be checked in licensed Unity"
     },
     {
       "check": "Android-compatible rendering configuration",
@@ -198,22 +158,12 @@
     {
       "check": "Unity Editor import settings and Humanoid Avatar validity",
       "status": "NOT VERIFIED",
-      "detail": "requires licensed Unity 6; see EDITOR_VALIDATION.md"
-    },
-    {
-      "check": "Animator transitions and missing generated references",
-      "status": "NOT VERIFIED",
-      "detail": "requires the Editor-generated config/controllers; see EDITOR_VALIDATION.md"
-    },
-    {
-      "check": "animation deformation and visual mesh quality",
-      "status": "NOT VERIFIED",
-      "detail": "requires AnimationMode sampling and genuine Editor renders; see EDITOR_VALIDATION.md and CAPTURE_RESULT.md"
+      "detail": "requires licensed Unity 6"
     },
     {
       "check": "visible player mesh in gameplay scene",
       "status": "NOT VERIFIED",
-      "detail": "requires PlayerTest scene and generated config in licensed Unity; see EDITOR_VALIDATION.md"
+      "detail": "requires the PlayerTest scene and generated roster config in licensed Unity"
     },
     {
       "check": "movement / camera / collision / ground alignment",
@@ -224,6 +174,11 @@
       "check": "human front / facial / UV seam inspection",
       "status": "NOT VERIFIED",
       "detail": "requires human visual review; rear-view software-GL renders are not sufficient"
+    },
+    {
+      "check": "correct textured Male/Female Editor camera captures",
+      "status": "NOT VERIFIED",
+      "detail": "requires licensed Unity 6 software-GL Camera.Render evidence"
     }
   ]
 }

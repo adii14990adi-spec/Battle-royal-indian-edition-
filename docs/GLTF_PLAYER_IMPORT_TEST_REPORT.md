@@ -1,6 +1,6 @@
 # Unity 6 GLTF Player Import Test Report
 
-**Status:** isolated experiment complete; **recommendation: KEEP EXISTING FBX pending explicit approval.** Both corrected GLTF copies import and render in licensed Unity 6, and both build valid Humanoid Avatars. Existing-animation retargeting, deformation, Android APK output and device runtime are NOT VERIFIED. No production player asset was replaced and no automatic architecture change was made.
+**Status:** isolated experiment complete; **recommendation: KEEP EXISTING FBX pending explicit approval.** Both corrected GLTF copies import and render in licensed Unity 6, and both build valid Humanoid Avatars. Existing-animation retargeting is **N/A** (the 74 animation clips were removed from the project on 2026-11-20 at the owner's request), and deformation, Android APK output and device runtime remain NOT VERIFIED. No production player asset was replaced and no automatic architecture change was made.
 
 **Game repository:** `adii14990adi-spec/Battle-royal-indian-edition-`  
 **Character source:** `adii14990adi-spec/Animation-.meta-`, branch `main`, commit `b3872f9276461dc3ecffed9e15731e98ed867d86`  
@@ -109,11 +109,19 @@ Editor bounds were Male `size=(1.860, 1.916, 0.441), minY=-0.102` and Female `si
 An earlier experimental run produced `isValid=False, isHuman=False` because the custom `HumanDescription` used spaced human names and left internal hierarchy/parent fields unset. That was a validator construction defect, not a forced production rig change; it was corrected before the final licensed run. Production character FBX Avatars remain separate and were re-checked as `isValid=True, isHuman=True` with 52/55 bones mapped in the project validator.
 
 ## 8. Existing FBX animation compatibility
-- Existing production character FBXs use the same 65 Unreal-style bone names as the GLTF skeletons.
-- Existing production animation FBXs use Mixamo `mixamorig:*` names. All 74 have 65 bones and the canonical required humanoid aliases.
-- Similar humanoid anatomy is **not** treated as proof of retargeting.
-- Licensed Editor validator sampled `Assets/Animations/Movement/idle.fbx` through each valid test Avatar with `AnimationMode.SampleAnimationClip`. Result for both Male and Female: **NOT VERIFIED** — "clip sampled but spine rotation did not change; retargeting result needs manual visual confirmation". The idle clip may contain no measurable spine motion, or the custom Avatar muscle/rest-pose limits may need tuning. No retargeting compatibility claim is made.
-- No existing animation FBX, `.fbx.meta`, Animator Controller, Avatar, gameplay prefab or production reference was modified.
+
+**Update 2026-11-20:** the animation library no longer exists. The owner asked
+to remove all animations, so the 74 Mixamo FBX clips under
+`Assets/Animations/` (with their `.fbx.meta` files), the generated Animator
+Controllers and the IK/procedural-motion components were deleted. The rows
+below are the historical findings of this experiment and are kept for
+traceability only.
+
+- Existing production character FBXs use the same 65 Unreal-style bone names as the GLTF skeletons. **(still true — both character FBX remain)**
+- Existing production animation FBXs used Mixamo `mixamorig:*` names; all 74 had 65 bones and the canonical required humanoid aliases. **(removed)**
+- Similar humanoid anatomy was never treated as proof of retargeting.
+- The licensed Editor validator sampled `Assets/Animations/Movement/idle.fbx` through each valid test Avatar with `AnimationMode.SampleAnimationClip`. Result for both Male and Female: **NOT VERIFIED** — "clip sampled but spine rotation did not change; retargeting result needs manual visual confirmation". That sampling path is now retired: with no clip in the project the validator reports **NOT VERIFIED — no AnimationClip remains** instead of measuring motion.
+- No existing animation FBX, `.fbx.meta`, Animator Controller, Avatar, gameplay prefab or production reference was modified *by this experiment*; the animation files were later deleted by the separate animation-removal change.
 
 ## 9. Licence findings
 
@@ -134,10 +142,10 @@ Both licence files are byte-identical and state **CC0 1.0 Universal / Public Dom
 - Static geometry: Male **8,483 vertices / 14,318 triangles**; Female **8,844 vertices / 15,060 triangles**; **65 skin joints**; **3 meshes / 3 materials** each. Licensed Editor confirmed **3 renderers / 3 SkinnedMeshRenderers** per character, implying at least 3 material/renderer submissions; exact draw calls and GPU memory are **NOT VERIFIED**.
 - Editor bounds: Male `(1.860, 1.916, 0.441)` m, Female `(1.670, 1.854, 0.443)` m; both stand near y=0 after floor alignment. Pivot/floor alignment is PASS for the isolated scene.
 - glTFast runtime materials use URP shader variants; missing variants can produce magenta materials only in player builds. No APK was produced, so shader-variant behaviour in an Android player is **NOT VERIFIED**.
-- No texture quality reduction, mesh simplification, animation removal or runtime allocation change was made. No real-device FPS, thermal, memory or startup measurement was performed.
+- No texture quality reduction, mesh simplification or runtime allocation change was made by this experiment (the animation library was removed later, on 2026-11-20, by a separate owner-requested change). No real-device FPS, thermal, memory or startup measurement was performed.
 
 ## 11. CI / test results
-**Local static sweep:** `validate_gltf_import_test.py` 33 PASS / 0 FAIL / 4 NOT VERIFIED; `processing/unity/tests` 24/24; `validate_structure.py` 17/0; `validate_csharp.py` 36/0 (tree-sitter, not a Unity compile); existing character/animation validator 20/0 with 7 Editor-only SKIP / 6 INFO; Blender 13/13; metadata sync 26/26. `docs/gltf_import_test/STATIC_VALIDATION.md` and `static_validation.json` are committed.
+**Local static sweep (before the 2026-11-20 animation removal):** `validate_gltf_import_test.py` 33 PASS / 0 FAIL / 4 NOT VERIFIED; `processing/unity/tests` 24/24; `validate_structure.py` 17/0; `validate_csharp.py` 36/0 (tree-sitter, not a Unity compile); existing character/animation validator 20/0 with 7 Editor-only SKIP / 6 INFO; Blender 13/13; metadata sync 26/26. `docs/gltf_import_test/STATIC_VALIDATION.md` and `static_validation.json` are committed. The animation-removal change re-ran and re-committed these reports without the clip gates.
 
 **Main-branch note:** `main` deleted four `Assets/UserAssets` placeholder/demo files after this branch was created. The PR merge inherits those deletions; they are not caused by the GLTF experiment and are excluded from the protected-asset hash comparison. `validate_structure.py` now treats only those recorded main deletions as allowed missing directories.
 
@@ -163,7 +171,7 @@ Both licence files are byte-identical and state **CC0 1.0 Universal / Public Dom
 | UVs, skeleton hierarchy, skin weights, bone validity | PASS | static glTF analysis + Editor UV/skin-bone checks; 65 joints, 37 mapped human bones |
 | Scale / orientation / pivot / floor | PASS | Editor bounds and capture `minY=0.000`; screenshots upright on floor |
 | Humanoid Avatar `isValid && isHuman` | PASS | Male/Female 37 human bones from 69 transforms |
-| Existing animation FBX compatibility by Avatar mapping + retargeting | **NOT VERIFIED** | idle clip sampling produced no measurable spine rotation; needs visual confirmation |
+| Existing animation FBX compatibility by Avatar mapping + retargeting | **N/A — removed** | the 74 animation clips were deleted on 2026-11-20; nothing remains to retarget |
 | Deformation under animation | **NOT VERIFIED** | no embedded animation; retargeting not proven |
 | Genuine visual screenshots | PASS | three Unity `Camera.Render` PNGs under Xvfb/llvmpipe; rear views only |
 | Licence commercial/modification/redistribution/attribution | PASS with caveats | CC0 1.0; no top-level source LICENSE; not legal advice |

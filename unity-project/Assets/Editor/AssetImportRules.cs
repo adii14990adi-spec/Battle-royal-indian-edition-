@@ -219,10 +219,12 @@ namespace BattleHorizons.EditorTools
         /// <summary>
         /// True for model paths that must import as Humanoid: the generated
         /// <c>Characters/</c> props and the hand-authored UserAssets rigs
-        /// (<c>Male/</c>, <c>Female/</c>) plus <c>Animation/</c> and the
-        /// organized <c>Animations/</c> library, whose clips retarget onto
-        /// those avatars. Matching is case-insensitive and uses Unity's
-        /// forward-slash <c>assetPath</c> form.
+        /// (<c>Male/</c>, <c>Female/</c>). Matching is case-insensitive and
+        /// uses Unity's forward-slash <c>assetPath</c> form.
+        ///
+        /// History: the <c>Animations/</c> clip library used to match here too;
+        /// every animation FBX was removed from the project on 2026-11-20, so
+        /// the rule no longer covers that folder.
         /// </summary>
         internal static bool IsHumanoidAsset(string path)
         {
@@ -234,18 +236,16 @@ namespace BattleHorizons.EditorTools
             return path.Contains("/Characters/", StringComparison.OrdinalIgnoreCase)
                 || path.Contains("/UserAssets/Models/Male/", StringComparison.OrdinalIgnoreCase)
                 || path.Contains("/UserAssets/Models/Female/", StringComparison.OrdinalIgnoreCase)
-                || path.Contains("/UserAssets/Models/Animation/", StringComparison.OrdinalIgnoreCase)
-                || path.Contains("/Animations/", StringComparison.OrdinalIgnoreCase);
+                || path.Contains("/UserAssets/Models/Animation/", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
-        /// Respects an explicit Generic rig choice recorded by the Character &amp;
-        /// Animation Manager (CharacterImportService with "force Generic", or
-        /// AnimationImportService's Generic path). Unity's default animation
-        /// type for a fresh FBX is also Generic, so only a *recorded* choice
-        /// is honoured — never an accidental default. Unmarked files follow
-        /// the pipeline default (Humanoid inside the character/animation
-        /// folders).
+        /// Respects an explicit Generic rig choice recorded by
+        /// CharacterImportService ("force Generic", listed in
+        /// Assets/Generated/GenericRigs.txt). Unity's default animation type
+        /// for a fresh FBX is also Generic, so only a *recorded* choice is
+        /// honoured — never an accidental default. Unmarked files follow the
+        /// pipeline default (Humanoid inside the character folders).
         /// </summary>
         internal static bool RespectsExplicitGeneric(string path, ModelImporter importer)
         {

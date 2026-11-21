@@ -36,11 +36,12 @@ class ProductionFbxValidatorTests(unittest.TestCase):
         self.assertEqual(report.rows[0]["status"], "FAIL")
         self.assertIn("animationType", report.rows[0]["detail"])
 
-    def test_all_required_clip_paths_exist_on_disk(self) -> None:
-        for relative in validator.REQUIRED_CLIPS.values():
-            fbx = validator.ASSETS_ROOT / "Animations" / relative
-            self.assertTrue(fbx.is_file(), f"missing required clip: {fbx}")
-            self.assertTrue(Path(str(fbx) + ".meta").is_file(), f"missing meta: {fbx}.meta")
+    def test_animation_library_is_absent(self) -> None:
+        self.assertFalse(validator.ANIMATIONS_ROOT.is_dir()
+                         and any(validator.ANIMATIONS_ROOT.rglob("*.fbx")),
+                         "no animation FBX may exist under Assets/Animations")
+        self.assertFalse(hasattr(validator, "REQUIRED_CLIPS"),
+                         "the required-clip table was retired with the animation library")
 
     def test_static_report_accepts_only_scoped_repairs(self) -> None:
         report = validator.run_validation()
@@ -48,15 +49,15 @@ class ProductionFbxValidatorTests(unittest.TestCase):
         self.assertEqual(statuses["Female embedded source textures"], "PASS")
         self.assertEqual(statuses["Male Unity material import mode"], "PASS")
         self.assertEqual(statuses["Female Unity material import mode"], "PASS")
-        self.assertEqual(statuses["runtime shared-assignment lookup handles Unity empty strings"], "PASS")
-        self.assertEqual(statuses["Animator controller shared-assignment resolution handles Unity empty strings"], "PASS")
-        self.assertEqual(statuses["Aim Animator parameter is driven by runtime"], "PASS")
-        self.assertEqual(statuses["Aim gameplay hook is called"], "PASS")
         self.assertEqual(statuses["14 exact production character textures and importer settings"], "PASS")
         self.assertEqual(statuses["6 deterministic URP/Lit material remaps"], "PASS")
-        self.assertEqual(statuses["targeted repair protected file hashes verified"], "PASS")
+        self.assertEqual(statuses["animation FBX clips removed"], "PASS")
+        self.assertEqual(statuses["protected manifest allowlist is minimal"], "PASS")
+        self.assertEqual(statuses["player visual carries no Animator wiring"], "PASS")
+        self.assertEqual(statuses["config asset is a character roster without clips"], "PASS")
+        self.assertEqual(statuses["no runtime script plays animation clips"], "PASS")
         self.assertEqual(statuses["Git LFS object identity and checkout smudge rules"], "PASS")
-        self.assertEqual(statuses["all 76 production FBX files immutable"], "PASS")
+        self.assertEqual(statuses["all 2 production FBX files immutable"], "PASS")
         self.assertEqual(statuses["all other production Unity assets and FBX metadata unchanged"], "PASS")
         self.assertEqual(statuses["GLTF fallback files and test scene preserved"], "PASS")
         self.assertEqual(statuses["live shooting gameplay integration"], "NOT VERIFIED")

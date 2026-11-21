@@ -49,8 +49,7 @@ namespace BattleHorizons.EditorTools
             CheckScenes();
             CheckNoMissingScripts();
             CheckMaterials();
-            CheckMixamoAnimationImportSettings();
-            CheckCharacterAnimationAssets();
+            CheckCharacterAssets();
             CheckBlenderPipeline();
             DeviceGates();
 
@@ -673,50 +672,6 @@ namespace BattleHorizons.EditorTools
                     : "no default application icon assigned");
         }
 
-        /// <summary>
-        /// The Mixamo import settings that decide whether an animation plays
-        /// at all: Rig = Humanoid, Loop Time matching the category and Root
-        /// Transform rotation/position baked into pose. Checked, not assumed —
-        /// a Generic reimport after a fresh clone (PR #25 commits 74 .fbx.meta
-        /// files, but newly uploaded FBXs have none) fails this gate instead
-        /// of silently animating nothing.
-        /// </summary>
-        private static void CheckMixamoAnimationImportSettings()
-        {
-            var rows = MixamoAnimationImportService.Audit(MixamoImportSettings.AnimationsRoot);
-            if (rows.Count == 0)
-            {
-                Skip("Mixamo animation import settings",
-                    "no animation clips under " + MixamoImportSettings.AnimationsRoot);
-                return;
-            }
-
-            var problems = MixamoAnimationImportService.CountProblems(rows);
-            if (problems == 0)
-            {
-                Pass("Mixamo animation import settings", string.Format(
-                    "{0} clip(s): Humanoid rig, Loop Time and baked root motion match their category",
-                    rows.Count));
-                return;
-            }
-
-            Fail("Mixamo animation import settings", problems + " setting problem(s)");
-            foreach (var row in rows)
-            {
-                foreach (var problem in row.problems)
-                {
-                    // Each offender is its own report line so CI shows all of
-                    // them, not one truncated "and N more".
-                    Results.Add(new Result
-                    {
-                        Name = "mixamo setting: " + row.clipName,
-                        Status = "FAIL",
-                        Detail = row.assetPath + " — " + problem,
-                    });
-                }
-            }
-        }
-
         private static void CheckBlenderPipeline()
         {
             // The pipeline is maintained outside the Unity project; its own
@@ -740,12 +695,17 @@ namespace BattleHorizons.EditorTools
         }
 
         /// <summary>
-        /// Character rig / Avatar / controller checks that only the Editor can
-        /// perform. The static validator proves bone names and GUIDs on disk;
-        /// this proves Unity actually produced usable Humanoid Avatars and
-        /// that the generated controllers carry the registered clips.
+        /// Character rig / Avatar checks that only the Editor can perform. The
+        /// static validator proves bone names and GUIDs on disk; this proves
+        /// Unity actually produced usable Humanoid Avatars for the committed
+        /// character models.
+        ///
+        /// History: this gate also proved that the Mixamo clip library and the
+        /// generated Animator Controllers were wired up. All animation clips
+        /// were removed from the project on 2026-11-20 by owner decision, so
+        /// only the character roster is validated now.
         /// </summary>
-        private static void CheckCharacterAnimationAssets()
+        private static void CheckCharacterAssets()
         {
             var guids = AssetDatabase.FindAssets(
                 "t:Model", new[] { CharacterAnimationConfigLibrary.CharactersRoot });
@@ -771,7 +731,7 @@ namespace BattleHorizons.EditorTools
                 Check("character metadata: " + name,
                     File.Exists(path + ".meta")
                     && !string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(path)),
-                    "stable GUID required for config/controller references");
+                    "stable GUID required for config references");
 
                 var rig = RigDetectionUtility.Inspect(path);
                 Check("character humanoid avatar: " + name,
@@ -788,38 +748,34 @@ namespace BattleHorizons.EditorTools
                         "isValid=" + avatar.isValid + ", isHuman=" + avatar.isHuman);
             }
 
-            var clipGuids = AssetDatabase.FindAssets(
-                "t:AnimationClip", new[] { MixamoImportSettings.AnimationsRoot });
-            Check("animation clips discovered", clipGuids.Length > 0,
-                clipGuids.Length + " AnimationClip asset(s) under "
-                + MixamoImportSettings.AnimationsRoot);
+            Check("no animation clips remain",
+                !Directory.Exists(CharacterAnimationConfigLibrary.AnimationsRoot)
+                || Directory.GetFiles(CharacterAnimationConfigLibrary.AnimationsRoot,
+                    "*.fbx", SearchOption.AllDirectories).Length == 0,
+                "Assets/Animations must stay free of FBX clips (removed 2026-11-20)");
 
             var config = CharacterAnimationConfigLibrary.LoadIfExists();
             if (config == null)
             {
-                Skip("character animation config",
+                Skip("character roster config",
                     "run the headless integration builder "
                     + "(BuildFromCommandLine) first");
                 return;
             }
 
-            int missing;
-            var references = config.ValidateReferences(out missing);
-            Check("character animation references", missing == 0, references);
-
-            var controllers = 0;
+            var roster = 0;
             for (var i = 0; i < config.characters.Count; i++)
             {
                 var character = config.characters[i];
-                if (character != null && character.controller != null)
+                if (character != null && character.model != null)
                 {
-                    controllers++;
+                    roster++;
                 }
             }
 
-            Check("Animator Controllers built", controllers == config.characters.Count,
-                controllers + "/" + config.characters.Count
-                + " character(s) have a generated controller");
+            Check("character roster built", roster >= paths.Count && roster > 0,
+                roster + "/" + config.characters.Count
+                + " character(s) have an imported model");
         }
 
         private static void DeviceGates()
