@@ -69,14 +69,12 @@ namespace BattleHorizons.EditorTools
                 // 2026-11-21 grey-grass fix), so they keep their authored
                 // 2048 px resolution with ASTC 6x6, aniso 8 and a negative
                 // mip bias - the same treatment as the character maps.
-                var ground = new TextureImporterSettings();
-                importer.ReadTextureSettings(ground);
-                ground.textureType = TextureImporterType.Default;
-                ground.sRGBTexture = true;
-                ground.mipmapEnabled = true;
-                ground.mipBias = -0.5f;
-                importer.SetTextureSettings(ground);
-
+                // mip bias / aniso stay in the .meta textureSettings block
+                // (Unity 6 exposes no C# setter for mipBias); the importer
+                // honours the committed values on every reimport.
+                importer.textureType = TextureImporterType.Default;
+                importer.sRGBTexture = true;
+                importer.mipmapEnabled = true;
                 importer.anisoLevel = 8;
                 importer.maxTextureSize = 2048;
                 importer.textureCompression = TextureImporterCompression.CompressedHQ;
