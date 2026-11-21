@@ -216,8 +216,8 @@
     },
     {
       "path": "unity-project/Assets/Editor/AssetImportRules.cs",
-      "sha256": "835965b0301ae0f31ff590ded19c6d7d16b65cf0f5be4dea4f8ab660770e81de",
-      "size": 14392
+      "sha256": "cac8ad3d032f7822f342d31d6bb42e49d38f69a8c4d09ec72e22ea60787a9e32",
+      "size": 16303
     },
     {
       "path": "unity-project/Assets/Editor/BattleHorizons.Editor.asmdef",
