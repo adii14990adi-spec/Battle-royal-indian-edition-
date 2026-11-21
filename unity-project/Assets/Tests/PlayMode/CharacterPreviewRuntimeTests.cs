@@ -66,6 +66,8 @@ namespace BattleHorizons.Tests.PlayMode
             {
                 // A configured character must expose real rig/material state.
                 StringAssert.Contains("rig:", preview.RigStatusText);
+                Assert.IsTrue(CharacterRelaxedPose.IsRelaxed(preview.gameObject),
+                    "the Character Bay preview must never show the authored T-pose");
             }
         }
 
@@ -116,6 +118,8 @@ namespace BattleHorizons.Tests.PlayMode
                 Assert.IsTrue(visual.IsCharacterSpawned,
                     "configured character must spawn under the player: " + character.displayName);
                 Assert.IsNotNull(visual.ActiveDefinition);
+                Assert.IsTrue(CharacterRelaxedPose.IsRelaxed(visual.gameObject),
+                    "spawned character must hold the relaxed A-pose, never the authored T-pose");
                 // The imported FBX prefab still carries Unity's default Animator
                 // component; what must be gone is any controller wiring, because
                 // the project has no animation clips any more.

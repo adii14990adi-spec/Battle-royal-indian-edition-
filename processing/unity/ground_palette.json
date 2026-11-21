@@ -1,0 +1,14 @@
+{
+  "dense_srgb_avg": [
+    45.81,
+    91.54,
+    25.12
+  ],
+  "generated_by": "processing/unity/make_ground_palette.py (needs Pillow; CI never runs it)",
+  "purpose": "Average sRGB colour of the two authored ground photos, used by validate_unity_map.py to prove the shader's land albedo stays green at every mip level.",
+  "sparse_srgb_avg": [
+    77.81,
+    92.48,
+    39.01
+  ]
+}

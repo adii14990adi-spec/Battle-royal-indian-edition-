@@ -174,6 +174,10 @@ namespace BattleHorizons.Characters
             _instance.transform.localPosition = Vector3.zero;
             _instance.transform.localRotation = Quaternion.identity;
 
+            // Static imported pose + one-shot relaxed arm swing: the preview
+            // must never show the authored T-pose (no animation clips exist).
+            CharacterRelaxedPose.Apply(_instance);
+
             _lastMessage = character.displayName + " ready";
         }
 

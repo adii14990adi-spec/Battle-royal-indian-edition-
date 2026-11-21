@@ -61,6 +61,32 @@ namespace BattleHorizons.EditorTools
                 return;
             }
 
+            if (IsGroundPhoto(assetPath))
+            {
+                // The two authored world-ground photos tile across the whole
+                // playable disk. Under the 512 px prop budget their grass
+                // detail averages into grey mud on device mips (see the
+                // 2026-11-21 grey-grass fix), so they keep their authored
+                // 2048 px resolution with ASTC 6x6, aniso 8 and a negative
+                // mip bias - the same treatment as the character maps.
+                // mip bias / aniso stay in the .meta textureSettings block
+                // (Unity 6 exposes no C# setter for mipBias); the importer
+                // honours the committed values on every reimport.
+                importer.textureType = TextureImporterType.Default;
+                importer.sRGBTexture = true;
+                importer.mipmapEnabled = true;
+                importer.anisoLevel = 8;
+                importer.maxTextureSize = 2048;
+                importer.textureCompression = TextureImporterCompression.CompressedHQ;
+                importer.npotScale = TextureImporterNPOTScale.ToNearest;
+                var groundAndroid = importer.GetPlatformTextureSettings("Android");
+                groundAndroid.overridden = true;
+                groundAndroid.maxTextureSize = 2048;
+                groundAndroid.format = TextureImporterFormat.ASTC_6x6;
+                importer.SetPlatformTextureSettings(groundAndroid);
+                return;
+            }
+
             if (assetPath.Contains("/UI/Icons/"))
             {
                 importer.textureType = TextureImporterType.Default;
@@ -208,6 +234,17 @@ namespace BattleHorizons.EditorTools
         /// <summary>True for the builder-derived decal alpha maps (`*_d.png`).</summary>
         internal static bool IsDerivedAlphaMap(string path) =>
             path != null && path.EndsWith("_d.png", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// True for the authored world-ground albedo photos that
+        /// <c>SiranWorldBuilder.ApplyGroundPhotos</c> tiles across the land.
+        /// </summary>
+        internal static bool IsGroundPhoto(string path)
+        {
+            return path != null
+                && path.StartsWith("Assets/Resources/Art/Textures/ground_",
+                    StringComparison.OrdinalIgnoreCase);
+        }
 
         internal static bool IsProductionCharacterTexture(string path)
         {

@@ -103,6 +103,27 @@ Shader "BattleHorizons/Radius Clipped Lit"
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
+            // Cheap 2D value noise (world-space dirt patches over the green
+            // leaf carpet). Deterministic, branch-free, half-precision safe.
+            half Hash21(float2 p)
+            {
+                p = frac(p * float2(123.34h, 456.21h));
+                p += dot(p, p + 45.32h);
+                return frac(p.x * p.y);
+            }
+
+            half ValueNoise(float2 p)
+            {
+                float2 i = floor(p);
+                float2 f = frac(p);
+                f = f * f * (3.0h - 2.0h * f);
+                half a = Hash21(i);
+                half b = Hash21(i + float2(1.0h, 0.0h));
+                half c = Hash21(i + float2(0.0h, 1.0h));
+                half d = Hash21(i + float2(1.0h, 1.0h));
+                return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+            }
+
             // sRGB -> linear for raw vertex colours (Unity leaves them untouched).
             half3 SrgbToLinear(half3 c)
             {
@@ -168,8 +189,20 @@ Shader "BattleHorizons/Radius Clipped Lit"
                         float2 guv = input.groundUv / max(_GroundTile, 1.0h);
                         half3 sparse = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, guv).rgb;
                         half3 dense = SAMPLE_TEXTURE2D(_GroundMapB, sampler_GroundMapB, guv * 1.27h).rgb;
-                        half3 photo = lerp(sparse, dense, saturate(groundMask * 1.35h));
-                        half3 tint = lerp(half3(1.0h, 1.0h, 1.0h), SrgbToLinear(input.color.rgb) * 1.75h, 0.55h);
+                        // The baked blob alpha on grass land is ~0.05, so it can
+                        // no longer choose the mix (that pinned the ground to the
+                        // dirt-heavy sparse photo and read as grey cement on
+                        // device). The green leaf carpet is now the BASE and the
+                        // sparse grass/dirt photo appears only as world-space
+                        // noise patches, so every mip level averages to green.
+                        half patchBig = ValueNoise(input.groundUv * 0.11h);
+                        half patchSmall = ValueNoise(input.groundUv * 0.37h + 7.31h);
+                        half dirt = saturate(patchBig * 0.65h + patchSmall * 0.45h - 0.18h);
+                        half3 photo = lerp(dense, sparse, dirt);
+                        // Zone tint keeps the baked hue but stops crushing
+                        // brightness/saturation, plus a grass-green bias.
+                        half3 tint = lerp(half3(1.0h, 1.0h, 1.0h), SrgbToLinear(input.color.rgb) * 2.4h, 0.25h);
+                        tint *= half3(0.92h, 1.08h, 0.88h);
                         albedo = photo * tint;
                     }
                     else
@@ -194,7 +227,10 @@ Shader "BattleHorizons/Radius Clipped Lit"
                 Light mainLight = GetMainLight();
                 half ndotl = saturate(dot(normalWS, mainLight.direction));
                 half3 ambient = SampleSH(normalWS);
-                half3 direct = mainLight.color * ndotl;
+                // shadowAttenuation was missing before: the world never showed
+                // the player/prop contact shadows, which made the ground read
+                // flat and muddy on device.
+                half3 direct = mainLight.color * ndotl * mainLight.shadowAttenuation;
                 half3 litColor = albedo * (ambient + direct);
 
                 // Matte by default: with _Smoothness = 0 this term is exactly zero,
