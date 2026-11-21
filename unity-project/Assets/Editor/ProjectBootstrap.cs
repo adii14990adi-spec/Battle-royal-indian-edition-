@@ -145,7 +145,7 @@ namespace BattleHorizons.EditorTools
             {
                 SettingsFolder, MaterialsFolder, ScenesFolder,
                 ScenesFolder + "/MainMenu", ScenesFolder + "/Gameplay", ScenesFolder + "/Test",
-                "Assets/Prefabs", "Assets/Animations", "Assets/Audio", "Assets/Shaders",
+                "Assets/Prefabs", "Assets/Audio", "Assets/Shaders",
                 // Drop-in location for the user's own buildings, trees and props.
                 UserAssetsFolder, UserModelsFolder, UserMaterialsFolder,
             };
@@ -538,10 +538,11 @@ namespace BattleHorizons.EditorTools
             var motor = player.AddComponent<ThirdPersonMotor>();
             var playerController = player.AddComponent<PlayerController>();
 
-            // Character & animation import system: spawns the configured
-            // character model (Male/Female/custom from the Character Bay)
-            // and drives its Animator from the motor. Stays dormant and keeps
-            // the capsule visual until a character has been imported & saved.
+            // Character import system: spawns the configured character model
+            // (Male/Female/custom from the Character Bay). Stays dormant and
+            // keeps the capsule visual until a character has been imported &
+            // saved. No Animator is driven — the animation clip library was
+            // removed from the project on 2026-11-20.
             player.AddComponent<BattleHorizons.Characters.PlayerCharacterVisual>();
 
             var capsuleVisual = GameObject.CreatePrimitive(PrimitiveType.Capsule);

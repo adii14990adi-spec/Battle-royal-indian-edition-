@@ -10,11 +10,11 @@ Assets/UserAssets/
 └── Materials/   materials and shaders for those models
 ```
 
-> Uploaded **characters** and the **animation library** now live in their own
-> organized folders — `Assets/Characters/{Male,Female}` and
-> `Assets/Animations/{Movement,Combat,Weapon,Crouch,Death}` — see
-> `docs/CHARACTER_ANIMATION_PIPELINE.md` and the in-editor
-> **Battle Horizons → Asset Management → Character & Animation Manager**.
+> Uploaded **characters** live in their own organized folders —
+> `Assets/Characters/{Male,Female}` — see `docs/ASSET_PIPELINE.md` and the
+> in-editor **Battle Horizons → Asset Management → Build Character
+> Integration**. The animation library was removed on 2026-11-20 at the
+> owner's request, so `Assets/Animations/` is gone and must not be repopulated.
 
 ## How to place your assets
 

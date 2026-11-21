@@ -20,7 +20,7 @@ def main() -> int:
         }
     OUT.write_text(json.dumps({
         "generated_from": "current worktree",
-        "note": "Immutable source hashes. Adding an FBX is allowed; changing or deleting one fails static validation. Regenerate with processing/unity/make_fbx_baseline.py.",
+        "note": "Immutable source hashes for the two production character FBX files. Adding an FBX is allowed; changing or deleting one fails static validation. The 74 Mixamo animation clips were removed from Assets/Animations on 2026-11-20 by owner decision and are intentionally absent. Regenerate with processing/unity/make_fbx_baseline.py.",
         "files": files,
     }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"wrote {len(files)} FBX hashes to {OUT.relative_to(ROOT)}")

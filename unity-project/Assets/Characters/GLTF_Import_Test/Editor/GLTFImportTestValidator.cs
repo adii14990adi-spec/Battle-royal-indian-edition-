@@ -25,7 +25,6 @@ namespace BattleHorizons.EditorTools
             "Assets/Characters/GLTF_Import_Test/Female/UnityTestCopy/Superhero_Female_FullBody.gltf";
 
         private const string ReportPath = "docs/gltf_import_test/EDITOR_VALIDATION.md";
-        private const string ExistingClipPath = "Assets/Animations/Movement/idle.fbx";
 
         private sealed class Row
         {
@@ -515,6 +514,14 @@ namespace BattleHorizons.EditorTools
             public string detail;
         }
 
+        /// <summary>
+        /// Retargeting used to be sampled by playing a Humanoid clip from the
+        /// Mixamo library (Assets/Animations/Movement/idle.fbx) through the test
+        /// Avatar. All animation clips were removed from the project on
+        /// 2026-11-20 by owner decision, so there is nothing left to sample and
+        /// this check honestly reports NOT VERIFIED instead of pretending to
+        /// measure motion.
+        /// </summary>
         private static RetargetResult ValidateRetargeting(GameObject instance, Avatar avatar)
         {
             if (avatar == null)
@@ -526,93 +533,10 @@ namespace BattleHorizons.EditorTools
                 };
             }
 
-            AnimationClip clip = null;
-            var assets = AssetDatabase.LoadAllAssetsAtPath(ExistingClipPath);
-            for (var i = 0; i < assets.Length; i++)
-            {
-                var candidate = assets[i] as AnimationClip;
-                if (candidate != null && candidate.humanMotion)
-                {
-                    clip = candidate;
-                    break;
-                }
-            }
-
-            if (clip == null)
-            {
-                return new RetargetResult
-                {
-                    status = "NOT VERIFIED",
-                    detail = "no Humanoid AnimationClip found in " + ExistingClipPath,
-                };
-            }
-
-            var animator = instance.GetComponent<Animator>();
-            if (animator == null)
-            {
-                animator = instance.AddComponent<Animator>();
-            }
-
-            animator.avatar = avatar;
-            animator.runtimeAnimatorController = null;
-            animator.applyRootMotion = false;
-
-            Transform spine = null;
-            var allTransforms = instance.GetComponentsInChildren<Transform>(true);
-            for (var i = 0; i < allTransforms.Length; i++)
-            {
-                var name = allTransforms[i].name.ToLowerInvariant();
-                if (name.Contains("spine_01") || name.Contains("spine1") || name.Contains("spine"))
-                {
-                    spine = allTransforms[i];
-                    break;
-                }
-            }
-
-            if (spine == null)
-            {
-                return new RetargetResult
-                {
-                    status = "NOT VERIFIED",
-                    detail = "no spine transform found to measure retargeted motion",
-                };
-            }
-
-            var before = spine.localRotation;
-            var started = false;
-            try
-            {
-                AnimationMode.StartAnimationMode();
-                started = true;
-                AnimationMode.BeginSampling();
-                AnimationMode.SampleAnimationClip(instance, clip, 0.5f);
-                AnimationMode.EndSampling();
-            }
-            catch (Exception exception)
-            {
-                return new RetargetResult
-                {
-                    status = "NOT VERIFIED",
-                    detail = "AnimationMode sampling is unavailable in this batch-mode context: " + exception.Message,
-                };
-            }
-            finally
-            {
-                if (started)
-                {
-                    AnimationMode.StopAnimationMode();
-                }
-            }
-
-            var after = spine.localRotation;
-            var angle = Quaternion.Angle(before, after);
             return new RetargetResult
             {
-                status = angle > 0.01f ? "PASS" : "NOT VERIFIED",
-                detail = angle > 0.01f
-                    ? "existing Humanoid clip sampled through the test Avatar; spine rotation changed by " +
-                      angle.ToString("F3") + " degrees"
-                    : "clip sampled but spine rotation did not change; retargeting result needs manual visual confirmation",
+                status = "NOT VERIFIED",
+                detail = "no AnimationClip remains in the project (the animation library was removed on 2026-11-20), so Humanoid retargeting cannot be sampled",
             };
         }
 

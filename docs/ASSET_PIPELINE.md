@@ -38,10 +38,13 @@ imported:
 * audio imports as Vorbis, mono for sound effects, with music streamed;
 * models use metre scale, no implicit collider, and character models use a
   Humanoid avatar with at most four bone influences;
-* Mixamo animation FBX files in `Assets/Animations/` import as **Humanoid**
-  (never Unity's Generic default), loop per their category and have root
-  motion baked into pose — see
-  [`CHARACTER_ANIMATION_PIPELINE.md`](CHARACTER_ANIMATION_PIPELINE.md#mixamo-import-settings-rig--animation--animator).
+* the animation clip library is gone: on 2026-11-20 the owner asked to remove
+  every animation, so the 74 Mixamo FBX clips under `Assets/Animations/`, the
+  clip import service, the generated Animator Controllers, the IK/procedural
+  motion components and their metadata-sync pipeline were deleted. Characters
+  now render in their static imported pose and `Assets/Animations/` must stay
+  free of FBX files — `ProjectValidator`, `validate_fbx_production.py` and
+  `validate_gltf_import_test.py` all fail if a clip reappears.
 
 The rules are centralized so a new asset does not need an undocumented manual
 import setup. Inspect the Unity import log for `[bh][import]` errors after adding

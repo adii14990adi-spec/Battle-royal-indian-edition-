@@ -17,12 +17,8 @@ namespace BattleHorizons.Characters
 
         private static Text _statusLabel;
         private static Text _characterLabel;
-        private static Text _animationLabel;
-        private static Text _animationInfoLabel;
         private static Text _rigLabel;
         private static Text _materialLabel;
-        private static Text _playLabel;
-        private static Text _zoomLabel;
         private static CharacterPreviewController _preview;
 
         public static CharacterPreviewController Preview => _preview;
@@ -89,12 +85,6 @@ namespace BattleHorizons.Characters
             _characterLabel = CreateText(card.transform, "CharacterLabel", "character: —",
                 new Vector2(0.5f, 1f), new Vector2(560f, 44f), new Vector2(infoX, -110f),
                 26, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
-            _animationLabel = CreateText(card.transform, "AnimationLabel", "animation: —",
-                new Vector2(0.5f, 1f), new Vector2(560f, 40f), new Vector2(infoX, -158f),
-                24, FontStyle.Bold, new Color(0.4f, 0.9f, 1f, 1f), TextAnchor.MiddleLeft);
-            _animationInfoLabel = CreateText(card.transform, "AnimationInfo", "",
-                new Vector2(0.5f, 1f), new Vector2(560f, 40f), new Vector2(infoX, -200f),
-                20, FontStyle.Normal, new Color(0.85f, 0.9f, 0.95f, 1f), TextAnchor.MiddleLeft);
             _rigLabel = CreateText(card.transform, "RigLabel", "",
                 new Vector2(0.5f, 1f), new Vector2(560f, 96f), new Vector2(infoX, -270f),
                 19, FontStyle.Normal, new Color(0.7f, 0.95f, 0.75f, 1f), TextAnchor.UpperLeft);
@@ -121,30 +111,8 @@ namespace BattleHorizons.Characters
                     RefreshLabels();
                 });
 
-            // Animation switch
-            CreateButton(card.transform, "PrevAnimation", "◀ CLIP",
-                new Vector2(0.5f, 1f), new Vector2(150f, 52f), new Vector2(infoX - 210f, -500f),
-                new Color(0.18f, 0.28f, 0.38f, 0.96f), () =>
-                {
-                    _preview.PrevAnimation();
-                    RefreshLabels();
-                });
-            CreateButton(card.transform, "NextAnimation", "CLIP ▶",
-                new Vector2(0.5f, 1f), new Vector2(150f, 52f), new Vector2(infoX + 210f, -500f),
-                new Color(0.18f, 0.28f, 0.38f, 0.96f), () =>
-                {
-                    _preview.NextAnimation();
-                    RefreshLabels();
-                });
-
-            // Play/pause + zoom + rotate hint
-            CreateButton(card.transform, "PlayPause", "PAUSE",
-                new Vector2(0.5f, 1f), new Vector2(160f, 52f), new Vector2(infoX - 210f, -560f),
-                new Color(0.20f, 0.42f, 0.28f, 0.96f), () =>
-                {
-                    _preview.TogglePlayPause();
-                    RefreshLabels();
-                }, out _playLabel);
+            // Zoom + rotate hint (clip playback and play/pause were removed
+            // together with the animation system).
             CreateButton(card.transform, "ZoomIn", "ZOOM +",
                 new Vector2(0.5f, 1f), new Vector2(150f, 52f), new Vector2(infoX, -560f),
                 new Color(0.16f, 0.32f, 0.44f, 0.96f), () =>
@@ -190,16 +158,6 @@ namespace BattleHorizons.Characters
                 _characterLabel.text = "character: " + _preview.CurrentCharacterName;
             }
 
-            if (_animationLabel != null)
-            {
-                _animationLabel.text = "animation: " + _preview.CurrentAnimationName;
-            }
-
-            if (_animationInfoLabel != null)
-            {
-                _animationInfoLabel.text = _preview.CurrentAnimationInfo;
-            }
-
             if (_rigLabel != null)
             {
                 _rigLabel.text = _preview.RigStatusText;
@@ -216,15 +174,6 @@ namespace BattleHorizons.Characters
                     + string.Format("\nzoom: {0:0.0} m · yaw: {1:0}°", _preview.Distance, _preview.Yaw);
             }
 
-            if (_playLabel != null)
-            {
-                _playLabel.text = _preview.IsPlaying ? "PAUSE" : "PLAY";
-            }
-
-            if (_zoomLabel != null)
-            {
-                _zoomLabel.text = string.Format("ZOOM {0:0.0}", _preview.Distance);
-            }
         }
 
         private static Text CreateText(

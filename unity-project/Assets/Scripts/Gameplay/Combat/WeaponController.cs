@@ -24,9 +24,9 @@ namespace BattleHorizons.Gameplay.Combat
     ///     (scene overrides + <see cref="DefaultWeaponContent"/>);
     ///   * damage lands on <see cref="IDamageable"/> found in the hit collider's
     ///     parents, source id = weaponId (kill-feed ready);
-    ///   * animation hooks call <see cref="PlayerCharacterVisual"/>.SetAiming /
+    ///   * visual hooks call <see cref="PlayerCharacterVisual"/>.SetAiming /
     ///     TriggerShoot / TriggerReload when a character visual is present —
-    ///     the greybox capsule simply has none;
+    ///     honest no-ops since the animation system was removed;
     ///   * randomness (spread, recoil jitter) flows through seeded
     ///     <see cref="RandomStream"/>s — validator rule 8, no UnityEngine.Random.
     /// </summary>
@@ -71,7 +71,7 @@ namespace BattleHorizons.Gameplay.Combat
         private int _lastAmmoReserve = -1;
 
         public WeaponData CurrentWeapon => _runtime?.Data;
-        /// <summary>Where the gun model hangs — CharacterMotionRig parents the hand-IK grip here.</summary>
+        /// <summary>Where the gun model hangs (hand IK was removed with the animation system).</summary>
         public Transform WeaponMount => weaponMount;
         public bool HasWeapon => _runtime != null && _runtime.Data != null;
         public bool IsAiming => _aiming;

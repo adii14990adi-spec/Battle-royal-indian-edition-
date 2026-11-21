@@ -78,7 +78,6 @@ DOCS_REQUIRED = [
     "docs/architecture/UNITY_ARCHITECTURE.md",
     "docs/performance/ANDROID_PROFILES.md",
     "docs/asset-pipeline/BLENDER_PIPELINE.md",
-    "docs/asset-pipeline/ANIMATION_METADATA_SYNC.md",
     "docs/migration/BAKE_FORMAT.md",
 ]
 

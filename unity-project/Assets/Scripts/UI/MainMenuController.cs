@@ -248,7 +248,7 @@ namespace BattleHorizons.UI
 
             // Character Bay = real-time character & animation preview (the
             // modal reports "not configured" until a character is imported
-            // and saved in the Character & Animation Manager).
+            // and saved by the character integration builder).
             NavWideButton(parent, "CharacterButton", LobbyArtFactory.LobbyIcon.Character, "Character",
                 new Vector2(0.282f, 0.048f), new Vector2(0.400f, 0.120f),
                 ShowCharacterBay);

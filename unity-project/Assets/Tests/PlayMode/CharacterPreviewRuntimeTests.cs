@@ -8,11 +8,17 @@ using UnityEngine.TestTools;
 namespace BattleHorizons.Tests.PlayMode
 {
     /// <summary>
-    /// Runtime behaviour of the character &amp; animation system: the preview
-    /// controller renders into its RenderTexture without external
-    /// dependencies, the Character Bay modal opens from the existing Home
-    /// Screen hotspot, and the player visual spawns the configured character
-    /// (or honestly stays a capsule when nothing is configured).
+    /// Runtime behaviour of the character system: the preview controller
+    /// renders into its RenderTexture without external dependencies, the
+    /// Character Bay modal opens from the existing Home Screen hotspot, and the
+    /// player visual spawns the configured character (or honestly stays a
+    /// capsule when nothing is configured).
+    ///
+    /// History: these tests also drove clip playback (NextAnimation,
+    /// TogglePlayPause, Animator presence, idle-clip playback on the lobby).
+    /// All animation clips were removed from the project on 2026-11-20 by owner
+    /// decision, so the preview now only proves orbit/zoom interaction and a
+    /// correctly spawned static model.
     /// </summary>
     public class CharacterPreviewRuntimeTests
     {
@@ -47,17 +53,12 @@ namespace BattleHorizons.Tests.PlayMode
             // Navigation APIs must never throw, configured or not.
             preview.NextCharacter();
             preview.PrevCharacter();
-            preview.NextAnimation();
-            preview.PrevAnimation();
-            preview.TogglePlayPause();
             preview.Rotate(15f, 5f);
             preview.ZoomBy(-0.5f);
-            preview.Tick(1f / 60f);
             preview.RenderOnce();
             yield return null;
 
             Assert.IsNotNull(preview.CurrentCharacterName);
-            Assert.IsNotNull(preview.CurrentAnimationName);
             Assert.IsNotNull(preview.RigStatusText);
             Assert.IsNotNull(preview.MaterialStatusText);
 
@@ -65,8 +66,6 @@ namespace BattleHorizons.Tests.PlayMode
             {
                 // A configured character must expose real rig/material state.
                 StringAssert.Contains("rig:", preview.RigStatusText);
-                Assert.IsNotNull(preview.CharacterAnimator == null ? null : preview.CharacterAnimator,
-                    "spawned character must have an Animator");
             }
         }
 
@@ -116,9 +115,9 @@ namespace BattleHorizons.Tests.PlayMode
             {
                 Assert.IsTrue(visual.IsCharacterSpawned,
                     "configured character must spawn under the player: " + character.displayName);
-                Assert.IsNotNull(visual.CharacterAnimator,
-                    "spawned character must expose its Animator");
                 Assert.IsNotNull(visual.ActiveDefinition);
+                Assert.IsNull(visual.GetComponentInChildren<Animator>(),
+                    "the character visual must not carry an Animator any more");
             }
             else
             {
@@ -134,7 +133,9 @@ namespace BattleHorizons.Tests.PlayMode
             visual.ResetToDefaultState();
             yield return null;
             Assert.IsNotNull(motor);
-        }        [UnityTest]
+        }
+
+        [UnityTest]
         public IEnumerator HomeScreen_HostsTheRealCharacterShowcase()
         {
             _menuRoot = new GameObject("MainMenu");
@@ -155,7 +156,6 @@ namespace BattleHorizons.Tests.PlayMode
             {
                 Assert.AreEqual(showcase.Preview.OutputTexture, raw.texture,
                     "showcase RawImage must display the preview RenderTexture");
-                Assert.IsTrue(showcase.Preview.IsPlaying, "the idle clip must be playing on the lobby");
             }
             else
             {

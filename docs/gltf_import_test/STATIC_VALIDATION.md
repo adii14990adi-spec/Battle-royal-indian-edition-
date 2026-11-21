@@ -31,21 +31,20 @@ Static only: no Unity Editor, no glTF import, no rendering, no APK and no device
 | Female mesh counts | PASS | 8844 vertices, 15060 triangles (3 meshes) |
 | Female PNG dimensions / formats | PASS | 7 PNG image URIs resolve; eye textures 256², hair/body textures 2048²; no texture downscaled |
 | Female Android texture memory (static estimate) | INFO | 7 source PNGs; uncompressed RGBA + mipmaps ≈ 107.3 MiB if all originals are imported at native 2048². ASTC/512 recommendations are in the final report; no source optimization was applied. |
-| production assets unchanged | PASS | 246 protected Unity Assets/ProjectSettings files are byte-identical; only the two allowlisted test asmdefs were updated to reference new test assemblies |
+| production assets unchanged | PASS | 86 protected Unity Assets/ProjectSettings files are byte-identical; 2 path(s) are explicitly allowlisted |
 | main-branch deletions inherited by PR | INFO | main deleted 4 UserAssets placeholder/demo files after this branch was created. The PR merge inherits those deletions; they are not GLTF experiment changes. |
-| no new or moved FBX files | PASS | all 76 FBX files are the original protected set |
-| committed GUID integrity | PASS | 91 unique, well-formed GUIDs across 91 committed .meta files |
+| no new or moved FBX files | PASS | all 2 FBX files are the original protected set |
+| committed GUID integrity | PASS | 40 unique, well-formed GUIDs across 40 committed .meta files |
 | no production controllers/prefabs/scenes added | PASS | no committed production controller, prefab or scene was added or replaced |
 | Unity 6-compatible glTF importer pinned | PASS | com.unity.cloud.gltfast 6.21.0 was already pinned; package.json declares unity 6000.0 |
 | PNG runtime modules enabled | PASS | UnityWebRequest, UnityWebRequestTexture and ImageConversion built-in modules are enabled for glTFast PNG loading |
 | isolated scene exists | PASS | GLTF_Player_Import_Test.unity and its stable .meta GUID are committed; licensed CI replaces the placeholder with Unity-generated YAML |
 | scene has no gameplay system references | PASS | scene contains no production player/movement/network/shooting type names |
 | GLTF skeleton matches production character FBX bone names | PASS | both GLTF characters and both production character FBXs use the same 65 Unreal-style bone names |
-| existing animation FBX skeleton conventions | PASS | 74/74 existing Mixamo animation FBXs have 65 bones and all required canonical humanoid aliases |
-| existing animation FBX compatibility | INFO | Production animations use mixamorig:* names, while GLTF and character FBX use Unreal-style names. Unity Humanoid Avatar mapping must bridge the two namespaces; static name equality is NOT claimed. Avatar and retargeting are tested separately in licensed Unity Editor CI. |
+| animation FBX clips removed | PASS | no FBX animation clip remains under unity-project/Assets/Animations (the 74 Mixamo clips were deleted on 2026-11-20 by owner decision) |
+| animation namespace | INFO | GLTF and production character FBX use Unreal-style bone names. The mixamorig:* animation library that used to sit beside them has been removed, so no cross-namespace retargeting claim is made or needed. |
 | Unity Editor glTF import / Avatar validity | NOT VERIFIED | requires licensed Unity Editor; run GLTFImportTestValidator.ValidateFromCommandLine in unity.yml |
 | visual appearance / material / UV screenshots | NOT VERIFIED | requires genuine Unity Editor camera renders or human visual inspection |
-| animation retargeting playback | NOT VERIFIED | requires a valid Humanoid Avatar and an Editor/PlayMode sample, not just matching bone names |
 | Android build / device runtime | NOT VERIFIED | APK build and FPS/PSS/thermal/touch measurements require a licensed Editor build and a physical device |
 | licence caveat | INFO | CC0 finding applies to the two Character/Male and Character/Female folders. The source repository has no top-level LICENSE file; do not assume unrelated files are CC0. This is a technical report, not legal advice. |
 | final report present | PASS | docs/GLTF_PLAYER_IMPORT_TEST_REPORT.md exists |
@@ -54,6 +53,6 @@ Static only: no Unity Editor, no glTF import, no rendering, no APK and no device
 
 - PASS: 33
 - FAIL: 0
-- NOT VERIFIED: 4
+- NOT VERIFIED: 3
 
 Editor import, Avatar validity, retargeting playback, visual screenshots and Android runtime behaviour are checked separately in licensed Unity CI and/or marked NOT VERIFIED.

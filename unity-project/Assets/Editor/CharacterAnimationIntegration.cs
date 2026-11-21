@@ -9,106 +9,46 @@ using UnityEngine;
 namespace BattleHorizons.EditorTools
 {
     /// <summary>
-    /// Headless, deterministic integration of the committed animation library
-    /// with the committed Male / Female base characters.
+    /// Headless, deterministic integration of the committed Male / Female base
+    /// characters into the generated roster asset that the runtime reads.
     ///
-    /// The Character &amp; Animation Manager window is an interactive authoring
-    /// tool; this class is the reproducible equivalent for CI and for anyone
-    /// without a desktop Unity Editor. It:
-    ///
-    ///  * discovers every FBX under Assets/Animations and the upload folder by
-    ///    asking AssetDatabase for its imported AnimationClips (nothing is
-    ///    invented — a clip that does not import is reported, not fabricated);
-    ///  * registers each clip once (reference dedupe) and each source file once
-    ///    by SHA-256 (content dedupe);
-    ///  * assigns exactly one deterministic clip per category as the shared
-    ///    default, preferring the canonical file name for that category;
-    ///  * verifies both characters' Humanoid Avatars and skinned meshes, never
+    /// It:
+    ///  * discovers every FBX under Assets/Characters (filesystem enumeration
+    ///    plus AssetDatabase, so a freshly uploaded file is found either way);
+    ///  * registers each source file once by SHA-256 (content dedupe);
+    ///  * verifies each character's Humanoid Avatar and skinned meshes, never
     ///    forcing an incompatible rig — an explicit Generic rig is reported
     ///    and left alone;
-    ///  * rebuilds each character's Animator Controller from the config so the
-    ///    clip references and transitions survive an asset reimport;
+    ///  * proves the animation library stays removed: a single FBX under
+    ///    Assets/Animations fails the build instead of being silently wired up;
     ///  * preserves every original FBX file byte-for-byte.
     ///
     /// Entry points:
-    ///   Battle Horizons &gt; Asset Management &gt; Build Character &amp; Animation Integration
+    ///   Battle Horizons &gt; Asset Management &gt; Build Character Integration
     ///   -executeMethod BattleHorizons.EditorTools.CharacterAnimationIntegration.BuildFromCommandLine
     ///
-    /// This is Editor code. It does not prove visual playback, an Avatar import
-    /// on a device, or an Android build; those remain Editor/device tests.
+    /// History: this class used to import the 74 Mixamo animation clips, assign
+    /// one deterministic clip per category and rebuild the generated Animator
+    /// Controllers. All animation clips were removed from the project on
+    /// 2026-11-20 by owner decision ("remove all animations"), so only the
+    /// character roster is built now. The class keeps its historical name so CI
+    /// entry points and the protected-asset lineage stay traceable.
+    ///
+    /// This is Editor code. It does not prove an Avatar import on a device or an
+    /// Android build; those remain Editor/device tests.
     /// </summary>
     public static class CharacterAnimationIntegration
     {
         public const string MenuPath =
-            "Battle Horizons/Asset Management/Build Character & Animation Integration";
+            "Battle Horizons/Asset Management/Build Character Integration";
 
-        private static readonly string[] AnimationRoots =
-        {
-            CharacterAnimationConfigLibrary.AnimationsRoot,
-            MixamoImportSettings.UserAnimationRoot,
-        };
-
-        /// <summary>
-        /// Canonical file-name preference per category. Every stem listed here
-        /// exists in this repository; no clip name is invented. A lower rank
-        /// wins when several clips classify into the same category, so a scan
-        /// never depends on AssetDatabase's GUID enumeration order.
-        /// </summary>
-        private static readonly (CharacterAnimCategory category, string stem)[] PreferredClipNames =
-        {
-            (CharacterAnimCategory.Idle, "idle"),
-            (CharacterAnimCategory.Walk, "walking"),
-            (CharacterAnimCategory.Run, "Running"),
-            (CharacterAnimCategory.Sprint, "sprint forward"),
-            (CharacterAnimCategory.Jump, "jump up"),
-            (CharacterAnimCategory.Fall, "jump down"),
-            (CharacterAnimCategory.Crouch, "idle crouching"),
-            (CharacterAnimCategory.CrouchWalk, "Crouch Walking"),
-            (CharacterAnimCategory.Aim, "idle aiming"),
-            (CharacterAnimCategory.RifleRun, "rifle run"),
-            (CharacterAnimCategory.RifleIdle, "rifle aiming idle"),
-            (CharacterAnimCategory.Shoot, "firing rifle"),
-            (CharacterAnimCategory.Reload, "reloading"),
-            (CharacterAnimCategory.WeaponSwitch, "Grab And Put Back Rifle"),
-            (CharacterAnimCategory.Melee, "hit reaction"),
-            (CharacterAnimCategory.Death, "Dying"),
-        };
-
-        private sealed class ClipCandidate
-        {
-            public string assetPath;
-            public AnimationClip clip;
-            public CharacterAnimCategory category;
-            public int rank;
-        }
-
-        /// <summary>Deterministic preference: lower is better.</summary>
-        public static int ClipPreferenceRank(string fileName, CharacterAnimCategory category)
-        {
-            var stem = Path.GetFileNameWithoutExtension(fileName ?? string.Empty) ?? string.Empty;
-            for (var i = 0; i < PreferredClipNames.Length; i++)
-            {
-                if (PreferredClipNames[i].category == category
-                    && string.Equals(PreferredClipNames[i].stem, stem,
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    return i;
-                }
-            }
-
-            // Non-canonical variants (strafe left, run backward left, ...) are
-            // still registered in config.clips; they just do not win the shared
-            // default. Length + ordinal path is a stable tie-break.
-            return 1000 + stem.Length;
-        }
-
-        /// <summary>Build the whole integration. Returns the number of failures.</summary>
+        /// <summary>Build the roster integration. Returns the number of failures.</summary>
         public static int Build(out string report)
         {
             var log = new StringBuilder();
             var importReport = new ImportReport
             {
-                Title = "Character & Animation Integration — headless build",
+                Title = "Character Integration — headless build",
             };
             var failures = 0;
             var warnings = 0;
@@ -121,117 +61,25 @@ namespace BattleHorizons.EditorTools
                 return 1;
             }
 
-            // ---- discover animation clips ---------------------------------
-            var animationPaths = CollectFbxPaths(AnimationRoots, "t:AnimationClip");
-            log.AppendLine("Animation FBX files discovered: " + animationPaths.Count);
-            if (animationPaths.Count == 0)
+            // ---- animation library must stay removed ----------------------
+            var animationRoot = CharacterAnimationConfigLibrary.AnimationsRoot;
+            var animationAbsolute = CharacterAnimationConfigLibrary.AbsolutePathOf(animationRoot);
+            var strayClips = Directory.Exists(animationAbsolute)
+                ? Directory.GetFiles(animationAbsolute, "*.fbx", SearchOption.AllDirectories)
+                : new string[0];
+            log.AppendLine("Animation FBX files found: " + strayClips.Length);
+            if (strayClips.Length > 0)
             {
-                importReport.Fail("clips", "no animation FBX with an imported "
-                    + "AnimationClip was found under " + string.Join(", ", AnimationRoots));
+                importReport.Fail("clips", strayClips.Length
+                    + " animation FBX file(s) reappeared under " + animationRoot
+                    + "; the animation library was removed on 2026-11-20 and must stay empty");
                 failures++;
             }
-
-            var candidates = new List<ClipCandidate>();
-            var newClips = 0;
-            var duplicateSources = 0;
-            for (var i = 0; i < animationPaths.Count; i++)
+            else
             {
-                var path = animationPaths[i];
-                var clips = AnimationImportService.LoadClipsFromFbx(path);
-                if (clips.Length == 0)
-                {
-                    importReport.Warn("clips", path + ": no AnimationClip imported "
-                        + "(Generic rig or no animation take) — skipped");
-                    warnings++;
-                    continue;
-                }
-
-                RegisterSourceOnce(config, path, ref duplicateSources);
-                var category = CharacterAnimCategories.InferFromFileName(
-                    Path.GetFileName(path));
-
-                for (var c = 0; c < clips.Length; c++)
-                {
-                    var clip = clips[c];
-                    if (clip == null)
-                    {
-                        continue;
-                    }
-
-                    var before = config.clips.Count;
-                    config.AddClip(clip);
-                    if (config.clips.Count > before)
-                    {
-                        newClips++;
-                    }
-
-                    candidates.Add(new ClipCandidate
-                    {
-                        assetPath = path,
-                        clip = clip,
-                        category = category,
-                        rank = ClipPreferenceRank(Path.GetFileName(path), category),
-                    });
-                }
+                importReport.Success("clips", "no animation FBX under " + animationRoot
+                    + " (animation library removed 2026-11-20)");
             }
-
-            candidates.Sort((a, b) =>
-            {
-                var byRank = a.rank.CompareTo(b.rank);
-                return byRank != 0
-                    ? byRank
-                    : string.Compare(a.assetPath, b.assetPath, StringComparison.Ordinal);
-            });
-
-            // ---- one assignment per category, deterministic ---------------
-            var assigned = new HashSet<CharacterAnimCategory>();
-            for (var i = 0; i < candidates.Count; i++)
-            {
-                var candidate = candidates[i];
-                if (!assigned.Add(candidate.category))
-                {
-                    continue;
-                }
-
-                // A hand-made assignment from the Manager window always wins;
-                // a dangling clip (deleted asset) is replaced.
-                var existing = config.FindAssignment(null, candidate.category);
-                if (existing != null && existing.clip != null)
-                {
-                    continue;
-                }
-
-                config.AddOrUpdateAssignment(new CharacterAnimAssignment
-                {
-                    characterId = null,
-                    category = candidate.category,
-                    clip = candidate.clip,
-                    sourcePath = Path.GetFileName(candidate.assetPath),
-                    duration = candidate.clip.length,
-                    frameRate = candidate.clip.frameRate,
-                    loop = candidate.clip.isLooping,
-                    retargetable = candidate.clip.humanMotion,
-                }, characterId: null);
-            }
-
-            var duplicateAssignments = CountDuplicateAssignments(config);
-            if (duplicateAssignments > 0)
-            {
-                importReport.Fail("assignments", duplicateAssignments
-                    + " duplicate (characterId, category) entries");
-                failures++;
-            }
-
-            log.AppendLine("Clips registered: " + config.clips.Count
-                + " (" + newClips + " new, " + duplicateSources
-                + " duplicate source file(s) skipped)");
-            log.AppendLine("Category assignments: " + config.assignments.Count
-                + ", duplicate entries: " + duplicateAssignments);
-            importReport.Success("clips", config.clips.Count
-                + " clip(s) registered from " + animationPaths.Count
-                + " FBX; " + newClips + " new, " + duplicateSources
-                + " duplicate source(s) skipped; " + config.assignments.Count
-                + " category assignment(s)");
 
             // ---- characters, avatars and skinning -------------------------
             var characterPaths = CollectFbxPaths(
@@ -244,6 +92,8 @@ namespace BattleHorizons.EditorTools
                 failures++;
             }
 
+            var duplicateSources = 0;
+            var imported = 0;
             for (var i = 0; i < characterPaths.Count; i++)
             {
                 var path = characterPaths[i];
@@ -252,15 +102,15 @@ namespace BattleHorizons.EditorTools
                 var definition = CharacterAnimationConfigLibrary.GetOrCreateCharacter(
                     config, id, displayName);
 
+                RegisterSourceOnce(config, path, ref duplicateSources);
+
                 // Explicit Generic escape hatch: never force it to Humanoid.
                 if (CharacterAnimationConfigLibrary.IsExplicitGeneric(path))
                 {
                     definition.humanoidRigValid = false;
-                    definition.controller = null;
                     definition.rigReport = "explicit Generic rig recorded in "
                         + CharacterAnimationConfigLibrary.GenericRigListPath
-                        + "; Humanoid retargeting is not available for this character. "
-                        + "Use a Generic Animator Controller or fix the skeleton.";
+                        + "; Humanoid retargeting is not available for this character.";
                     importReport.Warn("rig", displayName + ": " + definition.rigReport);
                     warnings++;
                     continue;
@@ -273,11 +123,10 @@ namespace BattleHorizons.EditorTools
                     if (!RigDetectionUtility.EnsureHumanoid(path, rigReport))
                     {
                         definition.humanoidRigValid = false;
-                        definition.controller = null;
                         definition.rigReport = rigReport.Combined
                             + " | this rig cannot be Humanoid — import it as Generic "
-                            + "(the Manager window's Generic option) instead of "
-                            + "forcing retargeting onto an incompatible skeleton";
+                            + "(recorded through GenericRigs.txt) instead of forcing "
+                            + "retargeting onto an incompatible skeleton";
                         importReport.Warn("rig", displayName + ": " + definition.rigReport);
                         warnings++;
                         continue;
@@ -290,10 +139,8 @@ namespace BattleHorizons.EditorTools
                 if (avatar == null || !avatar.isValid || !avatar.isHuman)
                 {
                     definition.humanoidRigValid = false;
-                    definition.controller = null;
-                    definition.rigReport = "no valid Humanoid Avatar — Mixamo clips "
-                        + "cannot play on this model; import as Generic or configure "
-                        + "the Avatar mapping in the Rig tab";
+                    definition.rigReport = "no valid Humanoid Avatar — configure the "
+                        + "Avatar mapping in the import settings for this model";
                     importReport.Warn("rig", displayName + ": " + definition.rigReport);
                     warnings++;
                     continue;
@@ -331,61 +178,18 @@ namespace BattleHorizons.EditorTools
                     warnings++;
                 }
 
+                imported++;
                 importReport.Success("rig", displayName + ": "
                     + inspection.mappedHumanBones + " mapped humanoid bones, "
                     + skinned.Length + " skinned mesh(es), avatar is human");
             }
 
-            // ---- controllers ----------------------------------------------
-            var built = 0;
-            for (var i = 0; i < config.characters.Count; i++)
+            log.AppendLine("Characters imported: " + imported + "/" + characterPaths.Count
+                + " (" + duplicateSources + " duplicate source file(s) skipped)");
+            if (imported == 0 && characterPaths.Count > 0)
             {
-                var character = config.characters[i];
-                if (character == null || !character.humanoidRigValid
-                    || character.model == null)
-                {
-                    continue;
-                }
-
-                var build = AnimatorControllerBuilder.BuildController(config, character);
-                if (!build.success)
-                {
-                    character.controller = null;
-                    importReport.Warn("controller", build.summary);
-                    warnings++;
-                    continue;
-                }
-
-                character.controller = build.controller;
-                built++;
-                importReport.Success("controller", build.summary);
-                for (var w = 0; w < build.warnings.Count; w++)
-                {
-                    importReport.Warn("controller", build.warnings[w]);
-                    warnings++;
-                }
-            }
-
-            log.AppendLine("Animator Controllers built: " + built + "/"
-                + config.characters.Count);
-            if (built == 0)
-            {
-                importReport.Fail("controller", "no Animator Controller could be "
-                    + "built — Idle is a required category");
+                importReport.Fail("characters", "no character model could be imported");
                 failures++;
-            }
-
-            int missingReferences;
-            var referenceReport = config.ValidateReferences(out missingReferences);
-            log.AppendLine("Reference check: " + referenceReport);
-            if (missingReferences > 0)
-            {
-                importReport.Fail("references", referenceReport);
-                failures += missingReferences;
-            }
-            else
-            {
-                importReport.Success("references", referenceReport);
             }
 
             config.generatedAtUtc = DateTime.UtcNow.ToString("o");
@@ -412,11 +216,10 @@ namespace BattleHorizons.EditorTools
             }
             else
             {
-                Debug.Log("[bh][integration] character & animation integration complete");
+                Debug.Log("[bh][integration] character integration complete");
             }
 
-            EditorUtility.DisplayDialog("Character & Animation Integration",
-                report, "OK");
+            EditorUtility.DisplayDialog("Character Integration", report, "OK");
         }
 
         /// <summary>Headless entry point for GitHub Actions / -executeMethod.</summary>
@@ -438,7 +241,7 @@ namespace BattleHorizons.EditorTools
                 return;
             }
 
-            Debug.Log("[bh][integration] all character & animation checks passed");
+            Debug.Log("[bh][integration] all character checks passed");
             if (Application.isBatchMode)
             {
                 EditorApplication.Exit(0);
@@ -551,29 +354,6 @@ namespace BattleHorizons.EditorTools
             return builder.Length > 0
                 ? builder.ToString()
                 : Path.GetFileNameWithoutExtension(assetPath).ToLowerInvariant();
-        }
-
-        private static int CountDuplicateAssignments(CharacterAnimationConfig config)
-        {
-            var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var duplicates = 0;
-            for (var i = 0; i < config.assignments.Count; i++)
-            {
-                var assignment = config.assignments[i];
-                if (assignment == null)
-                {
-                    continue;
-                }
-
-                var key = (assignment.characterId ?? "<shared>") + "/"
-                          + assignment.category;
-                if (!keys.Add(key))
-                {
-                    duplicates++;
-                }
-            }
-
-            return duplicates;
         }
     }
 }

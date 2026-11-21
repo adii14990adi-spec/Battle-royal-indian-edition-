@@ -17,7 +17,6 @@ from fbx_inspect import (  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MALE = REPO_ROOT / "unity-project/Assets/Characters/Male/Male character.fbx"
-IDLE = REPO_ROOT / "unity-project/Assets/Animations/Movement/idle.fbx"
 
 
 class BoneConventionTests(unittest.TestCase):
@@ -73,22 +72,16 @@ class RealFbxTests(unittest.TestCase):
         self.assertEqual(doc.unit_scale, 100.0)
         self.assertGreater(len(doc.textures), 0)
 
-    @unittest.skipUnless(IDLE.is_file(), "animation FBX not present")
-    def test_animation_stack_frames_match_the_committed_meta(self):
-        doc = read_fbx(IDLE)
-        self.assertEqual(doc.version, 7700)
-        self.assertEqual(len(doc.bone_names), 65)
-        self.assertEqual(len(doc.stacks), 1)
-        self.assertEqual(doc.stacks[0].name, "mixamo.com")
-        self.assertEqual(doc.frames(), 63)
-        self.assertGreater(doc.curve_count, 0)
-        self.assertEqual(doc.mesh_names, [])
-        self.assertTrue(doc.is_animation)
-        self.assertFalse(doc.is_character)
+    def test_animation_library_is_removed(self):
+        animations = REPO_ROOT / "unity-project/Assets/Animations"
+        clips = sorted(animations.rglob("*.fbx")) if animations.is_dir() else []
+        self.assertEqual([], clips,
+                         "the 74 Mixamo animation FBX clips were removed on 2026-11-20 "
+                         "and must not come back")
 
     def test_all_fbx_files_in_the_repository_parse(self):
         files = sorted((REPO_ROOT / "unity-project").rglob("*.fbx"))
-        self.assertGreaterEqual(len(files), 76)
+        self.assertEqual(2, len(files), "only the two production character FBX remain")
         for path in files:
             with self.subTest(path=path.name):
                 doc = read_fbx(path)

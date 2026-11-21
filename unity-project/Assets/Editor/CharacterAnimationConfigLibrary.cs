@@ -13,8 +13,14 @@ namespace BattleHorizons.EditorTools
     /// Editor-side access to the saved <see cref="CharacterAnimationConfig"/>:
     /// find-or-create the asset under Assets/Generated/Resources, register
     /// imported sources (content hashing for duplicate prevention) and write
-    /// import reports. All paths are code-generated because this repository
-    /// commits no .meta files — assets are wired by path, never by GUID.
+    /// import reports. All paths are code-generated — assets are wired by path,
+    /// never by GUID.
+    ///
+    /// History: this library also owned the clip registry folders
+    /// (Assets/AnimationControllers, Assets/AvatarMasks). The animation system
+    /// was removed on 2026-11-20, so only the character roster paths remain;
+    /// <see cref="AnimationsRoot"/> is kept so the validators and the
+    /// integration builder can prove the folder stays free of FBX clips.
     /// </summary>
     public static class CharacterAnimationConfigLibrary
     {
@@ -23,8 +29,6 @@ namespace BattleHorizons.EditorTools
         public const string ConfigAssetPath = ResourcesFolder + "/CharacterAnimationConfig.asset";
         public const string ReportPath = GeneratedRoot + "/LastImportReport.md";
         public const string GenericRigListPath = GeneratedRoot + "/GenericRigs.txt";
-        public const string ControllersFolder = "Assets/AnimationControllers";
-        public const string AvatarMasksFolder = "Assets/AvatarMasks";
         public const string CharactersRoot = "Assets/Characters";
         public const string AnimationsRoot = "Assets/Animations";
 

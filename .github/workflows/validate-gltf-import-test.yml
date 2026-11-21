@@ -75,13 +75,8 @@ jobs:
       - name: C# syntax and assembly-reference checks (no Unity compiler)
         run: python3 processing/unity/validate_csharp.py
 
-      - name: Existing character/animation static validation
-        run: python3 processing/unity/validate_character_animation.py
-
-      - name: Blender and metadata-sync unit tests
-        run: |
-          python3 -m unittest discover -s processing/blender/tests -v
-          python3 -m unittest discover -s processing/animation-metadata/tests -v
+      - name: Blender pipeline unit tests
+        run: python3 -m unittest discover -s processing/blender/tests -v
 
       - name: Upload static reports
         if: always()
