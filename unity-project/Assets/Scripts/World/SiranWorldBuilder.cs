@@ -406,7 +406,7 @@ namespace BattleHorizons.World
                 material.SetTexture("_GroundMapB", dense);
             }
 
-            material.SetFloat("_GroundTile", 6f);
+            material.SetFloat("_GroundTile", 4f);
             if (sparse == null || dense == null)
             {
                 GameLog.Warn("world", "ground photos missing from Resources/Art/Textures; land falls back to the baked palette");

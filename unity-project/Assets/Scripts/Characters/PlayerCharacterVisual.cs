@@ -78,8 +78,10 @@ namespace BattleHorizons.Characters
             _instance.transform.localRotation = Quaternion.identity;
 
             // No Animator wiring: the project ships without animation clips,
-            // so the imported model simply holds its authored pose while the
-            // motor moves the transform.
+            // so the motor moves the transform while the model holds a static
+            // pose. The authored T-pose would read as broken, so a one-shot
+            // procedural relaxed pose swings the arms down (no clips needed).
+            CharacterRelaxedPose.Apply(_instance);
             SetCapsuleVisible(false);
             GameLog.Info("characters", "spawned character visual: " + _active.displayName);
             return true;

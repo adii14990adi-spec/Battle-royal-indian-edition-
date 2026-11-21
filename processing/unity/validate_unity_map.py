@@ -23,6 +23,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 UNITY = REPO_ROOT / "unity-project"
 CONFIG = UNITY / "Assets" / "Resources" / "Config"
+PROCESSING = REPO_ROOT / "processing" / "unity"
 MANIFEST = CONFIG / "siran_island_manifest.json"
 TERRAIN_JSON = CONFIG / "siran_island_terrain.json"
 GITATTRIBUTES = REPO_ROOT / ".gitattributes"
@@ -271,7 +272,95 @@ def main() -> int:
     report.check(texture_ok,
                  "water normal texture is present at its Unity path and matches its recorded SHA-256")
 
+    check_ground_albedo_is_green(report)
+
     return report.summary()
+
+
+def srgb_to_linear(value: float) -> float:
+    return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+
+
+def check_ground_albedo_is_green(report: Report) -> None:
+    """Replay the SiranRadiusClip ground maths without Unity.
+
+    The 2026-11-21 device screenshot showed grey "cement" grass. Root causes:
+    the blob alpha on land (~0.05) pinned the photo blend to the dirt-heavy
+    sparse image, the zone tint multiplied brightness down to ~0.65 grey, and
+    mip averaging at grazing angles washed the remaining tufts out. The shader
+    now uses the dense green leaf carpet as base with noise-driven dirt
+    patches, a brighter tint and real shadow attenuation. This check replays
+    that maths from committed bytes so the ground can never silently regress
+    to grey again.
+    """
+    palette_path = PROCESSING / "ground_palette.json"
+    shader_path = UNITY / "Assets" / "Shaders" / "SiranRadiusClip.shader"
+    colors_path = CONFIG / "siran_island_colors.bytes"
+    builder_path = UNITY / "Assets" / "Scripts" / "World" / "SiranWorldBuilder.cs"
+
+    if not (palette_path.is_file() and shader_path.is_file() and colors_path.is_file()):
+        report.check(False, "ground palette probe inputs are present")
+        return
+
+    palette = json.loads(palette_path.read_text(encoding="utf-8"))
+    sparse = palette.get("sparse_srgb_avg")
+    dense = palette.get("dense_srgb_avg")
+    if not sparse or not dense or len(sparse) != 3 or len(dense) != 3:
+        report.check(False, "ground_palette.json carries both photo averages")
+        return
+
+    # Baked land zone colour: mean over blob vertices whose alpha selects the
+    # ground-photo path (alpha 255 = runway/road/water keep the flat palette).
+    blob = colors_path.read_bytes()
+    body = blob[12:] if len(blob) % 4 == 0 and len(blob) > 12 else blob
+    totals = [0.0, 0.0, 0.0]
+    land = 0
+    for i in range(0, len(body) - 3, 4):
+        r, g, b, a = body[i], body[i + 1], body[i + 2], body[i + 3]
+        if a >= 250:
+            continue
+        totals[0] += r
+        totals[1] += g
+        totals[2] += b
+        land += 1
+    if land == 0:
+        report.check(False, "colour blob has land vertices for the ground probe")
+        return
+    zone = [srgb_to_linear((totals[c] / land) / 255.0) for c in range(3)]
+
+    # Mirror of the shader: tint = lerp(white, linear(zone) * 2.4, 0.25) *
+    # (0.92, 1.08, 0.88); photo = lerp(dense, sparse, dirt) with the expected
+    # noise mean dirt = 0.37; albedo = photo * tint.
+    tint = [ (1.0 + 0.25 * (zone[c] * 2.4 - 1.0)) * bias
+             for c, bias in enumerate((0.92, 1.08, 0.88)) ]
+    dirt = 0.37
+    photo = [srgb_to_linear(dense[c] / 255.0) * (1 - dirt)
+             + srgb_to_linear(sparse[c] / 255.0) * dirt for c in range(3)]
+    albedo = [photo[c] * tint[c] for c in range(3)]
+    luminance = 0.2126 * albedo[0] + 0.7152 * albedo[1] + 0.0722 * albedo[2]
+
+    green = albedo[1] > albedo[0] * 1.5 and albedo[1] > albedo[2] * 1.5
+    report.check(green and luminance >= 0.07,
+                 f"ground albedo probe is green and bright (albedo "
+                 f"{[round(c, 4) for c in albedo]}, luminance {luminance:.4f}); "
+                 "regression lock for the 2026-11-21 grey-grass screenshot")
+
+    shader = shader_path.read_text(encoding="utf-8")
+    report.check("lerp(dense, sparse, dirt)" in shader
+                 and "mainLight.shadowAttenuation" in shader
+                 and "ValueNoise(input.groundUv * 0.11h)" in shader,
+                 "SiranRadiusClip keeps the dense-green base blend, noise dirt "
+                 "patches and main-light shadow attenuation")
+
+    builder = builder_path.read_text(encoding="utf-8")
+    report.check('material.SetFloat("_GroundTile", 4f)' in builder,
+                 "ground photos tile at 4 m so device mips keep grass detail")
+
+    for name in ("ground_grass_dirt.jpg.meta", "ground_leaves_dense.jpg.meta"):
+        meta = (UNITY / "Assets" / "Resources" / "Art" / "Textures" / name).read_text(encoding="utf-8")
+        report.check("streamingMipmaps: 0" in meta and "aniso: 8" in meta
+                     and "mipBias: -0.5" in meta and "maxTextureSize: 1024" not in meta,
+                     f"{name} keeps mip streaming off, aniso 8, mip bias -0.5 and 2048 px")
 
 
 if __name__ == "__main__":
