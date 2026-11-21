@@ -52,8 +52,9 @@ namespace BattleHorizons.Tests.EditMode
                 Assert.IsNotNull(importer, path + " must be imported as a texture");
                 Assert.IsFalse(importer.streamingMipmaps,
                     path + ": mip streaming starves the ground photos on device");
-                Assert.LessOrEqual(importer.mipBias, -0.4f,
-                    path + ": negative mip bias keeps grass tufts crisp at range");
+                // mip bias / aniso live in the importer's textureSettings block
+                // (no stable C# getter in Unity 6); validate_unity_map.py locks
+                // "mipBias: -0.5" and "aniso: 8" straight from the .meta text.
                 Assert.GreaterOrEqual(importer.maxTextureSize, 2048,
                     path + ": photos must keep their 2048 px resolution");
 
