@@ -44,8 +44,6 @@ on:
         description: 'Capture isolated GLTF test screenshots and commit generated scene/screenshots'
         type: boolean
         default: false
-        type: boolean
-        default: false
 
 permissions:
   contents: write
