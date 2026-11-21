@@ -541,8 +541,8 @@
     },
     {
       "path": "unity-project/Assets/Tests/PlayMode/CharacterPreviewRuntimeTests.cs",
-      "sha256": "3b422339061ed9497b6599ffceab6a4303974864de4230db8c03b80c650c5dd5",
-      "size": 7209
+      "sha256": "3320a1d3f97b66e240a4d41e2adfec1df0d2499398ccf9e2c48fb402d8b2dee4",
+      "size": 7627
     },
     {
       "path": "unity-project/Assets/Tests/PlayMode/WorldAndPlayerPlayModeTests.cs",

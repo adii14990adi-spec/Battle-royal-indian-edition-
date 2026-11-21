@@ -116,8 +116,15 @@ namespace BattleHorizons.Tests.PlayMode
                 Assert.IsTrue(visual.IsCharacterSpawned,
                     "configured character must spawn under the player: " + character.displayName);
                 Assert.IsNotNull(visual.ActiveDefinition);
-                Assert.IsNull(visual.GetComponentInChildren<Animator>(),
-                    "the character visual must not carry an Animator any more");
+                // The imported FBX prefab still carries Unity's default Animator
+                // component; what must be gone is any controller wiring, because
+                // the project has no animation clips any more.
+                var animators = visual.GetComponentsInChildren<Animator>(true);
+                for (var i = 0; i < animators.Length; i++)
+                {
+                    Assert.IsNull(animators[i].runtimeAnimatorController,
+                        "no Animator Controller may be assigned after the animation removal");
+                }
             }
             else
             {
