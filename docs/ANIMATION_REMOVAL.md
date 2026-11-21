@@ -58,6 +58,8 @@ A GUID sweep over every committed `*.unity`, `*.prefab`, `*.asset`, `*.mat`,
 | `Assets/Scripts/Characters/ProceduralLean.cs` | spine lean over the locomotion blend |
 | `Assets/Scripts/Characters/CharacterMotionRig.cs` | orchestrator for the four IK components |
 | `Assets/Scripts/Characters/PlayerLocomotion.cs` | drove the `Speed` blend parameter |
+| `Assets/Scripts/Characters/CharacterMotionMath.cs` | pure math (damping, lean, IK weight curves) whose only consumers were the deleted IK/motion components |
+| `Assets/Tests/EditMode/CharacterMotionTests.cs` | EditMode contract tests for that math |
 | `Assets/Tests/EditMode/CharacterAnimationIntegrationTests.cs` | clip registration / controller build tests |
 | `Assets/Tests/EditMode/CharacterRepairRegressionTests.cs` | clip-assignment regression tests |
 | `Assets/Tests/PlayMode/FBXProductionPlayModeTests.cs` | clip playback / deformation PlayMode tests |

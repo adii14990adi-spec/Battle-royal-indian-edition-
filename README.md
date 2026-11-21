@@ -110,7 +110,8 @@ The match foundations live in `unity-project/Assets/Scripts/Gameplay/`:
   request**: the 74 Mixamo FBX clips under `Assets/Animations/`, the generated
   Animator Controllers, the category/clip config data and the IK + procedural
   motion components (`FootIK`, `HeadLookIK`, `WeaponHandIK`, `ProceduralLean`,
-  `CharacterMotionRig`, `PlayerLocomotion`) are gone, so characters hold their
+  `CharacterMotionRig`, `PlayerLocomotion`, `CharacterMotionMath` and its
+  EditMode tests) are gone, so characters hold their
   static imported pose while `ThirdPersonMotor` moves them. `Assets/Animations/`
   must stay free of FBX files — the validators fail if a clip reappears.
 * **Combat** (`Gameplay/Combat`) — hitscan shooting: `WeaponData` stats per
